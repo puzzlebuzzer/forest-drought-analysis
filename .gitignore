@@ -1,0 +1,90 @@
+# ============================================================
+# TNC Forest Drought Project — .gitignore
+# Track: Python scripts, shell scripts, manifests, docs
+# Exclude: raster data, cache files, large binaries
+# ============================================================
+
+# ── Raster / geospatial data ──────────────────────────────────
+*.tif
+*.tiff
+*.img
+*.vrt
+*.nc
+*.hdf
+*.h5
+*.gdb
+*.gpkg
+*.shp
+*.shx
+*.dbf
+*.prj
+*.sbn
+*.sbx
+*.cpg
+*.aux
+*.aux.xml
+*.tif.aux.xml
+*.ovr
+*.qix
+*.atx
+*.xml.aux.xml
+
+# ── Cache directories ─────────────────────────────────────────
+# Exclude all cache data but keep manifests
+/mnt/
+*_cache/
+GWNF_cache/
+Smoky_cache/
+cache_north/
+cache_south/
+
+# Keep manifests (small JSON, document cache state)
+!cache_manifest.json
+!cache_manifest_ndmi.json
+!cache_manifest_ndvi.json
+!cache_manifest_evi.json
+
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+.Python
+.env
+.venv
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# ── Jupyter ───────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Output files ─────────────────────────────────────────────
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.csv
+*.xlsx
+
+# ── OS / editor ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Large source data ─────────────────────────────────────────
+*.zip
+*.tar
+*.tar.gz
+*.iso
+conus_*.img
+conus_*.tif
