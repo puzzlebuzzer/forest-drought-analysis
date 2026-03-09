@@ -68,6 +68,7 @@ config/paths.yaml
 *.png
 !results/figures/*.png
 !docs/*.png
+!Charts/*.png
 
 *.jpg
 *.jpeg
