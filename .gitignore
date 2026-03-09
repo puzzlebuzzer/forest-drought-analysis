@@ -58,6 +58,7 @@ venv/
 *.egg-info/
 dist/
 build/
+config/paths.yaml
 
 # ── Jupyter ───────────────────────────────────────────────────
 .ipynb_checkpoints/

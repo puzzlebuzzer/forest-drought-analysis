@@ -1,40 +1,54 @@
+#!/usr/bin/env python3
+
+import time
+from datetime import datetime
+from pathlib import Path
+
+import geopandas as gpd
 import planetary_computer
 from pystac_client import Client
-import geopandas as gpd
-from pathlib import Path
 from shapely.ops import transform
-from datetime import datetime
-import time
 
-# ── Config ────────────────────────────────────────────────────
-AOI_SHAPEFILE  = "/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/AOI/TNC_AOI_LayerPkg/TNC_AOIs.shp"
-CACHE_BASE_DIR = Path("/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/AOI/GWNF_cache/indices")
-CLOUD_THRESHOLD = 40
-START_YEAR      = 2017
-END_YEAR        = 2026
-INDICES         = ["NDVI", "NDMI", "EVI"]
+from src.aoi import get_aoi_config, get_aoi_shapefile
+from src.cli import make_parser, add_aoi_arg, add_cloud_arg
 
-# ── Load AOI ──────────────────────────────────────────────────
+parser = make_parser("Audit cached index rasters against available Sentinel scenes")
+add_aoi_arg(parser)
+add_cloud_arg(parser, default=40)
+args = parser.parse_args()
+
+AOI = args.aoi
+CLOUD_THRESHOLD = args.cloud_max
+
+cfg = get_aoi_config(AOI)
+
+START_YEAR = 2017
+END_YEAR = 2026
+INDICES = ["NDVI", "NDMI", "EVI"]
+
+AOI_SHAPEFILE = get_aoi_shapefile()
+LANDSCAPE_ID = cfg.landscape_id
+CACHE_BASE_DIR = cfg.index_cache_root
+
 print("Loading AOI...")
 aoi = gpd.read_file(AOI_SHAPEFILE)
-aoi = aoi[aoi['LscapeID'] == 'UW-GW North']
+aoi = aoi[aoi["LscapeID"] == LANDSCAPE_ID]
 aoi_wgs84 = aoi.to_crs("EPSG:4326")
-aoi_wgs84['geometry'] = aoi_wgs84['geometry'].apply(
+aoi_wgs84["geometry"] = aoi_wgs84["geometry"].apply(
     lambda geom: transform(lambda x, y, z=None: (x, y), geom)
 )
 aoi_geom = aoi_wgs84.geometry.iloc[0]
 
-# ── Generate 6-month windows ──────────────────────────────────
 windows = []
 for year in range(START_YEAR, END_YEAR + 1):
     windows.append((f"{year}-01-01", f"{year}-07-01"))
     windows.append((f"{year}-07-01", f"{year+1}-01-01"))
 
-# Trim last window to today
-windows = [(s, e) for s, e in windows
-           if s < datetime.now().strftime("%Y-%m-%d")]
+windows = [
+    (s, e) for s, e in windows
+    if s < datetime.now().strftime("%Y-%m-%d")
+]
 
-# ── Search Planetary Computer ─────────────────────────────────
 print(f"Searching Planetary Computer ({START_YEAR}–{END_YEAR})...")
 all_raw_items = []
 
@@ -66,19 +80,19 @@ for window_start, window_end in windows:
 
 print(f"\nTotal scenes retrieved: {len(all_raw_items)}")
 
-# ── Filter by cloud cover ─────────────────────────────────────
-filtered_items = [i for i in all_raw_items
-                  if i.properties.get("eo:cloud_cover", 100) < CLOUD_THRESHOLD]
+filtered_items = [
+    i for i in all_raw_items
+    if i.properties.get("eo:cloud_cover", 100) < CLOUD_THRESHOLD
+]
 print(f"After cloud filter (<{CLOUD_THRESHOLD}%): {len(filtered_items)} scenes")
 
-# ── Deduplicate by date + tile ────────────────────────────────
 seen = set()
 deduped = []
 for item in filtered_items:
     date_str = item.datetime.strftime("%Y%m%d")
-    tile_id  = 'unknown'
-    for part in item.id.split('_'):
-        if part.startswith('T') and len(part) == 6:
+    tile_id = "unknown"
+    for part in item.id.split("_"):
+        if part.startswith("T") and len(part) == 6:
             tile_id = part
             break
     key = (date_str, tile_id)
@@ -88,7 +102,6 @@ for item in filtered_items:
 
 print(f"After deduplication: {len(deduped)} unique date+tile combinations\n")
 
-# ── Compare against cache ─────────────────────────────────────
 missing = {idx: [] for idx in INDICES}
 present = {idx: [] for idx in INDICES}
 
@@ -102,9 +115,8 @@ for item, date_str, tile_id in deduped:
         else:
             missing[idx].append((date_str, tile_id, cloud))
 
-# ── Report ────────────────────────────────────────────────────
 print("=" * 60)
-print("CACHE AUDIT REPORT")
+print(f"CACHE AUDIT REPORT — {AOI.upper()} ({LANDSCAPE_ID})")
 print("=" * 60)
 
 for idx in INDICES:
@@ -112,13 +124,12 @@ for idx in INDICES:
     print(f"  Cached:  {len(present[idx])}")
     print(f"  Missing: {len(missing[idx])}")
     if missing[idx]:
-        print(f"  Missing scenes:")
+        print("  Missing scenes:")
         for date_str, tile_id, cloud in missing[idx]:
             print(f"    {date_str}  tile={tile_id}  cloud={cloud:.1f}%")
 
-# ── Save missing list to file ─────────────────────────────────
-output_file = Path("cache_audit_missing.txt")
-with open(output_file, "w") as f:
+output_file = Path(f"cache_audit_missing_{AOI}.txt")
+with open(output_file, "w", encoding="utf-8") as f:
     for idx in INDICES:
         f.write(f"\n{idx} MISSING ({len(missing[idx])}):\n")
         for date_str, tile_id, cloud in missing[idx]:

@@ -1,108 +1,71 @@
-"""
-audit_aspect_masks.py
----------------------
-Verifies that mask_south_facing.tif and mask_north_facing.tif capture
-the correct aspect degree ranges by sampling the raw aspect.tif values
-under each mask.
+#!/usr/bin/env python3
 
-Expected (standard convention):
-  South-facing: ~135–225° (centered on 180°)
-  North-facing: ~315–360° + 0–45° (centered on 0°/360°)
-
-A swap would show south mask centered near 0° and north mask near 180°.
-"""
-
-import rasterio
 import numpy as np
-from pathlib import Path
+import rasterio
 
-# ── Paths ────────────────────────────────────────────────────────────────────
-TERRAIN_DIR = Path("/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/"
-                   "Project_Appalachia/AOI/GWNF_cache/traits/terrain")
+from src.aoi import get_aoi_config
+from src.cli import make_parser, add_aoi_arg
 
-ASPECT_PATH      = TERRAIN_DIR / "aspect.tif"
-SOUTH_MASK_PATH  = TERRAIN_DIR / "mask_south_facing.tif"
-NORTH_MASK_PATH  = TERRAIN_DIR / "mask_north_facing.tif"
+parser = make_parser("Audit north- and south-facing slope masks")
+add_aoi_arg(parser)
+args = parser.parse_args()
 
-# ── Load rasters ─────────────────────────────────────────────────────────────
-print("Loading rasters...")
+AOI = args.aoi
+cfg = get_aoi_config(AOI)
 
-with rasterio.open(ASPECT_PATH) as src:
+TERRAIN_DIR = cfg.terrain_dir
+LANDSCAPE_ID = cfg.landscape_id
+PIXEL_AREA_KM2 = (10 * 10) / 1_000_000
+
+south_path = TERRAIN_DIR / "mask_south_facing.tif"
+north_path = TERRAIN_DIR / "mask_north_facing.tif"
+slope_path = TERRAIN_DIR / "slope.tif"
+aspect_path = TERRAIN_DIR / "aspect.tif"
+
+print(f"AOI: {AOI} ({LANDSCAPE_ID})")
+print(f"Terrain dir: {TERRAIN_DIR}")
+
+with rasterio.open(south_path) as src:
+    south = src.read(1)
+with rasterio.open(north_path) as src:
+    north = src.read(1)
+with rasterio.open(slope_path) as src:
+    slope = src.read(1).astype(float)
+    slope_nodata = src.nodata
+with rasterio.open(aspect_path) as src:
     aspect = src.read(1).astype(float)
-    nodata = src.nodata
-    if nodata is not None:
-        aspect[aspect == nodata] = np.nan
+    aspect_nodata = src.nodata
 
-with rasterio.open(SOUTH_MASK_PATH) as src:
-    south_mask = src.read(1).astype(bool)
+if slope_nodata is not None:
+    slope[slope == slope_nodata] = np.nan
+if aspect_nodata is not None:
+    aspect[aspect == aspect_nodata] = np.nan
 
-with rasterio.open(NORTH_MASK_PATH) as src:
-    north_mask = src.read(1).astype(bool)
+south_bool = south == 1
+north_bool = north == 1
+overlap = south_bool & north_bool
 
-print(f"  Aspect raster shape:   {aspect.shape}")
-print(f"  South-facing pixels:   {south_mask.sum():,}")
-print(f"  North-facing pixels:   {north_mask.sum():,}")
+south_count = int(south_bool.sum())
+north_count = int(north_bool.sum())
+overlap_count = int(overlap.sum())
 
-# ── Sample aspect values under each mask ─────────────────────────────────────
-def describe_aspect(label, mask, aspect_arr):
-    vals = aspect_arr[mask & ~np.isnan(aspect_arr)]
-    if len(vals) == 0:
-        print(f"\n{label}: NO VALID PIXELS — mask may be empty or misaligned")
-        return
+print("\nMask coverage")
+print(f"  South-facing: {south_count:,} px ({south_count * PIXEL_AREA_KM2:.1f} km²)")
+print(f"  North-facing: {north_count:,} px ({north_count * PIXEL_AREA_KM2:.1f} km²)")
+print(f"  Overlap:      {overlap_count:,} px ({overlap_count * PIXEL_AREA_KM2:.4f} km²)")
 
-    print(f"\n{label} ({len(vals):,} pixels):")
-    print(f"  Mean:    {np.mean(vals):6.1f}°")
-    print(f"  Median:  {np.median(vals):6.1f}°")
-    print(f"  Std dev: {np.std(vals):6.1f}°")
-    print(f"  P5:      {np.percentile(vals, 5):6.1f}°")
-    print(f"  P25:     {np.percentile(vals, 25):6.1f}°")
-    print(f"  P75:     {np.percentile(vals, 75):6.1f}°")
-    print(f"  P95:     {np.percentile(vals, 95):6.1f}°")
-    print(f"  Min:     {np.min(vals):6.1f}°")
-    print(f"  Max:     {np.max(vals):6.1f}°")
+if overlap_count > 0:
+    print("\n⚠ Overlap detected — inspect aspect thresholds")
+else:
+    print("\n✓ No overlap between north/south masks")
 
-    # Bin into cardinal quadrants
-    n = len(vals)
-    q_n  = np.sum((vals <= 45) | (vals > 315))
-    q_e  = np.sum((vals > 45)  & (vals <= 135))
-    q_s  = np.sum((vals > 135) & (vals <= 225))
-    q_w  = np.sum((vals > 225) & (vals <= 315))
-
-    print(f"\n  Quadrant breakdown:")
-    print(f"    N  (315–360 / 0–45°):  {q_n:,}  ({100*q_n/n:.1f}%)")
-    print(f"    E  (45–135°):          {q_e:,}  ({100*q_e/n:.1f}%)")
-    print(f"    S  (135–225°):         {q_s:,}  ({100*q_s/n:.1f}%)")
-    print(f"    W  (225–315°):         {q_w:,}  ({100*q_w/n:.1f}%)")
-
-describe_aspect("mask_south_facing.tif", south_mask, aspect)
-describe_aspect("mask_north_facing.tif", north_mask, aspect)
-
-# ── Verdict ───────────────────────────────────────────────────────────────────
-south_vals = aspect[south_mask & ~np.isnan(aspect)]
-north_vals = aspect[north_mask & ~np.isnan(aspect)]
-
-if len(south_vals) > 0 and len(north_vals) > 0:
-    south_mean = np.mean(south_vals)
-    north_mean = np.mean(north_vals)
-
-    print("\n" + "="*50)
-    print("VERDICT")
-    print("="*50)
-
-    # North aspect wraps around 0°, so check proximity to 0 or 360
-    north_centered = north_mean > 270 or north_mean < 90
-    south_centered = 90 < south_mean < 270
-
-    if south_centered and north_centered:
-        print("✓ Masks look CORRECT")
-        print(f"  south mask mean = {south_mean:.1f}° (expected ~180°)")
-        print(f"  north mask mean = {north_mean:.1f}° (expected ~0°/360°)")
-    elif not south_centered and not north_centered:
-        print("⚠ Masks appear SWAPPED")
-        print(f"  south mask mean = {south_mean:.1f}° — this looks like NORTH")
-        print(f"  north mask mean = {north_mean:.1f}° — this looks like SOUTH")
-        print("  → The counterintuitive finding may be a labeling error.")
-    else:
-        print("? Masks are ambiguous — review quadrant breakdown above manually")
-        print(f"  south mask mean = {south_mean:.1f}°")
-        print(f"  north mask mean = {north_mean:.1f}°")
+for label, mask in [("South", south_bool), ("North", north_bool)]:
+    if mask.sum() == 0:
+        print(f"\n{label}: no pixels")
+        continue
+    aspect_vals = aspect[mask & np.isfinite(aspect)]
+    slope_vals = slope[mask & np.isfinite(slope)]
+    print(f"\n{label} summary")
+    print(f"  Aspect range: {np.nanmin(aspect_vals):.1f}° – {np.nanmax(aspect_vals):.1f}°")
+    print(f"  Slope range:  {np.nanmin(slope_vals):.1f}° – {np.nanmax(slope_vals):.1f}°")
+    print(f"  Mean slope:   {np.nanmean(slope_vals):.1f}°")

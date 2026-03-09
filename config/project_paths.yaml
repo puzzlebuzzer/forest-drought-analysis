@@ -1,0 +1,31 @@
+paths:
+  aoi_root: "../AOI"
+
+  tnc_aoi_shapefile: "../AOI/TNC_AOI_LayerPkg/TNC_AOIs.shp"
+
+  north_cache_root: "../AOI/NorthAOI/GWNF_cache"
+  south_cache_root: "../AOI/SouthAOI/Smoky_cache"
+
+  north_index_cache_root: "../AOI/NorthAOI/GWNF_cache/indices"
+  south_index_cache_root: "../AOI/SouthAOI/Smoky_cache/indices"
+
+  north_terrain_dir: "../AOI/NorthAOI/GWNF_cache/traits/terrain"
+  south_terrain_dir: "../AOI/SouthAOI/Smoky_cache/traits/terrain"
+
+  north_forest_group_dir: "../AOI/NorthAOI/GWNF_cache/traits/forest/forest_type_group"
+  south_forest_group_dir: "../AOI/SouthAOI/Smoky_cache/traits/forest/forest_type_group"
+
+  north_forest_type_dir: "../AOI/NorthAOI/GWNF_cache/traits/forest/forest_type_type"
+  south_forest_type_dir: "../AOI/SouthAOI/Smoky_cache/traits/forest/forest_type_type"
+
+  north_ecozone_dir: "../AOI/NorthAOI/GWNF_cache/traits/ecozone"
+  south_ecozone_dir: "../AOI/SouthAOI/Smoky_cache/traits/ecozone"
+
+  north_species_raster: "../AOI/NorthAOI/GWNF_cache/traits/forest/forest_type_type/forest_type_type.tif"
+  south_species_raster: "../AOI/SouthAOI/Smoky_cache/traits/forest/forest_type_type/forest_type_type.tif"
+
+  north_raw_ecozone_raster: "../AOI/NorthAOI/GWNF_cache/traits/ecozone/tnc_ecozone_simplified_north/fortype_aoiN.tif"
+  south_raw_ecozone_raster: "../AOI/SouthAOI/Smoky_cache/traits/ecozone/tnc_ecozone_simplified_south/fortype_aois.tif"
+
+  conus_forest_group_img: "../AOI/NorthAOI/GWNF_cache/traits/forest/forest_type_group/conus_forestgroup.img"
+  conus_forest_type_img: "../AOI/NorthAOI/GWNF_cache/traits/forest/forest_type_type/conus_foresttype.img"

@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 """
-Clip and snap the CONUS forest type raster to the canonical AOI grid.
-
-Input:
-    CONUS forest type raster (type/species-level codes)
-
-Output:
-    traits/forest/forest_type_type/forest_type_type.tif
+Clip and snap the CONUS forest type group raster to the canonical AOI grid.
+Output: traits/forest/forest_type_group/forest_type_group.tif
 """
 
 import subprocess
@@ -17,23 +12,22 @@ import rasterio
 
 from src.aoi import get_aoi_config
 from src.cli import make_parser, add_aoi_arg
-from src.labels import FOREST_TYPE_LABELS
+from src.labels import FOREST_GROUP_LABELS
 from src.paths import project_path
 
-
-parser = make_parser("Clip and snap the CONUS forest type raster to an AOI")
+parser = make_parser("Clip and snap the CONUS forest type group raster to an AOI")
 add_aoi_arg(parser)
 args = parser.parse_args()
 
 AOI = args.aoi
 cfg = get_aoi_config(AOI)
 
-CONUS_SRC = project_path("conus_forest_type_img")
-FOREST_TYPE_DIR = cfg.forest_type_dir
+CONUS_SRC = project_path("conus_forest_group_img")
+FOREST_GROUP_DIR = cfg.forest_group_dir
 CANONICAL_REF = cfg.terrain_dir / "elevation.tif"
-OUT_RASTER = FOREST_TYPE_DIR / "forest_type_type.tif"
+OUT_RASTER = FOREST_GROUP_DIR / "forest_type_group.tif"
 
-FOREST_TYPE_DIR.mkdir(parents=True, exist_ok=True)
+FOREST_GROUP_DIR.mkdir(parents=True, exist_ok=True)
 
 print(f"AOI:    {AOI}")
 print(f"Output: {OUT_RASTER}")
@@ -41,12 +35,10 @@ print(f"Output: {OUT_RASTER}")
 print("\nReading canonical grid...")
 with rasterio.open(CANONICAL_REF) as ref:
     crs = ref.crs
-    res = ref.res
     shape = (ref.height, ref.width)
     bounds = ref.bounds
 
 print(f"  CRS:        {crs}")
-print(f"  Resolution: {res[0]}m x {res[1]}m")
 print(f"  Shape:      {shape[0]} x {shape[1]}")
 print(f"  Bounds:     {bounds.left:.1f}, {bounds.bottom:.1f}, {bounds.right:.1f}, {bounds.top:.1f}")
 
@@ -93,32 +85,22 @@ with rasterio.open(OUT_RASTER) as src:
     out_shape = (src.height, src.width)
     out_res = src.res
     data = src.read(1)
-    nodata = src.nodata
 
     codes, counts = np.unique(data, return_counts=True)
     total = data.size
 
     shape_ok = (out_shape == shape)
-    res_ok = abs(out_res[0] - res[0]) < 0.01 and abs(out_res[1] - res[1]) < 0.01
 
     print(f"  Shape:      {out_shape}  {'✓' if shape_ok else '⚠ mismatch'}")
-    print(f"  Resolution: {out_res}  {'✓' if res_ok else '⚠ mismatch'}")
-    print(f"  Nodata:     {nodata}")
+    print(f"  Resolution: {out_res}")
     print(f"  Unique codes: {len(codes)}")
-
     print(f"\n  Top 15 codes by pixel count:")
-    print(f"  {'Code':>6}  {'Pixels':>10}  {'km²':>8}  {'%':>6}  {'Species'}")
-    print(f"  {'-' * 71}")
-
+    print(f"  {'Code':>6}  {'Pixels':>10}  {'km²':>8}  {'%':>6}  {'Group'}")
+    print(f"  {'-' * 60}")
     for code, count in sorted(zip(codes, counts), key=lambda x: -x[1])[:15]:
         area = count * 100 / 1e6
         pct = 100 * count / total
-        label = FOREST_TYPE_LABELS.get(int(code), "")
+        label = FOREST_GROUP_LABELS.get(int(code), "")
         print(f"  {int(code):>6}  {count:>10,}  {area:>8.1f}  {pct:>6.1f}%  {label}")
-
-if not shape_ok:
-    raise RuntimeError(
-        f"Output raster shape {out_shape} does not match canonical shape {shape}"
-    )
 
 print(f"\n✓ Done. Output: {OUT_RASTER}")

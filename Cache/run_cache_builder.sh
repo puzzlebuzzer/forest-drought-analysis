@@ -1,6 +1,6 @@
 #!/bin/bash
-# run_cache.sh — restarts build_cache.py automatically after rate limit boots
-# Stops when a run completes with zero failures (exit code 0)
+# restarts build_cache.py automatically after failures
+# stops when a run completes with exit code 0
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CACHE_SCRIPT="$SCRIPT_DIR/build_cache.py"
