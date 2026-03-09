@@ -266,6 +266,10 @@ Outputs include:
 - aspect difference plots
 - forest composition summaries
 
+Example figures are stored in:
+
+results/figures/
+
 ---
 
 # Future Work
