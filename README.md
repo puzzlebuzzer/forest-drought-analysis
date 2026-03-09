@@ -1,13 +1,25 @@
+# Appalachian Terrain–Vegetation Analysis
 
-# Terrain–Vegetation Aspect Analysis
+This project analyzes vegetation patterns across terrain aspects using Sentinel-2 vegetation indices and forest composition data.
 
-This repository analyzes vegetation patterns across terrain aspects using remote sensing indices and forest composition data.
-
-The goal is to test whether **north-facing and south-facing slopes exhibit different vegetation signals** across two Appalachian landscapes.
+The analysis compares north- and south-facing slopes across two Appalachian study areas and tests whether vegetation productivity or moisture signals differ by terrain aspect.
 
 ---
 
-# Study Areas
+## Contents
+
+- [Study Areas](#study-areas)
+- [Analysis Workflow](#analysis-workflow)
+- [Terrain Aspect Definitions](#terrain-aspect-definitions)
+- [Vegetation Indices](#vegetation-indices)
+- [Temporal Analysis](#temporal-analysis)
+- [Data Alignment](#data-alignment)
+- [Repository Structure](#repository-structure)
+- [Example Outputs](#example-outputs)
+
+---
+
+## Study Areas
 
 Two Areas of Interest (AOIs) are analyzed:
 
@@ -18,7 +30,9 @@ Each AOI is processed independently using the same terrain masks and index workf
 
 ---
 
-# Analysis Workflow
+## Analysis Workflow
+
+![Workflow Diagram](docs/workflow_diagram.png)
 
 The workflow combines terrain analysis with time-series vegetation indices.
 
@@ -42,6 +56,10 @@ Aspect represents the direction a slope faces, measured in degrees.
 180°      = South  
 270°      = West  
 
+![Aspect Diagram](docs/aspect_diagram.png)
+
+*Terrain aspect classification used for north- and south-facing slope masks.*
+
 ### South-Facing Slopes
 
 135° ≤ aspect ≤ 225°
@@ -49,8 +67,6 @@ Aspect represents the direction a slope faces, measured in degrees.
 Mask definition:
 
 south_mask = (aspect >= 135) & (aspect <= 225)
-
----
 
 ### North-Facing Slopes
 
@@ -211,22 +227,30 @@ Future work may include **topographic illumination correction**.
 
 # Repository Structure
 
-Traits/
-    build_elevation_cache.py
-    prep_trait_masks.py
-    verify_trait_masks.py
-
-Crosstab/
-    crosstab_aspect_index.py
-    crosstab_aspect_ftype.py
-    crosstab_aspect_fgroup.py
-    crosstab_ecozone_ftype.py
-
-Charts/
-    plot_aspect_results.py
-
-Cache/
-    build_cache.py
+Project_Appalachia/
+│
+├── Traits/ # Terrain and forest trait processing
+│ ├── build_elevation_cache.py
+│ ├── prep_trait_masks.py
+│ └── verify_trait_masks.py
+│
+├── Crosstab/ # Aspect and trait cross-tabulation analyses
+│ ├── crosstab_aspect_index.py
+│ ├── crosstab_aspect_ftype.py
+│ ├── crosstab_aspect_fgroup.py
+│ └── crosstab_ecozone_ftype.py
+│
+├── Charts/ # Visualization scripts
+│ └── plot_aspect_results.py
+│
+├── Cache/ # Satellite index cache generation
+│ └── build_cache.py
+│
+├── docs/ # Diagrams used in the README
+│ ├── aspect_diagram.png
+│ └── workflow_diagram.png
+│
+└── README.md
 
 ---
 
