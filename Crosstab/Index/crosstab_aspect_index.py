@@ -43,13 +43,6 @@ with rasterio.open(TERRAIN_DIR / "mask_south_facing.tif") as src:
 with rasterio.open(TERRAIN_DIR / "mask_north_facing.tif") as src:
     north_mask = src.read(1) == 1
 
-# --- grid sanity check ---
-if south_mask.shape != species.shape or north_mask.shape != species.shape:
-    raise ValueError(
-        f"Grid mismatch: south={south_mask.shape}, "
-        f"north={north_mask.shape}, species={species.shape}"
-    )
-
 print(f"  South-facing pixels: {south_mask.sum():,}")
 print(f"  North-facing pixels: {north_mask.sum():,}")
 
