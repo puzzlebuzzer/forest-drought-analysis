@@ -66,6 +66,9 @@ config/paths.yaml
 
 # ── Output files ─────────────────────────────────────────────
 *.png
+!results/figures/*.png
+!docs/*.png
+
 *.jpg
 *.jpeg
 *.pdf
