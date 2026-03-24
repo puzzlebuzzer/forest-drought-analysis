@@ -50,15 +50,19 @@ def add_indices_arg(
     )
 
 
-def add_date_range_args(parser: argparse.ArgumentParser) -> None:
+def add_date_range_args(
+    parser: argparse.ArgumentParser,
+    default_start: str = "2017-01-01",
+    default_end: str = "2026-03-01",
+) -> None:
     parser.add_argument(
         "--start-date",
-        default="2017-01-01",
+        default=default_start,
         help="Start date in YYYY-MM-DD format",
     )
     parser.add_argument(
         "--end-date",
-        default="2026-03-01",
+        default=default_end,
         help="End date in YYYY-MM-DD format",
     )
 
@@ -72,4 +76,19 @@ def add_cloud_arg(
         type=int,
         default=default,
         help="Maximum cloud cover percentage",
+    )
+
+
+def add_cache_suffix_arg(
+    parser: argparse.ArgumentParser,
+) -> None:
+    parser.add_argument(
+        "--cache-suffix",
+        default=None,
+        metavar="SUFFIX",
+        help=(
+            "Append SUFFIX to the cache root folder name, creating an adjacent "
+            "dated cache alongside the original.  E.g. --cache-suffix _3_24 "
+            "writes to GWNF_cache_3_24/ instead of GWNF_cache/."
+        ),
     )

@@ -1,9 +1,9 @@
 #!/bin/bash
-# restarts build_cache.py automatically after failures
+# restarts build_sentinel_cache.py automatically after failures
 # stops when a run completes with exit code 0
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CACHE_SCRIPT="$SCRIPT_DIR/build_cache.py"
+CACHE_SCRIPT="$SCRIPT_DIR/build_sentinel_cache.py"
 
 echo "$(date) — cache runner started"
 echo "Script: $CACHE_SCRIPT"

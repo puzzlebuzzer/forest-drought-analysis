@@ -66,7 +66,8 @@ config/paths.yaml
 
 # ── Output files ─────────────────────────────────────────────
 *.png
-!results/figures/*.png
+!Results/figures/*.png
+!Results/figures/landsat/*.png
 !docs/*.png
 !Charts/*.png
 
@@ -85,6 +86,9 @@ desktop.ini
 *.swp
 *.swo
 *~
+
+# ── Large binary outputs (tracked via Results/LAYER_PACKAGES.txt instead) ──
+*.lpkx
 
 # ── Large source data ─────────────────────────────────────────
 *.zip
