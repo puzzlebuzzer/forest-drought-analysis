@@ -7,11 +7,21 @@ per-scene GeoTIFFs for each requested vegetation index plus the raw
 SCL classification band.
 
 Quality masking:
-  Index rasters retain all pixels where SCL is NOT in {8,9,10}
-  (cloud medium, cloud high, thin cirrus). Cloud shadow (3), snow (11),
+  Index rasters retain all pixels where SCL is NOT in {8,9,10,11}
+  (cloud medium, cloud high, thin cirrus, snow/ice). Cloud shadow (3),
   water (6), bare soil (5), and all other non-cloud classes are kept.
   The raw SCL raster is saved alongside each scene so any additional
   SCL-based filter can be applied at analysis time without re-downloading.
+
+Radiometric harmonization:
+  Sentinel-2 processing baseline PB04.00 (applied from 2021-10-25 onwards)
+  added a +1000 DN offset to all reflectance bands, equivalent to +0.1 in
+  scaled reflectance.  This script detects the baseline from STAC metadata
+  (s2:processing_baseline) and subtracts 0.1 from all bands for PB04.00+
+  scenes before computing indices.  All stored index TIFs are therefore on
+  a consistent radiometric scale across the full 2017–present archive.
+  The processing_baseline and harmonized flag are recorded per scene in the
+  manifest for auditability.
 
 Spatial masking:
   Output pixels are NaN outside the TNC AOI polygon boundary.
@@ -60,6 +70,7 @@ from src.cli import (
     add_cloud_arg,
     add_cache_suffix_arg,
 )
+from src.paths import project_path
 
 # ── Args ───────────────────────────────────────────────────────────────────────
 
@@ -68,7 +79,7 @@ add_aoi_arg(parser, default=None)    # None = run both AOIs in sequence
 add_indices_arg(parser)
 add_date_range_args(parser)
 add_cloud_arg(parser)
-add_cache_suffix_arg(parser)
+add_cache_suffix_arg(parser, default="_3_24")
 args = parser.parse_args()
 
 INDICES_TO_RUN  = args.indices
@@ -81,7 +92,8 @@ AOIS_TO_RUN     = [args.aoi] if args.aoi else ["north", "south"]
 
 TARGET_CRS        = "EPSG:32617"
 TARGET_RESOLUTION = 10
-RATE_LIMIT_SLEEP  = 300   # 5 minutes on 403
+RATE_LIMIT_SLEEP       = 300   # 5 minutes on 403
+MAX_RATE_LIMIT_RETRIES = 12    # skip scene after 1 hour of consecutive 403s
 
 # SCL values to exclude: cloud medium (8), cloud high (9), thin cirrus (10),
 # snow/ice (11). Snow is excluded from index values because it inflates NDMI
@@ -175,11 +187,14 @@ for AOI in AOIS_TO_RUN:
 
     cfg            = get_aoi_config(AOI)
     LANDSCAPE_ID   = cfg.landscape_id
-    CACHE_BASE_DIR = cfg.index_cache_root
+    # Use the unsuffixed build-base path so --cache-suffix works correctly.
+    # (north_index_cache_root in yaml has _3_4 baked in for analysis scripts;
+    #  north_s2_build_base is always the plain GWNF_cache/s2/indices base.)
+    CACHE_BASE_DIR = project_path(f"{AOI}_s2_build_base")
 
     if args.cache_suffix:
-        # cfg.index_cache_root is  .../GWNF_cache/s2/indices
-        # parents[1]           is  .../GWNF_cache   (the versioned root)
+        # project_path returns  .../GWNF_cache/s2/indices
+        # parents[1]        is  .../GWNF_cache   (the versioned root)
         _cache_root     = CACHE_BASE_DIR.parents[1]
         _new_cache_root = _cache_root.parent / (_cache_root.name + args.cache_suffix)
         CACHE_BASE_DIR  = _new_cache_root / CACHE_BASE_DIR.relative_to(_cache_root)
@@ -465,8 +480,14 @@ for AOI in AOIS_TO_RUN:
                 all_results[index_name]["redownloaded"] += 1
 
         # ── Fetch + write, retry on 403 ────────────────────────────────────────
+        rate_limit_attempts = 0
         while True:
             try:
+                # Re-sign before each attempt — PC signed URLs expire (~1hr TTL).
+                # Without this, long runs hit permanent 403s on stale URLs that
+                # sleep-and-retry can never recover from.
+                item = planetary_computer.sign(item)
+
                 bands_to_fetch = set()
                 for index_name in indices_needed:
                     bands_to_fetch.update(INDEX_CONFIG[index_name]["bands"])
@@ -506,6 +527,21 @@ for AOI in AOIS_TO_RUN:
 
                 scaled = {k: v / 10000.0 for k, v in data_bands.items()}
 
+                # ── PB04.00 harmonization ──────────────────────────────────────
+                # ESA's 2021-10-25 reprocessing baseline (PB04.00+) added +1000
+                # to raw DN values across all reflectance bands, shifting scaled
+                # reflectance by +0.1.  Subtract the offset so the full archive
+                # is on a consistent radiometric scale before index computation.
+                # The valid_mask check above (arr > 0) runs on raw DN and is
+                # unaffected.  We clip corrected values to 0 to avoid physically
+                # impossible negative reflectance from very dark pixels.
+                pb = item.properties.get("s2:processing_baseline", "00.00")
+                harmonized = float(pb) >= 4.0
+                if harmonized:
+                    scaled = {k: np.clip(v - 0.1, 0.0, None)
+                              for k, v in scaled.items()}
+                    print(f"  Harmonization applied (PB {pb})")
+
                 # Save SCL
                 if scl_needed:
                     scl_out = scl_arr.copy()
@@ -535,12 +571,14 @@ for AOI in AOIS_TO_RUN:
                         write_tif(out_path, result, dst_height, dst_width,
                                   dst_transform, dtype=np.float32, nodata=np.nan)
                         manifests[index_name][scene_id] = {
-                            "filename":    out_filename,
-                            "date":        item.datetime.isoformat(),
-                            "cloud_cover": item.properties.get("eo:cloud_cover"),
-                            "clear_frac":  round(float(clear_frac), 4),
-                            "snow_frac":   round(snow_frac, 4),
-                            "processed":   datetime.now().isoformat(),
+                            "filename":            out_filename,
+                            "date":                item.datetime.isoformat(),
+                            "cloud_cover":         item.properties.get("eo:cloud_cover"),
+                            "clear_frac":          round(float(clear_frac), 4),
+                            "snow_frac":           round(snow_frac, 4),
+                            "processing_baseline": pb,
+                            "harmonized":          harmonized,
+                            "processed":           datetime.now().isoformat(),
                         }
                         with open(mfst_path, "w", encoding="utf-8") as f:
                             json.dump(manifests[index_name], f, indent=2)
@@ -556,14 +594,24 @@ for AOI in AOIS_TO_RUN:
 
             except Exception as e:
                 if is_rate_limited(e):
+                    rate_limit_attempts += 1
                     event = (f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} — "
                              f"scene {current_scene_idx}/{len(items)} "
                              f"({scene_id[:40]}...)")
                     rate_limit_events.append(event)
+                    if rate_limit_attempts >= MAX_RATE_LIMIT_RETRIES:
+                        print(f"  ✗ Skipping scene after {MAX_RATE_LIMIT_RETRIES} "
+                              f"consecutive 403s — will retry on next run")
+                        for index_name in indices_needed:
+                            all_results[index_name]["failed"] += 1
+                            run_failed[index_name] += 1
+                        write_summary(status="running (skipped rate-limited scene)")
+                        break
                     wake = (datetime.now() + timedelta(seconds=RATE_LIMIT_SLEEP)
                             ).strftime("%H:%M:%S")
                     print(f"  ⚠ 403 rate limit — sleeping "
-                          f"{RATE_LIMIT_SLEEP//60} min, retrying at {wake}...")
+                          f"{RATE_LIMIT_SLEEP//60} min, retrying at {wake}... "
+                          f"(attempt {rate_limit_attempts}/{MAX_RATE_LIMIT_RETRIES})")
                     write_summary(
                         status=f"sleeping (403) — retrying at {wake}")
                     time.sleep(RATE_LIMIT_SLEEP)
@@ -594,8 +642,5 @@ for AOI in AOIS_TO_RUN:
         write_summary(status="complete")
 
 print(f"\n{'#'*62}")
-print(f"# ALL AOIs COMPLETE")
+print(f"# ALL AOIs COMPLETE  (Sentinel-2)")
 print(f"{'#'*62}")
-
-total_failed_all = 0   # individual AOI exits already reported failures
-sys.exit(0)

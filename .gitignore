@@ -68,6 +68,8 @@ config/paths.yaml
 *.png
 !Results/figures/*.png
 !Results/figures/landsat/*.png
+!Results_cache1/figures/*.png
+!Results_cache1/figures/landsat/*.png
 !docs/*.png
 !Charts/*.png
 

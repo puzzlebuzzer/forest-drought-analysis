@@ -81,10 +81,11 @@ def add_cloud_arg(
 
 def add_cache_suffix_arg(
     parser: argparse.ArgumentParser,
+    default: str | None = None,
 ) -> None:
     parser.add_argument(
         "--cache-suffix",
-        default=None,
+        default=default,
         metavar="SUFFIX",
         help=(
             "Append SUFFIX to the cache root folder name, creating an adjacent "

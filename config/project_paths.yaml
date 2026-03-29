@@ -7,11 +7,18 @@ paths:
   north_cache_root: "../AOI/NorthAOI/GWNF_cache_3_4"
   south_cache_root: "../AOI/SouthAOI/Smoky_cache_3_4"
 
+  # Analysis scripts point at the completed _3_4 cache
   north_index_cache_root: "../AOI/NorthAOI/GWNF_cache_3_4/s2/indices"
   south_index_cache_root: "../AOI/SouthAOI/Smoky_cache_3_4/s2/indices"
 
   north_landsat_index_root: "../AOI/NorthAOI/GWNF_cache_3_4/landsat/indices"
   south_landsat_index_root: "../AOI/SouthAOI/Smoky_cache_3_4/landsat/indices"
+
+  # Build scripts use these unsuffixed base paths — suffix is appended via --cache-suffix
+  north_s2_build_base: "../AOI/NorthAOI/GWNF_cache/s2/indices"
+  south_s2_build_base: "../AOI/SouthAOI/Smoky_cache/s2/indices"
+  north_landsat_build_base: "../AOI/NorthAOI/GWNF_cache/landsat/indices"
+  south_landsat_build_base: "../AOI/SouthAOI/Smoky_cache/landsat/indices"
 
   north_terrain_dir: "../AOI/NorthAOI/GWNF_cache_3_4/s2/traits/terrain"
   south_terrain_dir: "../AOI/SouthAOI/Smoky_cache_3_4/s2/traits/terrain"
