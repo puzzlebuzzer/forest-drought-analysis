@@ -1,0 +1,203 @@
+north | NDMI
+
+- Cool and Hot are similar on magnitude under dry
+- Cool and Intermediate are similar on magnitude under dry
+- Hot and Intermediate are similar on magnitude under dry
+- Under dry, Cool diverges earlier than Hot
+- Under dry, Cool diverges earlier than Intermediate
+- Hot and Intermediate have similar onset under dry
+- Under dry, Hot has greater below-baseline extent than Cool
+- Under dry, Intermediate has greater below-baseline extent than Cool
+- Under dry, Hot has greater below-baseline extent than Intermediate
+- Under dry, Cool shows the larger trajectory signal than Hot
+- Cool and Intermediate are similar on trajectory under dry
+- Hot and Intermediate are similar on trajectory under dry
+- Cool and Hot are similar on magnitude under normal
+- Cool and Intermediate are similar on magnitude under normal
+- Hot and Intermediate are similar on magnitude under normal
+- Cool vs Hot under normal: onset unavailable
+- Cool vs Intermediate under normal: onset unavailable
+- Hot vs Intermediate under normal: onset unavailable
+- Cool and Hot have similar late-season spatial extent under normal
+- Cool and Intermediate have similar late-season spatial extent under normal
+- Hot and Intermediate have similar late-season spatial extent under normal
+- Cool and Hot are similar on trajectory under normal
+- Cool and Intermediate are similar on trajectory under normal
+- Hot and Intermediate are similar on trajectory under normal
+- Cool and Hot are similar on magnitude under wet
+- Under wet, Cool shows the larger magnitude signal than Intermediate
+- Under wet, Hot shows the larger magnitude signal than Intermediate
+- Under wet, Cool diverges earlier than Hot
+- Under wet, Cool diverges earlier than Intermediate
+- Hot and Intermediate have similar onset under wet
+- Under wet, Cool has greater below-baseline extent than Hot
+- Cool and Intermediate have similar late-season spatial extent under wet
+- Under wet, Intermediate has greater below-baseline extent than Hot
+- Cool and Hot are similar on trajectory under wet
+- Cool and Intermediate are similar on trajectory under wet
+- Hot and Intermediate are similar on trajectory under wet
+- Cool shows the larger wet-vs-dry shift in magnitude than Hot
+- Cool shows the larger wet-vs-dry shift in magnitude than Intermediate
+- Hot shows the larger wet-vs-dry shift in magnitude than Intermediate
+- Cool shows the larger wet-vs-dry shift in onset than Hot
+- Cool shows the larger wet-vs-dry shift in onset than Intermediate
+- Hot and Intermediate have similar wet-vs-dry change in onset
+- Cool shows the larger wet-vs-dry shift in spatial_extent than Hot
+- Cool and Intermediate have similar wet-vs-dry change in spatial_extent
+- Intermediate shows the larger wet-vs-dry shift in spatial_extent than Hot
+- Hot shows the larger wet-vs-dry shift in trajectory than Cool
+- Cool and Intermediate have similar wet-vs-dry change in trajectory
+- Hot and Intermediate have similar wet-vs-dry change in trajectory
+
+north | NDVI
+
+- Cool and Hot are similar on magnitude under dry
+- Cool and Intermediate are similar on magnitude under dry
+- Hot and Intermediate are similar on magnitude under dry
+- Cool and Hot have similar onset under dry
+- Cool and Intermediate have similar onset under dry
+- Hot and Intermediate have similar onset under dry
+- Cool and Hot have similar late-season spatial extent under dry
+- Cool and Intermediate have similar late-season spatial extent under dry
+- Hot and Intermediate have similar late-season spatial extent under dry
+- Cool and Hot are similar on trajectory under dry
+- Cool and Intermediate are similar on trajectory under dry
+- Hot and Intermediate are similar on trajectory under dry
+- Cool and Hot are similar on magnitude under normal
+- Cool and Intermediate are similar on magnitude under normal
+- Hot and Intermediate are similar on magnitude under normal
+- Cool vs Hot under normal: onset unavailable
+- Cool vs Intermediate under normal: onset unavailable
+- Hot vs Intermediate under normal: onset unavailable
+- Cool and Hot have similar late-season spatial extent under normal
+- Cool and Intermediate have similar late-season spatial extent under normal
+- Hot and Intermediate have similar late-season spatial extent under normal
+- Cool and Hot are similar on trajectory under normal
+- Cool and Intermediate are similar on trajectory under normal
+- Hot and Intermediate are similar on trajectory under normal
+- Cool and Hot are similar on magnitude under wet
+- Cool and Intermediate are similar on magnitude under wet
+- Hot and Intermediate are similar on magnitude under wet
+- Under wet, Hot diverges earlier than Cool
+- Under wet, Intermediate diverges earlier than Cool
+- Hot and Intermediate have similar onset under wet
+- Cool and Hot have similar late-season spatial extent under wet
+- Cool and Intermediate have similar late-season spatial extent under wet
+- Hot and Intermediate have similar late-season spatial extent under wet
+- Cool and Hot are similar on trajectory under wet
+- Cool and Intermediate are similar on trajectory under wet
+- Hot and Intermediate are similar on trajectory under wet
+- Cool and Hot have similar wet-vs-dry change in magnitude
+- Cool and Intermediate have similar wet-vs-dry change in magnitude
+- Hot and Intermediate have similar wet-vs-dry change in magnitude
+- Cool shows the larger wet-vs-dry shift in onset than Hot
+- Cool shows the larger wet-vs-dry shift in onset than Intermediate
+- Hot and Intermediate have similar wet-vs-dry change in onset
+- Cool shows the larger wet-vs-dry shift in spatial_extent than Hot
+- Cool and Intermediate have similar wet-vs-dry change in spatial_extent
+- Hot and Intermediate have similar wet-vs-dry change in spatial_extent
+- Cool and Hot have similar wet-vs-dry change in trajectory
+- Cool and Intermediate have similar wet-vs-dry change in trajectory
+- Hot and Intermediate have similar wet-vs-dry change in trajectory
+
+south | NDMI
+
+- Under dry, Hot shows the larger magnitude signal than Cool
+- Under dry, Intermediate shows the larger magnitude signal than Cool
+- Hot and Intermediate are similar on magnitude under dry
+- Cool and Hot have similar onset under dry
+- Cool and Intermediate have similar onset under dry
+- Hot and Intermediate have similar onset under dry
+- Under dry, Cool has greater below-baseline extent than Hot
+- Under dry, Cool has greater below-baseline extent than Intermediate
+- Under dry, Intermediate has greater below-baseline extent than Hot
+- Cool and Hot are similar on trajectory under dry
+- Cool and Intermediate are similar on trajectory under dry
+- Hot and Intermediate are similar on trajectory under dry
+- Cool and Hot are similar on magnitude under normal
+- Cool and Intermediate are similar on magnitude under normal
+- Hot and Intermediate are similar on magnitude under normal
+- Cool vs Hot under normal: onset unavailable
+- Cool vs Intermediate under normal: onset unavailable
+- Hot vs Intermediate under normal: onset unavailable
+- Cool and Hot have similar late-season spatial extent under normal
+- Cool and Intermediate have similar late-season spatial extent under normal
+- Hot and Intermediate have similar late-season spatial extent under normal
+- Cool and Hot are similar on trajectory under normal
+- Cool and Intermediate are similar on trajectory under normal
+- Hot and Intermediate are similar on trajectory under normal
+- Under wet, Hot shows the larger magnitude signal than Cool
+- Under wet, Intermediate shows the larger magnitude signal than Cool
+- Under wet, Hot shows the larger magnitude signal than Intermediate
+- Cool and Hot have similar onset under wet
+- Cool and Intermediate have similar onset under wet
+- Hot and Intermediate have similar onset under wet
+- Under wet, Cool has greater below-baseline extent than Hot
+- Cool and Intermediate have similar late-season spatial extent under wet
+- Hot and Intermediate have similar late-season spatial extent under wet
+- Cool and Hot are similar on trajectory under wet
+- Cool and Intermediate are similar on trajectory under wet
+- Hot and Intermediate are similar on trajectory under wet
+- Cool and Hot have similar wet-vs-dry change in magnitude
+- Cool and Intermediate have similar wet-vs-dry change in magnitude
+- Hot and Intermediate have similar wet-vs-dry change in magnitude
+- Cool and Hot have similar wet-vs-dry change in onset
+- Cool and Intermediate have similar wet-vs-dry change in onset
+- Hot and Intermediate have similar wet-vs-dry change in onset
+- Hot shows the larger wet-vs-dry shift in spatial_extent than Cool
+- Intermediate shows the larger wet-vs-dry shift in spatial_extent than Cool
+- Hot shows the larger wet-vs-dry shift in spatial_extent than Intermediate
+- Cool and Hot have similar wet-vs-dry change in trajectory
+- Cool and Intermediate have similar wet-vs-dry change in trajectory
+- Hot and Intermediate have similar wet-vs-dry change in trajectory
+
+south | NDVI
+
+- Under dry, Hot shows the larger magnitude signal than Cool
+- Cool and Intermediate are similar on magnitude under dry
+- Hot and Intermediate are similar on magnitude under dry
+- Under dry, Hot diverges earlier than Cool
+- Under dry, Intermediate diverges earlier than Cool
+- Hot and Intermediate have similar onset under dry
+- Under dry, Cool has greater below-baseline extent than Hot
+- Under dry, Cool has greater below-baseline extent than Intermediate
+- Under dry, Intermediate has greater below-baseline extent than Hot
+- Cool and Hot are similar on trajectory under dry
+- Cool and Intermediate are similar on trajectory under dry
+- Hot and Intermediate are similar on trajectory under dry
+- Cool and Hot are similar on magnitude under normal
+- Cool and Intermediate are similar on magnitude under normal
+- Hot and Intermediate are similar on magnitude under normal
+- Cool vs Hot under normal: onset unavailable
+- Cool vs Intermediate under normal: onset unavailable
+- Hot vs Intermediate under normal: onset unavailable
+- Cool and Hot have similar late-season spatial extent under normal
+- Cool and Intermediate have similar late-season spatial extent under normal
+- Hot and Intermediate have similar late-season spatial extent under normal
+- Cool and Hot are similar on trajectory under normal
+- Cool and Intermediate are similar on trajectory under normal
+- Hot and Intermediate are similar on trajectory under normal
+- Cool and Hot are similar on magnitude under wet
+- Cool and Intermediate are similar on magnitude under wet
+- Hot and Intermediate are similar on magnitude under wet
+- Cool and Hot have similar onset under wet
+- Cool and Intermediate have similar onset under wet
+- Hot and Intermediate have similar onset under wet
+- Cool and Hot have similar late-season spatial extent under wet
+- Cool and Intermediate have similar late-season spatial extent under wet
+- Hot and Intermediate have similar late-season spatial extent under wet
+- Cool and Hot are similar on trajectory under wet
+- Cool and Intermediate are similar on trajectory under wet
+- Hot and Intermediate are similar on trajectory under wet
+- Cool and Hot have similar wet-vs-dry change in magnitude
+- Cool shows the larger wet-vs-dry shift in magnitude than Intermediate
+- Hot and Intermediate have similar wet-vs-dry change in magnitude
+- Hot shows the larger wet-vs-dry shift in onset than Cool
+- Intermediate shows the larger wet-vs-dry shift in onset than Cool
+- Hot and Intermediate have similar wet-vs-dry change in onset
+- Hot shows the larger wet-vs-dry shift in spatial_extent than Cool
+- Intermediate shows the larger wet-vs-dry shift in spatial_extent than Cool
+- Hot shows the larger wet-vs-dry shift in spatial_extent than Intermediate
+- Cool and Hot have similar wet-vs-dry change in trajectory
+- Cool and Intermediate have similar wet-vs-dry change in trajectory
+- Hot and Intermediate have similar wet-vs-dry change in trajectory

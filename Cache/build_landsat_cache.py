@@ -142,6 +142,28 @@ def is_rate_limited(exc):
     return "403" in str(exc)
 
 
+def format_path_row(path_value, row_value) -> tuple[str, str]:
+    path_str = str(path_value).zfill(3)
+    row_str = str(row_value).zfill(3)
+    return f"{path_str}{row_str}", f"p{path_str}r{row_str}"
+
+
+def scene_filename_candidates(prefix: str, date_str: str, path_value, row_value) -> list[str]:
+    plain_pr, tagged_pr = format_path_row(path_value, row_value)
+    return [
+        f"{prefix}_{date_str}_{tagged_pr}.tif",
+        f"{prefix}_{date_str}_{plain_pr}.tif",
+    ]
+
+
+def first_existing_path(base_dir, prefix: str, date_str: str, path_value, row_value):
+    for candidate in scene_filename_candidates(prefix, date_str, path_value, row_value):
+        candidate_path = base_dir / candidate
+        if candidate_path.exists():
+            return candidate_path
+    return None
+
+
 def write_tif(path, arr, dst_height, dst_width, dst_transform, dtype, nodata=None):
     profile = dict(
         driver="GTiff",
@@ -309,9 +331,11 @@ for AOI in AOIS_TO_RUN:
     seen, deduped = set(), []
     for i in items:
         date_str = i.datetime.strftime("%Y%m%d")
-        path_row = (i.properties.get("landsat:wrs_path", "?")
-                    + i.properties.get("landsat:wrs_row", "?"))
-        key = (date_str, path_row)
+        plain_pr, tagged_pr = format_path_row(
+            i.properties.get("landsat:wrs_path", "?"),
+            i.properties.get("landsat:wrs_row", "?"),
+        )
+        key = (date_str, plain_pr, tagged_pr)
         if key not in seen:
             seen.add(key)
             deduped.append(i)
@@ -330,15 +354,14 @@ for AOI in AOIS_TO_RUN:
 
     for item in items:
         d  = item.datetime.strftime("%Y%m%d")
-        pr = (item.properties.get("landsat:wrs_path", "?")
-              + item.properties.get("landsat:wrs_row", "?"))
-        short_id = f"{d}_{pr}"
+        wrs_path = item.properties.get("landsat:wrs_path", "?")
+        wrs_row  = item.properties.get("landsat:wrs_row", "?")
         for idx in INDICES_TO_RUN:
-            if (LANDSAT_INDEX_ROOT / idx / f"{idx}_{short_id}.tif").exists():
+            if first_existing_path(LANDSAT_INDEX_ROOT / idx, idx, d, wrs_path, wrs_row):
                 pre_cached[idx] += 1
             else:
                 pre_needed[idx] += 1
-        if (qa_dir / f"QA_PIXEL_{short_id}.tif").exists():
+        if first_existing_path(qa_dir, "QA_PIXEL", d, wrs_path, wrs_row):
             qa_pre_cached += 1
         else:
             qa_pre_needed += 1
@@ -425,18 +448,22 @@ for AOI in AOIS_TO_RUN:
         platform  = item.properties.get("platform", "unknown")
         wrs_path  = item.properties.get("landsat:wrs_path", "?")
         wrs_row   = item.properties.get("landsat:wrs_row",  "?")
-        path_row  = f"{wrs_path}{wrs_row}"
-        short_id  = f"{date_str}_{path_row}"
+        plain_pr, tagged_pr = format_path_row(wrs_path, wrs_row)
+        short_id  = f"{date_str}_{tagged_pr}"
 
-        qa_filename = f"QA_PIXEL_{short_id}.tif"
-        qa_path     = qa_dir / qa_filename
-        qa_needed   = not qa_path.exists()
+        qa_path_existing = first_existing_path(qa_dir, "QA_PIXEL", date_str, wrs_path, wrs_row)
+        qa_filename = qa_path_existing.name if qa_path_existing else f"QA_PIXEL_{short_id}.tif"
+        qa_path     = qa_path_existing if qa_path_existing else qa_dir / qa_filename
+        qa_needed   = qa_path_existing is None
 
         indices_needed = []
         for index_name in INDICES_TO_RUN:
-            out_file = f"{index_name}_{short_id}.tif"
-            out_path = LANDSAT_INDEX_ROOT / index_name / out_file
-            if out_path.exists():
+            existing_out_path = first_existing_path(
+                LANDSAT_INDEX_ROOT / index_name, index_name, date_str, wrs_path, wrs_row
+            )
+            out_file = existing_out_path.name if existing_out_path else f"{index_name}_{short_id}.tif"
+            out_path = existing_out_path if existing_out_path else LANDSAT_INDEX_ROOT / index_name / out_file
+            if existing_out_path:
                 if scene_id not in manifests[index_name]:
                     manifests[index_name][scene_id] = {
                         "filename": out_file,
