@@ -66,7 +66,7 @@ add_aoi_arg(parser, default=None)
 add_indices_arg(parser)
 add_date_range_args(parser, "1984-01-01")
 add_cloud_arg(parser)
-add_cache_suffix_arg(parser, default="_3_24")
+add_cache_suffix_arg(parser, default=None)
 args = parser.parse_args()
 
 INDICES_TO_RUN = args.indices
@@ -195,9 +195,9 @@ for AOI in AOIS_TO_RUN:
 
     cfg                = get_aoi_config(AOI)
     LANDSCAPE_ID       = cfg.landscape_id
-    # Use the unsuffixed build-base path so --cache-suffix works correctly.
-    # (north_landsat_index_root in yaml has _3_4 baked in for analysis scripts;
-    #  north_landsat_build_base is always the plain GWNF_cache/landsat/indices base.)
+    # Use the unsuffixed build-base path so --cache-suffix remains optional.
+    # Analysis paths and build-base paths now point at the same unsuffixed root
+    # unless a suffix is explicitly provided.
     LANDSAT_INDEX_ROOT = project_path(f"{AOI}_landsat_build_base")
 
     if args.cache_suffix:

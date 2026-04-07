@@ -6,7 +6,7 @@ This document summarizes the cache segments currently active in project memory a
 
 Primary historical source of truth for the Sentinel `_3_4` cache:
 
-- [cache_3_4_build_script.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/ScriptSnapshots/cache_3_4_build_script.py)
+- [cache_build_script.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/ScriptSnapshots/cache_build_script.py)
 
 This document separates:
 
@@ -20,8 +20,8 @@ The authoritative cache baseline is `_3_4`, as configured in [project_paths.yaml
 
 Active cache branches:
 
-- `AOI/NorthAOI/GWNF_cache_3_4`
-- `AOI/SouthAOI/Smoky_cache_3_4`
+- `AOI/NorthAOI/GWNF_cache`
+- `AOI/SouthAOI/Smoky_cache`
 
 Sub-branches in current use:
 
@@ -107,7 +107,7 @@ Observed range of stored `veg_coverage` values for `NDVI`:
 
 ### Historical Sentinel `_3_4` source-script behavior
 
-Confirmed from [cache_3_4_build_script.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/ScriptSnapshots/cache_3_4_build_script.py):
+Confirmed from [cache_build_script.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/ScriptSnapshots/cache_build_script.py):
 
 - collection: `sentinel-2-l2a`
 - date filter: `2017-01-01` to `2026-03-01`

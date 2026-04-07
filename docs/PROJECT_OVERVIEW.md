@@ -73,7 +73,7 @@ This section is the current source of truth for cache status.
 
 Current cache interpretation:
 
-- `GWNF_cache_3_4` and `Smoky_cache_3_4` are the stable analysis base
+- `GWNF_cache` and `Smoky_cache` are the stable analysis base
 - `GWNF_cache_3_24` was a partial north Sentinel rebuild that stopped when disk space filled
 - `Smoky_cache_3_24` was effectively empty and not analysis-ready
 

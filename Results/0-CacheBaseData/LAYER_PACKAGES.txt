@@ -12,7 +12,7 @@ network drive, external storage, or ArcGIS Online.
     Full monthly layer stack — Sentinel-2
     Covers north (GWNF) and south (Smoky) AOIs, 2017–present
 
-These packages were generated from the GWNF_cache_3_4 / Smoky_cache_3_4
+These packages were generated from the GWNF_cache / Smoky_cache
 index caches using the compositing scripts in Analysis/.
 A rebuilt cache with corrected spatial masking (AOI polygon instead of
 bounding box) and cloud-only SCL exclusion is being built as

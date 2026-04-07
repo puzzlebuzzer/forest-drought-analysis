@@ -23,23 +23,20 @@ Shapefile: `../AOI/TNC_AOI_LayerPkg/TNC_AOIs.shp`, filtered by `LscapeID`.
 
 ## Cache Versioning Convention
 
-Caches are versioned with a date suffix. The current active caches are:
+Caches now use unsuffixed active directories:
 
-- `GWNF_cache_3_4/` and `Smoky_cache_3_4/` — the reference caches (S2 indices deleted to free space; Landsat indices and all traits intact)
-- `GWNF_cache_3_24/` and `Smoky_cache_3_24/` — the new caches currently being built (started 3/24)
+- `GWNF_cache/` and `Smoky_cache/` — the current cache roots for Sentinel, Landsat, and trait rasters
 
-**Build scripts** use unsuffixed base paths (`GWNF_cache/...`) from `project_paths.yaml` and append the suffix via `--cache-suffix _3_24`. The yaml keys for this are `north_s2_build_base`, `south_s2_build_base`, `north_landsat_build_base`, `south_landsat_build_base`.
+**Build scripts** use unsuffixed base paths from `project_paths.yaml`. A suffix can still be supplied explicitly, but the default is now no suffix. The yaml keys for this are `north_s2_build_base`, `south_s2_build_base`, `north_landsat_build_base`, `south_landsat_build_base`.
 
-**Analysis scripts** point directly at the completed `_3_4` cache paths (`north_index_cache_root`, `north_landsat_index_root`, etc.).
-
-Do not change analysis script paths until the `_3_24` cache is complete and verified.
+**Analysis scripts** point directly at the unsuffixed cache paths (`north_index_cache_root`, `north_landsat_index_root`, etc.).
 
 ---
 
 ## Cache Directory Structure
 
 ```
-GWNF_cache_3_24/
+GWNF_cache/
 ├── s2/
 │   └── indices/
 │       ├── NDVI/       *.tif + cache_manifest.json
@@ -54,7 +51,7 @@ GWNF_cache_3_24/
         └── QA_PIXEL/
 ```
 
-Traits (terrain, forest, ecozone) live under `_3_4` and do not need to be rebuilt.
+Traits (terrain, forest, ecozone) live under the unsuffixed cache roots and do not need to be rebuilt.
 
 ---
 
@@ -62,8 +59,8 @@ Traits (terrain, forest, ecozone) live under `_3_4` and do not need to be rebuil
 
 | Script                        | Data source      | Default suffix | Run command |
 |-------------------------------|------------------|----------------|-------------|
-| `Cache/build_sentinel_cache.py`  | Sentinel-2 L2A   | `_3_24`        | `python Cache/build_sentinel_cache.py` |
-| `Cache/build_landsat_cache.py`   | Landsat C2 L2    | `_3_24`        | `python Cache/build_landsat_cache.py` |
+| `Cache/build_sentinel_cache.py`  | Sentinel-2 L2A   | none           | `python Cache/build_sentinel_cache.py` |
+| `Cache/build_landsat_cache.py`   | Landsat C2 L2    | none           | `python Cache/build_landsat_cache.py` |
 
 Both write a `build_progress_{aoi}.txt` summary file into the cache directory, updated live.
 
@@ -110,17 +107,17 @@ The analysis space is defined by 8 axes. "I" is intentionally skipped to avoid c
 | E | Aggregation | E1=p25, E2=p50, E3=p75, E4=mean, E5=max, E6=pixel-level |
 | F | Deliverable | F1=time series plot, F2=aspect difference plot, F3=raster, F4=table, F5=map, F6=layer package, F7=anomaly raster, F8=seasonal curve |
 | G | Index transformation | G1=raw index, G2=phenological amplitude (peak−baseline), G3=anomaly (z-score vs baseline) |
-| H | Data source | H1=Sentinel-2 (current cache), H2=Sentinel-2 (new _3_24 cache), H3=Landsat _3_4 cache, H4=Landsat _3_24 cache |
+| H | Data source | H1=Sentinel-2 (current cache), H2=Sentinel-2 (alternate cache branch), H3=Landsat current cache, H4=Landsat alternate cache branch |
 
-Current focus: H2 (new S2 cache being built) and H3 (existing Landsat north cache, ~1259 scenes, 1984–2008).
+Current focus: H1/H3 on the active unsuffixed caches.
 
 ---
 
 ## Results Directory Structure
 
 ```
-Results/              ← current (for _3_24 cache outputs)
-Results_cache1/       ← outputs from original _3_4 cache
+Results/              ← current outputs
+Results_cache1/       ← historical validated outputs
 ```
 
 Both directories have `figures/`, `figures/landsat/`, `rasters/`, `tables/`.
@@ -150,4 +147,4 @@ A documentation vault exists at `../Project_Appalachia/tnc-forest-analysis/`. Cu
 - **Why keep cloud shadow in index rasters?** Shadow has low NDVI and won't survive max compositing. QA_PIXEL is saved for optional post-hoc filtering.
 - **Why subtract 0.1 for PB04+?** ESA added a radiometric offset in processing baseline 4.0 that inflates reflectance. Without correction, pre- and post-PB04 scenes are not comparable.
 - **Why separate build vs analysis paths in yaml?** Build scripts need a clean unsuffixed base to append version suffixes. Analysis scripts need to point at a specific completed version.
-- **S2 indices in _3_4 deleted** (~362 GB freed). Traits and Landsat in _3_4 are intact and still in use.
+- **S2 indices in the former `_3_4` branch were deleted** (~362 GB freed). The active unsuffixed caches now hold the retained Sentinel/Landsat/trait data.

@@ -4,7 +4,7 @@ Last updated: 2026-03-31
 
 Primary historical source of truth for the trusted Sentinel `_3_4` build:
 
-- [cache_3_4_build_script.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/ScriptSnapshots/cache_3_4_build_script.py)
+- [cache_build_script.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/ScriptSnapshots/cache_build_script.py)
 
 ## What Data The Project Uses
 
@@ -12,10 +12,10 @@ The project currently relies on `_3_4` cache branches as the authoritative basel
 
 Active cache segments:
 
-- north Sentinel-2: `AOI/NorthAOI/GWNF_cache_3_4/s2/indices`
-- south Sentinel-2: `AOI/SouthAOI/Smoky_cache_3_4/s2/indices`
-- north Landsat: `AOI/NorthAOI/GWNF_cache_3_4/landsat/indices`
-- south Landsat: `AOI/SouthAOI/Smoky_cache_3_4/landsat/indices`
+- north Sentinel-2: `AOI/NorthAOI/GWNF_cache/s2/indices`
+- south Sentinel-2: `AOI/SouthAOI/Smoky_cache/s2/indices`
+- north Landsat: `AOI/NorthAOI/GWNF_cache/landsat/indices`
+- south Landsat: `AOI/SouthAOI/Smoky_cache/landsat/indices`
 
 Derived products in use:
 
