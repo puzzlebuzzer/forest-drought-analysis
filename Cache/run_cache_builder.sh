@@ -1,103 +1,73 @@
 #!/bin/bash
+#
 # run_cache_builder.sh
 #
-# Runs build_sentinel_cache.py and restarts it immediately on any 403.
-# Restart gets a fresh STAC connection + fresh signed URLs, which is the
-# only reliable way to push past Planetary Computer rate limits.
+# Re-runs a cache builder whenever it exits non-zero. This is intended to pair
+# with the cache builders' fail-fast 403 behavior so a fresh Python process can
+# resume from the manifests after a Planetary Computer rate-limit stop.
 #
-# Progress is preserved across restarts — the script skips already-cached
-# scenes on each run via the manifest.
+# Usage from repo root:
+#   bash Python/Cache/run_cache_builder.sh sentinel --aoi south
+#   bash Python/Cache/run_cache_builder.sh landsat --aoi north --indices NDVI NDMI
 #
-# Usage (from project root):
-#   bash Cache/run_cache_builder.sh                          # north, suffix _3_24
-#   bash Cache/run_cache_builder.sh --aoi south
-#   bash Cache/run_cache_builder.sh --aoi north --cache-suffix _3_24
-#
-# Logs restart events to Cache/restart_log_<aoi>.txt
+# Exit behavior:
+#   - exit code 0 from the Python builder: stop normally
+#   - any non-zero exit code: wait briefly and re-run
 
 set -euo pipefail
 
-# ── Defaults ──────────────────────────────────────────────────────────────────
-AOI="north"
-CACHE_SUFFIX="_3_24"
-
-# ── Parse args ────────────────────────────────────────────────────────────────
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --aoi)           AOI="$2";          shift 2 ;;
-        --cache-suffix)  CACHE_SUFFIX="$2"; shift 2 ;;
-        *) echo "Unknown arg: $1"; exit 1 ;;
-    esac
-done
-
-# ── Paths ─────────────────────────────────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-
-if [ "$AOI" = "north" ]; then
-    CACHE_NAME="GWNF_cache${CACHE_SUFFIX}"
-    PROGRESS_FILE="$REPO_ROOT/../AOI/NorthAOI/${CACHE_NAME}/s2/indices/build_progress_north.txt"
-else
-    CACHE_NAME="Smoky_cache${CACHE_SUFFIX}"
-    PROGRESS_FILE="$REPO_ROOT/../AOI/SouthAOI/${CACHE_NAME}/s2/indices/build_progress_south.txt"
+if [[ $# -lt 1 ]]; then
+    echo "Usage: bash Python/Cache/run_cache_builder.sh <sentinel|landsat> [builder args...]"
+    exit 1
 fi
 
-LOG_FILE="/tmp/cache_restart_log_${AOI}.txt"
+BUILDER_KIND="$1"
+shift
 
-echo "========================================"    | tee -a "$LOG_FILE"
-echo "$(date '+%Y-%m-%d %H:%M:%S') — runner started" | tee -a "$LOG_FILE"
-echo "AOI: $AOI  |  suffix: $CACHE_SUFFIX"        | tee -a "$LOG_FILE"
-echo "Progress file: $PROGRESS_FILE"              | tee -a "$LOG_FILE"
-echo "========================================"    | tee -a "$LOG_FILE"
+case "$BUILDER_KIND" in
+    sentinel)
+        BUILDER_SCRIPT="build_sentinel_cache.py"
+        ;;
+    landsat)
+        BUILDER_SCRIPT="build_landsat_cache.py"
+        ;;
+    *)
+        echo "Unknown builder '$BUILDER_KIND'. Use 'sentinel' or 'landsat'."
+        exit 1
+        ;;
+esac
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+LOG_FILE="/tmp/cache_builder_runner_${BUILDER_KIND}.log"
+RESTART_SLEEP=20
 ATTEMPT=0
+
+echo "========================================" | tee -a "$LOG_FILE"
+echo "$(date '+%Y-%m-%d %H:%M:%S') — runner started" | tee -a "$LOG_FILE"
+echo "Builder: $BUILDER_KIND" | tee -a "$LOG_FILE"
+echo "Script:  $SCRIPT_DIR/$BUILDER_SCRIPT" | tee -a "$LOG_FILE"
+echo "Args:    $*" | tee -a "$LOG_FILE"
+echo "========================================" | tee -a "$LOG_FILE"
 
 while true; do
     ATTEMPT=$((ATTEMPT + 1))
     echo "" | tee -a "$LOG_FILE"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') — run #${ATTEMPT} starting..." | tee -a "$LOG_FILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') — run #$ATTEMPT starting" | tee -a "$LOG_FILE"
 
-    # Clear any stale 403 status from a previous run so we don't false-trigger
-    if [ -f "$PROGRESS_FILE" ]; then
-        sed -i 's/sleeping (403)[^\n]*/checking.../g' "$PROGRESS_FILE" 2>/dev/null || true
+    set +e
+    (
+        cd "$REPO_ROOT"
+        PYTHONUNBUFFERED=1 python "./Cache/$BUILDER_SCRIPT" "$@"
+    )
+    EXIT_CODE=$?
+    set -e
+
+    if [[ "$EXIT_CODE" -eq 0 ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') — builder exited cleanly; runner stopping" | tee -a "$LOG_FILE"
+        exit 0
     fi
 
-    # Start the build script in the background (unbuffered output)
-    PYTHONUNBUFFERED=1 python "$SCRIPT_DIR/build_sentinel_cache.py" \
-        --aoi "$AOI" --cache-suffix "$CACHE_SUFFIX" &
-    BUILD_PID=$!
-
-    KILLED=0
-
-    # Poll progress file every 20s while script is running
-    while kill -0 "$BUILD_PID" 2>/dev/null; do
-        sleep 20
-        if [ -f "$PROGRESS_FILE" ] && grep -q "sleeping (403)" "$PROGRESS_FILE" 2>/dev/null; then
-            echo "$(date '+%Y-%m-%d %H:%M:%S') — 403 detected, killing PID $BUILD_PID and restarting..." \
-                | tee -a "$LOG_FILE"
-            kill "$BUILD_PID" 2>/dev/null
-            wait "$BUILD_PID" 2>/dev/null || true
-            KILLED=1
-            break
-        fi
-    done
-
-    if [ "$KILLED" -eq 0 ]; then
-        # Script exited on its own — check exit code
-        wait "$BUILD_PID"
-        EXIT_CODE=$?
-        if [ "$EXIT_CODE" -eq 0 ]; then
-            echo "$(date '+%Y-%m-%d %H:%M:%S') — completed successfully. Done." \
-                | tee -a "$LOG_FILE"
-            break
-        else
-            echo "$(date '+%Y-%m-%d %H:%M:%S') — exited with code $EXIT_CODE, restarting in 30s..." \
-                | tee -a "$LOG_FILE"
-            sleep 30
-        fi
-    else
-        # Brief pause so PC isn't hammered immediately
-        echo "$(date '+%Y-%m-%d %H:%M:%S') — waiting 15s before restart..." | tee -a "$LOG_FILE"
-        sleep 15
-    fi
+    echo "$(date '+%Y-%m-%d %H:%M:%S') — builder exited with code $EXIT_CODE; restarting in ${RESTART_SLEEP}s" | tee -a "$LOG_FILE"
+    sleep "$RESTART_SLEEP"
 done

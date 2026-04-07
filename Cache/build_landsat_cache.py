@@ -17,7 +17,9 @@ Spatial masking:
   Output pixels are NaN outside the TNC AOI polygon boundary.
 
 Rate limiting:
-  On a 403 the script sleeps 5 minutes and retries the same scene.
+  On any 403 from Planetary Computer the script exits immediately with a
+  non-zero code so an external runner can restart the whole process with a
+  fresh session and fresh signed URLs.
 
 QA_PIXEL bit reference (Landsat Collection 2):
   Bit 0  Fill            Bit 4  Cloud Shadow
@@ -43,7 +45,7 @@ Run from project root:
 import json
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import geopandas as gpd
 import numpy as np
@@ -79,8 +81,7 @@ AOIS_TO_RUN    = [args.aoi] if args.aoi else ["north", "south"]
 
 TARGET_CRS        = "EPSG:32617"
 TARGET_RESOLUTION = 30
-RATE_LIMIT_SLEEP       = 300   # 5 minutes on 403
-MAX_RATE_LIMIT_RETRIES = 12    # skip scene after 1 hour of consecutive 403s
+RATE_LIMIT_EXIT_CODE   = 86
 
 INDEX_CONFIG = {
     "NDVI": {"bands": ["red", "nir08"]},
@@ -140,6 +141,15 @@ def compute_index(index_name: str, scaled: dict) -> np.ndarray:
 
 def is_rate_limited(exc):
     return "403" in str(exc)
+
+
+def exit_on_rate_limit(exc, summary_writer=None, context="Planetary Computer request"):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    message = f"{timestamp} — 403 encountered during {context}; exiting for external restart"
+    print(f"  ⚠ {message}")
+    if summary_writer is not None:
+        summary_writer(status=f"stopped on 403 during {context}")
+    raise SystemExit(RATE_LIMIT_EXIT_CODE) from exc
 
 
 def format_path_row(path_value, row_value) -> tuple[str, str]:
@@ -316,6 +326,8 @@ for AOI in AOIS_TO_RUN:
                 print(f"    {len(found)} scenes")
                 break
             except Exception as e:
+                if is_rate_limited(e):
+                    exit_on_rate_limit(e, context=f"search window {win_start}/{win_end}")
                 if attempt < 2:
                     print(f"    Attempt {attempt+1} failed: {e} — retrying in 10s...")
                     time.sleep(10)
@@ -499,7 +511,6 @@ for AOI in AOIS_TO_RUN:
                 all_results[index_name]["redownloaded"] += 1
 
         # ── Fetch + write, retry on 403 ────────────────────────────────────────
-        rate_limit_attempts = 0
         while True:
             try:
                 # Re-sign item before each fetch attempt to refresh PC URLs
@@ -608,27 +619,15 @@ for AOI in AOIS_TO_RUN:
 
             except Exception as e:
                 if is_rate_limited(e):
-                    rate_limit_attempts += 1
                     event = (f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} — "
                              f"scene {current_scene_idx}/{len(items)} "
                              f"({scene_id[:40]}...)")
                     rate_limit_events.append(event)
-                    if rate_limit_attempts >= MAX_RATE_LIMIT_RETRIES:
-                        print(f"  ✗ Skipping scene after {MAX_RATE_LIMIT_RETRIES} "
-                              f"consecutive 403s — will retry on next run")
-                        for index_name in indices_needed:
-                            all_results[index_name]["failed"] += 1
-                            run_failed[index_name] += 1
-                        write_summary(status="running (skipped rate-limited scene)")
-                        break
-                    wake = (datetime.now() + timedelta(seconds=RATE_LIMIT_SLEEP)
-                            ).strftime("%H:%M:%S")
-                    print(f"  ⚠ 403 rate limit — sleeping "
-                          f"{RATE_LIMIT_SLEEP//60} min, retrying at {wake}... "
-                          f"(attempt {rate_limit_attempts}/{MAX_RATE_LIMIT_RETRIES})")
-                    write_summary(
-                        status=f"sleeping (403) — retrying at {wake}")
-                    time.sleep(RATE_LIMIT_SLEEP)
+                    exit_on_rate_limit(
+                        e,
+                        summary_writer=write_summary,
+                        context=f"scene fetch {scene_id[:40]}...",
+                    )
                 else:
                     for index_name in indices_needed:
                         all_results[index_name]["failed"] += 1
