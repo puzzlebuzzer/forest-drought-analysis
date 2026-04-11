@@ -50,7 +50,7 @@ SUMMARY_SPECS = [
 ]
 MIN_PIXELS = 100
 
-FIGURES_DIR = project_path("results_figures_landsat_dir")
+FIGURES_DIR = project_path("results_figures_dir")
 TABLES_DIR = project_path("results_tables_landsat_dir")
 
 
