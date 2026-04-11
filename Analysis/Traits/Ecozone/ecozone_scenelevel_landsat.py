@@ -184,7 +184,7 @@ def zscore_suffix(zscore_threshold: float) -> str:
 
 
 def scenelevel_figure_dir(aoi: str, index_name: str) -> Path:
-    return FIGURES_DIR / "seasonal_curves" / "landsat" / aoi / "by_ecozone" / index_name.lower()
+    return FIGURES_DIR / "seasonal_curves" / "by_ecozone" / "landsat" / aoi / index_name.lower()
 
 
 def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zscore_threshold: float) -> None:
@@ -336,7 +336,7 @@ def main() -> None:
         plot_dir.mkdir(parents=True, exist_ok=True)
         plot_stem = (
             f"{year_label}_{zscore_suffix(args.z)}"
-            f"_seasonalcurves_landsat_{args.aoi}_byecozone_{index_name.lower()}"
+            f"_seasonalcurves_byecozone_landsat_{args.aoi}_{index_name.lower()}"
         )
         png_path = plot_dir / f"{plot_stem}.png"
         bokeh_path = plot_dir / f"{plot_stem}.bokeh.html"
