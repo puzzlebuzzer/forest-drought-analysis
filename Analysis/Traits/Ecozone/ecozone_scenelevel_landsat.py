@@ -336,7 +336,7 @@ def main() -> None:
         plot_dir.mkdir(parents=True, exist_ok=True)
         plot_stem = (
             f"{year_label}_{zscore_suffix(args.z)}"
-            f"_landsat_{args.aoi}_seasonalcurves_byecozone_{index_name.lower()}"
+            f"_seasonalcurves_landsat_{args.aoi}_byecozone_{index_name.lower()}"
         )
         png_path = plot_dir / f"{plot_stem}.png"
         bokeh_path = plot_dir / f"{plot_stem}.bokeh.html"
