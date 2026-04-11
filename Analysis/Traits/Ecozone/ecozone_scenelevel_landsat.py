@@ -42,10 +42,10 @@ ECOZONE_LABELS = {1: "Cool", 2: "Intermediate", 3: "Hot"}
 ECOZONE_COLORS = {1: "#4E90C8", 2: "#72B063", 3: "#D9534F"}
 AOI_DISPLAY = {"north": "GWNF", "south": "Smoky"}
 SUMMARY_SPECS = [
-    ("p50", 50, "-"),
-    ("p75", 75, "--"),
-    ("p95", 95, "-."),
-    ("max", 100, ":"),
+    ("p50", 50),
+    ("p75", 75),
+    ("p95", 95),
+    ("max", 100),
 ]
 MIN_PIXELS = 100
 
@@ -149,13 +149,13 @@ def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path) -> No
     for ecozone_code in VALID_ECOZONE_CODES:
         ecozone_df = plot_df[plot_df["Ecozone Code"] == ecozone_code].sort_values("Scene Date")
         color = ECOZONE_COLORS[ecozone_code]
-        for summary_name, _, linestyle in SUMMARY_SPECS:
+        for summary_name, _ in SUMMARY_SPECS:
             label = f"{ECOZONE_LABELS[ecozone_code]} {summary_name}"
             ax.plot(
                 ecozone_df["Scene Date"],
                 ecozone_df[summary_name],
                 color=color,
-                linestyle=linestyle,
+                linestyle="-",
                 linewidth=1.8,
                 marker="o",
                 markersize=3,
@@ -221,7 +221,7 @@ def build_bokeh(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path) -> 
     for ecozone_code in VALID_ECOZONE_CODES:
         ecozone_df = plot_df[plot_df["Ecozone Code"] == ecozone_code].sort_values("Scene Date")
         color = ECOZONE_COLORS[ecozone_code]
-        for summary_name, _, linestyle in SUMMARY_SPECS:
+        for summary_name, _ in SUMMARY_SPECS:
             series_df = pd.DataFrame(
                 {
                     "scene_date": ecozone_df["Scene Date"],
@@ -234,26 +234,17 @@ def build_bokeh(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path) -> 
                 }
             )
             source = ColumnDataSource(series_df)
-            dash = "solid"
-            if linestyle == "--":
-                dash = "dashed"
-            elif linestyle == "-.":
-                dash = "dotdash"
-            elif linestyle == ":":
-                dash = "dotted"
-
             legend_label = f"{ECOZONE_LABELS[ecozone_code]} {summary_name}"
             p.line(
                 "scene_date",
                 "value",
                 source=source,
                 line_width=2,
-                line_dash=dash,
                 color=color,
                 alpha=0.9,
                 legend_label=legend_label,
             )
-            p.circle(
+            p.scatter(
                 "scene_date",
                 "value",
                 source=source,
