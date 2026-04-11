@@ -1,4 +1,4 @@
-# TNC Appalachian Terrain–Vegetation Project — Claude Context
+# TNC Appalachian Terrain–Vegetation Project — Codex/AI Context
 
 This file is read at the start of every session. It captures decisions, conventions, and hard-won fixes so they don't have to be re-explained after context resets.
 
@@ -135,6 +135,66 @@ Layer packages (`.lpkx`) are documented in `LAYER_PACKAGES.txt` in each Results 
 
 ---
 
+## Operator Preferences
+
+- The user usually runs commands from the `Python/` directory.
+  - Prefer run commands like `python Analysis/...`
+  - Avoid prepending `Python/` in run instructions unless explicitly needed
+- The user does not want a virtual environment by default
+- Static PNG outputs are the default preferred artifact for charts
+- Supporting spreadsheets/tables should also be saved when practical
+- Interactive outputs such as Bokeh should be generated only on demand
+- Leave user-renamed output files alone unless asked to change them
+
+---
+
+## Recent Workflow Decisions
+
+- Cache builders now default to no suffix
+- Cache runner is:
+  - `Cache/run_cache_builder.sh`
+- Cache builders fail fast on `403` and rely on the runner to restart
+- Landsat builder supports skipping a persistent bad scene with:
+  - `--skip-scene-id`
+
+---
+
+## Current Analysis/Plotting Conventions
+
+- Monthly Sentinel composites are per-pixel monthly maxima
+- NDVI/NDMI/EVI are the main indices
+- Ecozone values:
+  - `1 = Cool`
+  - `2 = Intermediate`
+  - `3 = Hot`
+- North and south AOIs are analyzed separately
+- Several derivation notes already exist in `docs/` for key figures
+
+---
+
+## Important Existing Helper Scripts
+
+- Seasonal scene-level plot generation:
+  - `Analysis/Traits/Ecozone/ecozone_seasonal_curves.py`
+- Plotly renderer from existing scene-level spreadsheet:
+  - `Analysis/Traits/Ecozone/ecozone_seasonal_scenelevel_plotly.py`
+- Bokeh renderer from existing scene-level spreadsheet:
+  - `Analysis/Traits/Ecozone/ecozone_seasonal_scenelevel_bokeh.py`
+- Session snapshot helper:
+  - `Cache/save_session_snapshot.sh`
+
+---
+
+## Good Reopen Checklist
+
+1. Read this file: `CODEX.md`
+2. Check the latest `build_progress_*.txt` file if cache work is in progress
+3. Check `/tmp/cache_builder_runner_landsat.log` or `/tmp/cache_builder_runner_sentinel.log` if troubleshooting restarts
+4. Confirm the current working directory before giving run commands
+5. Read `docs/PROJECT_OVERVIEW.md` and any relevant derivation note if the task is figure-specific
+
+---
+
 ## Obsidian Vault
 
 A documentation vault exists at `../Project_Appalachia/tnc-forest-analysis/`. Currently contains `Project Axes.md` with the full axes framework. Intended to grow with decision logs, deliverable inventory, and code change notes.
@@ -148,3 +208,13 @@ A documentation vault exists at `../Project_Appalachia/tnc-forest-analysis/`. Cu
 - **Why subtract 0.1 for PB04+?** ESA added a radiometric offset in processing baseline 4.0 that inflates reflectance. Without correction, pre- and post-PB04 scenes are not comparable.
 - **Why separate build vs analysis paths in yaml?** Build scripts need a clean unsuffixed base to append version suffixes. Analysis scripts need to point at a specific completed version.
 - **S2 indices in the former `_3_4` branch were deleted** (~362 GB freed). The active unsuffixed caches now hold the retained Sentinel/Landsat/trait data.
+
+---
+
+## Session Snapshot
+
+This section is auto-updated by `Cache/save_session_snapshot.sh`. Manual content above this line should be preserved.
+
+<!-- SESSION_SNAPSHOT_START -->
+No session snapshot has been written yet.
+<!-- SESSION_SNAPSHOT_END -->

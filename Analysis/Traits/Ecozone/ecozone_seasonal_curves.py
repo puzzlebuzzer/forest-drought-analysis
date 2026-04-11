@@ -29,12 +29,15 @@ Outputs:
 
 Run from project root:
   python Analysis/Traits/Ecozone/ecozone_seasonal_curves.py
+  python Analysis/Traits/Ecozone/ecozone_seasonal_curves.py --scene-level
 """
 
+import argparse
 import json
 from datetime import datetime
 from pathlib import Path
 
+import matplotlib.dates as mdates
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
@@ -64,6 +67,32 @@ for d in (FIGURES_DIR, TABLES_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
 
+parser = argparse.ArgumentParser(description="Ecozone seasonal curves")
+parser.add_argument(
+    "--scene-level",
+    action="store_true",
+    help=(
+        "Skip monthly aggregation in the figure outputs and plot one point per scene "
+        "using the scene acquisition month on the x-axis. Writes alternate scene-level "
+        "figure and table names."
+    ),
+)
+parser.add_argument(
+    "--points-only",
+    action="store_true",
+    help=(
+        "When used with --scene-level, plot only scene-level points and omit the "
+        "monthly median overlay line."
+    ),
+)
+args = parser.parse_args()
+PLOT_SCENE_LEVEL = args.scene_level
+POINTS_ONLY = args.points_only
+
+if POINTS_ONLY and not PLOT_SCENE_LEVEL:
+    parser.error("--points-only requires --scene-level")
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def load_scenes(index_dir: Path, manifest_path: Path) -> list[dict]:
@@ -84,17 +113,24 @@ def load_scenes(index_dir: Path, manifest_path: Path) -> list[dict]:
 def monthly_percentiles_by_ecozone(
     scenes: list[dict],
     eco_masks: dict[int, np.ndarray],
-) -> dict[int, dict[int, dict[int, list[float]]]]:
+    collect_monthly: bool = True,
+) -> tuple[dict[int, dict[int, dict[int, list[float]]]], list[dict]]:
     """
     For each scene, compute p95 and p100 within each ecozone mask.
     Group results by calendar month. Single raster read per scene.
 
-    Returns: {month: {ecozone_code: {95: [scene_vals], 100: [scene_vals]}}}
+    Returns:
+      - {month: {ecozone_code: {95: [scene_vals], 100: [scene_vals]}}}
+      - scene-level records for optional point plotting / export
     """
-    results = {
-        m: {code: {95: [], 100: []} for code in VALID_ECOZONE_CODES}
-        for m in MONTHS
-    }
+    results = (
+        {
+            m: {code: {95: [], 100: []} for code in VALID_ECOZONE_CODES}
+            for m in MONTHS
+        }
+        if collect_monthly else {}
+    )
+    scene_records: list[dict] = []
 
     for i, scene in enumerate(scenes):
         if i % 50 == 0:
@@ -107,10 +143,20 @@ def monthly_percentiles_by_ecozone(
             combined = eco_masks[code] & valid
             if combined.sum() >= MIN_PIXELS:
                 px = data[combined]
-                results[month][code][95].append(float(np.percentile(px, 95)))
-                results[month][code][100].append(float(np.percentile(px, 100)))
+                p95 = float(np.percentile(px, 95))
+                p100 = float(np.percentile(px, 100))
+                if collect_monthly:
+                    results[month][code][95].append(p95)
+                    results[month][code][100].append(p100)
+                scene_records.append({
+                    "scene_date": scene["date"],
+                    "scene_month": month,
+                    "ecozone_code": code,
+                    "p95": p95,
+                    "p100": p100,
+                })
 
-    return results
+    return results, scene_records
 
 
 # ── Main loop: both AOIs, both indices ────────────────────────────────────────
@@ -119,6 +165,7 @@ def monthly_percentiles_by_ecozone(
 monthly_summary: dict = {}
 # scene_counts[aoi][index][month] = number of contributing scenes
 scene_counts: dict = {}
+scene_level_records: list[dict] = []
 
 for aoi in AOIS:
     cfg = get_aoi_config(aoi)
@@ -152,8 +199,31 @@ for aoi in AOIS:
         scenes = load_scenes(index_dir, manifest_path)
         print(f"    {len(scenes)} scenes on disk")
 
-        print(f"  [{index_name}] Computing monthly p95/p100 per ecozone...")
-        raw = monthly_percentiles_by_ecozone(scenes, eco_masks)
+        if PLOT_SCENE_LEVEL and POINTS_ONLY:
+            print(f"  [{index_name}] Computing scene-level p95/p100 per ecozone...")
+        else:
+            print(f"  [{index_name}] Computing monthly p95/p100 per ecozone...")
+        raw, per_scene_records = monthly_percentiles_by_ecozone(
+            scenes,
+            eco_masks,
+            collect_monthly=not (PLOT_SCENE_LEVEL and POINTS_ONLY),
+        )
+        for record in per_scene_records:
+            scene_level_records.append({
+                "AOI": AOI_DISPLAY[aoi],
+                "AOI Key": aoi,
+                "Index": index_name,
+                "Scene Date": record["scene_date"].date().isoformat(),
+                "Month": record["scene_month"],
+                "Month Name": MONTH_NAMES[record["scene_month"] - 1],
+                "Ecozone": ECOZONE_LABELS[record["ecozone_code"]],
+                "Ecozone Code": record["ecozone_code"],
+                "p95": round(record["p95"], 6),
+                "p100 (max)": round(record["p100"], 6),
+            })
+
+        if PLOT_SCENE_LEVEL and POINTS_ONLY:
+            continue
 
         monthly_summary[aoi][index_name] = {}
         scene_counts[aoi][index_name]    = {}
@@ -257,38 +327,165 @@ def seasonal_figure(
     print(f"\nSaved: {outfile}")
 
 
+def seasonal_scene_figure(
+    index_name: str,
+    title: str,
+    ylabel: str,
+    outfile: Path,
+) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6), sharey=False)
+    fig.suptitle(title, fontsize=14, fontweight="bold", y=1.01)
+
+    scene_df = pd.DataFrame(scene_level_records)
+    if not scene_df.empty:
+        scene_df["Scene Date"] = pd.to_datetime(scene_df["Scene Date"])
+
+    for ax, aoi in zip(axes, AOIS):
+        for code in VALID_ECOZONE_CODES:
+            color = ECOZONE_COLORS[code]
+            subset = scene_df[
+                (scene_df["AOI Key"] == aoi)
+                & (scene_df["Index"] == index_name)
+                & (scene_df["Ecozone Code"] == code)
+            ].sort_values("Scene Date").copy()
+            if subset.empty:
+                continue
+
+            ax.plot(
+                subset["Scene Date"],
+                subset["p95"],
+                color=color,
+                alpha=0.8,
+                linewidth=1.4,
+                marker="o",
+                markersize=2.8,
+                label=ECOZONE_LABELS[code],
+                zorder=3,
+            )
+
+            if not POINTS_ONLY:
+                valid_band = subset[["Scene Date", "p95", "p100 (max)"]].dropna()
+                if not valid_band.empty:
+                    ax.fill_between(
+                        valid_band["Scene Date"],
+                        valid_band["p95"],
+                        valid_band["p100 (max)"],
+                        alpha=0.1,
+                        color=color,
+                        linewidth=0,
+                        zorder=2,
+                    )
+
+        ax.set_title(AOI_DISPLAY[aoi], fontsize=12)
+        ax.set_xlabel("Scene date")
+        ax.set_ylabel(ylabel if aoi == "north" else "")
+        ax.xaxis.set_major_locator(mdates.YearLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", fontsize=8)
+        ax.grid(True, alpha=0.2, linestyle="--")
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+    eco_handles = [
+        mpatches.Patch(color=ECOZONE_COLORS[c], label=ECOZONE_LABELS[c])
+        for c in VALID_ECOZONE_CODES
+    ]
+    line_handle = plt.Line2D(
+        [0], [0], color="#666666", linewidth=1.5, marker="o",
+        alpha=0.8, markersize=4, label="Scene-level p95"
+    )
+    handles = eco_handles + [line_handle]
+    if not POINTS_ONLY:
+        band_handle = mpatches.Patch(
+            facecolor="gray", alpha=0.3, label="p95–p100 range"
+        )
+        handles.append(band_handle)
+    fig.legend(
+        handles=handles,
+        loc="lower center", ncol=5 if not POINTS_ONLY else 4, fontsize=9,
+        framealpha=0.9, bbox_to_anchor=(0.5, -0.06),
+    )
+
+    plt.tight_layout()
+    plt.savefig(outfile, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"\nSaved: {outfile}")
+
+
 # ── Figure 1: NDVI seasonal ───────────────────────────────────────────────────
 
-seasonal_figure(
-    index_name="NDVI",
-    title="Seasonal Peak Vegetation — Monthly p95 NDVI by Ecozone\n(shaded band = p95 to p100)",
-    ylabel="Mean monthly p95 NDVI",
-    outfile=FIGURES_DIR / "ecozone_ndvi_seasonal.png",
-)
+if PLOT_SCENE_LEVEL:
+    seasonal_scene_figure(
+        index_name="NDVI",
+        title=(
+            "Seasonal Peak Vegetation — Scene-level p95 NDVI by Ecozone\n"
+            + ("(scene-date line plot)" if POINTS_ONLY else "(scene-date line plot, shaded band = p95 to p100)")
+        ),
+        ylabel="Scene-level p95 NDVI",
+        outfile=FIGURES_DIR / "ecozone_ndvi_seasonal_scenelevel.png",
+    )
+else:
+    seasonal_figure(
+        index_name="NDVI",
+        title="Seasonal Peak Vegetation — Monthly p95 NDVI by Ecozone\n(shaded band = p95 to p100)",
+        ylabel="Mean monthly p95 NDVI",
+        outfile=FIGURES_DIR / "ecozone_ndvi_seasonal.png",
+    )
 
 
 # ── Figure 2: NDMI seasonal ───────────────────────────────────────────────────
 
-seasonal_figure(
-    index_name="NDMI",
-    title="Seasonal Canopy Moisture — Monthly p95 NDMI by Ecozone\n(shaded band = p95 to p100)",
-    ylabel="Mean monthly p95 NDMI",
-    outfile=FIGURES_DIR / "ecozone_ndmi_seasonal.png",
-)
+if PLOT_SCENE_LEVEL:
+    seasonal_scene_figure(
+        index_name="NDMI",
+        title=(
+            "Seasonal Canopy Moisture — Scene-level p95 NDMI by Ecozone\n"
+            + ("(scene-date line plot)" if POINTS_ONLY else "(scene-date line plot, shaded band = p95 to p100)")
+        ),
+        ylabel="Scene-level p95 NDMI",
+        outfile=FIGURES_DIR / "ecozone_ndmi_seasonal_scenelevel.png",
+    )
+else:
+    seasonal_figure(
+        index_name="NDMI",
+        title="Seasonal Canopy Moisture — Monthly p95 NDMI by Ecozone\n(shaded band = p95 to p100)",
+        ylabel="Mean monthly p95 NDMI",
+        outfile=FIGURES_DIR / "ecozone_ndmi_seasonal.png",
+    )
 
 
 # ── Figure 2b: EVI seasonal (only if cache exists) ───────────────────────────
 
-if any(
-    not np.isnan(monthly_summary[aoi]["EVI"][m][code][95])
-    for aoi in AOIS for m in MONTHS for code in VALID_ECOZONE_CODES
-):
-    seasonal_figure(
-        index_name="EVI",
-        title="Seasonal EVI — Monthly p95 by Ecozone\n(shaded band = p95 to p100)",
-        ylabel="Mean monthly p95 EVI",
-        outfile=FIGURES_DIR / "ecozone_evi_seasonal.png",
+evi_available = False
+if PLOT_SCENE_LEVEL and POINTS_ONLY:
+    evi_available = any(
+        record["Index"] == "EVI"
+        for record in scene_level_records
     )
+else:
+    evi_available = any(
+        not np.isnan(monthly_summary[aoi]["EVI"][m][code][95])
+        for aoi in AOIS for m in MONTHS for code in VALID_ECOZONE_CODES
+    )
+
+if evi_available:
+    if PLOT_SCENE_LEVEL:
+        seasonal_scene_figure(
+            index_name="EVI",
+            title=(
+                "Seasonal EVI — Scene-level p95 by Ecozone\n"
+                + ("(scene-date line plot)" if POINTS_ONLY else "(scene-date line plot, shaded band = p95 to p100)")
+            ),
+            ylabel="Scene-level p95 EVI",
+            outfile=FIGURES_DIR / "ecozone_evi_seasonal_scenelevel.png",
+        )
+    else:
+        seasonal_figure(
+            index_name="EVI",
+            title="Seasonal EVI — Monthly p95 by Ecozone\n(shaded band = p95 to p100)",
+            ylabel="Mean monthly p95 EVI",
+            outfile=FIGURES_DIR / "ecozone_evi_seasonal.png",
+        )
 else:
     print("\n[EVI] Seasonal figure skipped — no EVI cache found.")
     print("      Run: python Cache/build_sentinel_cache.py --aoi north --indices EVI")
@@ -299,88 +496,94 @@ else:
 # Solid lines = NDVI (left y-axis)  |  Dashed lines = NDMI (right y-axis)
 # Ecozone color is consistent across both indices.
 
-fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-fig.suptitle(
-    "Seasonal Synchronization — NDVI Greenness vs NDMI Moisture by Ecozone\n"
-    "(solid = NDVI, left axis  |  dashed = NDMI, right axis)",
-    fontsize=13, fontweight="bold", y=1.02,
-)
+if not PLOT_SCENE_LEVEL:
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig.suptitle(
+        "Seasonal Synchronization — NDVI Greenness vs NDMI Moisture by Ecozone\n"
+        "(solid = NDVI, left axis  |  dashed = NDMI, right axis)",
+        fontsize=13, fontweight="bold", y=1.02,
+    )
 
-for ax, aoi in zip(axes, AOIS):
-    ax2 = ax.twinx()
+    for ax, aoi in zip(axes, AOIS):
+        ax2 = ax.twinx()
 
-    for code in VALID_ECOZONE_CODES:
-        color     = ECOZONE_COLORS[code]
-        ndvi_vals = [monthly_summary[aoi]["NDVI"][m][code][95] for m in MONTHS]
-        ndmi_vals = [monthly_summary[aoi]["NDMI"][m][code][95] for m in MONTHS]
+        for code in VALID_ECOZONE_CODES:
+            color     = ECOZONE_COLORS[code]
+            ndvi_vals = [monthly_summary[aoi]["NDVI"][m][code][95] for m in MONTHS]
+            ndmi_vals = [monthly_summary[aoi]["NDMI"][m][code][95] for m in MONTHS]
 
-        ax.plot(
-            MONTHS, ndvi_vals,
-            color=color, linewidth=2.2, linestyle="-",
-            marker="o", markersize=3.5, zorder=3,
-        )
-        ax2.plot(
-            MONTHS, ndmi_vals,
-            color=color, linewidth=2.2, linestyle="--",
-            marker="s", markersize=3.5, zorder=3,
-        )
+            ax.plot(
+                MONTHS, ndvi_vals,
+                color=color, linewidth=2.2, linestyle="-",
+                marker="o", markersize=3.5, zorder=3,
+            )
+            ax2.plot(
+                MONTHS, ndmi_vals,
+                color=color, linewidth=2.2, linestyle="--",
+                marker="s", markersize=3.5, zorder=3,
+            )
 
-    ax.set_title(AOI_DISPLAY[aoi], fontsize=12)
-    ax.set_xlabel("Month")
-    ax.set_ylabel("p95 NDVI  (solid)", fontsize=10)
-    ax2.set_ylabel("p95 NDMI  (dashed)", fontsize=10)
-    ax.set_xticks(MONTHS)
-    ax.set_xticklabels(MONTH_NAMES, fontsize=9)
-    ax.grid(True, alpha=0.2, linestyle="--")
-    ax.spines["top"].set_visible(False)
-    ax2.spines["top"].set_visible(False)
-    ax.set_zorder(ax2.get_zorder() + 1)
-    ax.patch.set_visible(False)
+        ax.set_title(AOI_DISPLAY[aoi], fontsize=12)
+        ax.set_xlabel("Month")
+        ax.set_ylabel("p95 NDVI  (solid)", fontsize=10)
+        ax2.set_ylabel("p95 NDMI  (dashed)", fontsize=10)
+        ax.set_xticks(MONTHS)
+        ax.set_xticklabels(MONTH_NAMES, fontsize=9)
+        ax.grid(True, alpha=0.2, linestyle="--")
+        ax.spines["top"].set_visible(False)
+        ax2.spines["top"].set_visible(False)
+        ax.set_zorder(ax2.get_zorder() + 1)
+        ax.patch.set_visible(False)
 
-# Legend: ecozone colors + line style key
-eco_handles = [
-    mpatches.Patch(color=ECOZONE_COLORS[c], label=ECOZONE_LABELS[c])
-    for c in VALID_ECOZONE_CODES
-]
-style_handles = [
-    plt.Line2D([0], [0], color="#555", linewidth=2, linestyle="-",  label="NDVI  (solid)"),
-    plt.Line2D([0], [0], color="#555", linewidth=2, linestyle="--", label="NDMI  (dashed)"),
-]
-fig.legend(
-    handles=eco_handles + style_handles,
-    loc="lower center", ncol=5, fontsize=9,
-    framealpha=0.9, bbox_to_anchor=(0.5, -0.07),
-)
+    # Legend: ecozone colors + line style key
+    eco_handles = [
+        mpatches.Patch(color=ECOZONE_COLORS[c], label=ECOZONE_LABELS[c])
+        for c in VALID_ECOZONE_CODES
+    ]
+    style_handles = [
+        plt.Line2D([0], [0], color="#555", linewidth=2, linestyle="-",  label="NDVI  (solid)"),
+        plt.Line2D([0], [0], color="#555", linewidth=2, linestyle="--", label="NDMI  (dashed)"),
+    ]
+    fig.legend(
+        handles=eco_handles + style_handles,
+        loc="lower center", ncol=5, fontsize=9,
+        framealpha=0.9, bbox_to_anchor=(0.5, -0.07),
+    )
 
-plt.tight_layout()
-sync_out = FIGURES_DIR / "ecozone_seasonal_sync.png"
-plt.savefig(sync_out, dpi=150, bbox_inches="tight")
-plt.close()
-print(f"Saved: {sync_out}")
+    plt.tight_layout()
+    sync_out = FIGURES_DIR / "ecozone_seasonal_sync.png"
+    plt.savefig(sync_out, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"Saved: {sync_out}")
+else:
+    print("Skipping monthly synchronization figure in --scene-level mode.")
 
 
 # ── Spreadsheet ───────────────────────────────────────────────────────────────
 
 rows = []
-for aoi in AOIS:
-    for index_name in INDICES:
-        for m in MONTHS:
-            for code in VALID_ECOZONE_CODES:
-                d = monthly_summary[aoi][index_name][m][code]
-                rows.append({
-                    "AOI":          AOI_DISPLAY[aoi],
-                    "Index":        index_name,
-                    "Month":        m,
-                    "Month Name":   MONTH_NAMES[m - 1],
-                    "Ecozone":      ECOZONE_LABELS[code],
-                    "Ecozone Code": code,
-                    "Scene Count":  scene_counts[aoi][index_name][m],
-                    "p95":          round(d[95],  6),
-                    "p100 (max)":   round(d[100], 6),
-                })
-
-df = pd.DataFrame(rows)
 table_path = TABLES_DIR / "ecozone_seasonal_summary.xlsx"
+if PLOT_SCENE_LEVEL:
+    table_path = TABLES_DIR / "ecozone_seasonal_scenelevel_summary.xlsx"
+    df = pd.DataFrame(scene_level_records)
+else:
+    for aoi in AOIS:
+        for index_name in INDICES:
+            for m in MONTHS:
+                for code in VALID_ECOZONE_CODES:
+                    d = monthly_summary[aoi][index_name][m][code]
+                    rows.append({
+                        "AOI":          AOI_DISPLAY[aoi],
+                        "Index":        index_name,
+                        "Month":        m,
+                        "Month Name":   MONTH_NAMES[m - 1],
+                        "Ecozone":      ECOZONE_LABELS[code],
+                        "Ecozone Code": code,
+                        "Scene Count":  scene_counts[aoi][index_name][m],
+                        "p95":          round(d[95],  6),
+                        "p100 (max)":   round(d[100], 6),
+                    })
+    df = pd.DataFrame(rows)
 df.to_excel(table_path, index=False, sheet_name="Monthly by Ecozone")
 print(f"\nSaved: {table_path}")
 

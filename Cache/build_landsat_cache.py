@@ -40,6 +40,7 @@ Run from project root:
   python Cache/build_landsat_cache.py --aoi north
   python Cache/build_landsat_cache.py --aoi south --indices NDVI NDMI --start-date 1984-01-01
   python Cache/build_landsat_cache.py --cache-suffix _3_24                # writes to GWNF_cache_3_24/ and Smoky_cache_3_24/
+  python Cache/build_landsat_cache.py --aoi south --skip-scene-id LC08_L2SP_018036_20220724_02_T1
 """
 
 import json
@@ -69,6 +70,15 @@ add_indices_arg(parser)
 add_date_range_args(parser, "1984-01-01")
 add_cloud_arg(parser)
 add_cache_suffix_arg(parser, default=None)
+parser.add_argument(
+    "--skip-scene-id",
+    action="append",
+    default=[],
+    help=(
+        "Scene ID to skip entirely. May be supplied multiple times. Useful for "
+        "a persistent bad asset that blocks the rest of the cache."
+    ),
+)
 args = parser.parse_args()
 
 INDICES_TO_RUN = args.indices
@@ -76,6 +86,7 @@ START_DATE     = args.start_date
 END_DATE       = args.end_date
 CLOUD_MAX      = args.cloud_max
 AOIS_TO_RUN    = [args.aoi] if args.aoi else ["north", "south"]
+SKIP_SCENE_IDS = set(args.skip_scene_id)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -222,6 +233,8 @@ for AOI in AOIS_TO_RUN:
     print(f"Indices:        {INDICES_TO_RUN}")
     print(f"Date range:     {START_DATE} → {END_DATE}")
     print(f"Cloud max:      {CLOUD_MAX}%")
+    if SKIP_SCENE_IDS:
+        print(f"Skip scene IDs: {sorted(SKIP_SCENE_IDS)}")
 
     # ── AOI geometry + canonical grid ─────────────────────────────────────────
 
@@ -456,6 +469,12 @@ for AOI in AOIS_TO_RUN:
     for scene_idx, item in enumerate(items):
         current_scene_idx = scene_idx + 1
         scene_id  = item.id
+        if scene_id in SKIP_SCENE_IDS:
+            print(f"\n[{current_scene_idx}/{len(items)}] {scene_id}")
+            print("  Skipping — requested via --skip-scene-id")
+            for index_name in INDICES_TO_RUN:
+                all_results[index_name]["skipped"] += 1
+            continue
         date_str  = item.datetime.strftime("%Y%m%d")
         platform  = item.properties.get("platform", "unknown")
         wrs_path  = item.properties.get("landsat:wrs_path", "?")
