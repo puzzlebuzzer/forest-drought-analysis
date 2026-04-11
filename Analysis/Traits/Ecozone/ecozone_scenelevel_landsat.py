@@ -184,7 +184,7 @@ def zscore_suffix(zscore_threshold: float) -> str:
 
 
 def scenelevel_figure_dir(aoi: str, index_name: str) -> Path:
-    return FIGURES_DIR / aoi / "seasonal_curves" / "by_ecozone" / index_name.lower()
+    return FIGURES_DIR / "seasonal_curves" / "landsat" / aoi / "by_ecozone" / index_name.lower()
 
 
 def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zscore_threshold: float) -> None:
