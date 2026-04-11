@@ -171,6 +171,13 @@ def filter_plot_series(values: pd.Series, zscore_threshold: float) -> pd.Series:
     return zscores <= zscore_threshold
 
 
+def zscore_suffix(zscore_threshold: float) -> str:
+    if zscore_threshold is None:
+        return "znone"
+    label = str(zscore_threshold).replace(".", "p")
+    return f"z{label}"
+
+
 def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zscore_threshold: float) -> None:
     fig, ax = plt.subplots(figsize=(15, 8))
     plot_df = df.copy()
@@ -315,9 +322,10 @@ def main() -> None:
 
     for index_name in indices:
         stem = f"landsat_{index_name.lower()}_scenelevel_ecozone_{args.aoi}_{year_label}"
+        plot_stem = f"{stem}_{zscore_suffix(args.plot_zscore_threshold)}"
         table_path = TABLES_DIR / f"{stem}.xlsx"
-        png_path = FIGURES_DIR / f"{stem}.png"
-        bokeh_path = FIGURES_DIR / f"{stem}.bokeh.html"
+        png_path = FIGURES_DIR / f"{plot_stem}.png"
+        bokeh_path = FIGURES_DIR / f"{plot_stem}.bokeh.html"
 
         if table_path.exists() and not args.force_rebuild:
             print(f"[{index_name}] Using existing spreadsheet: {table_path}")
