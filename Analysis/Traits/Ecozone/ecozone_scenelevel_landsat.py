@@ -91,6 +91,11 @@ def parse_args() -> argparse.Namespace:
             "from PNG and Bokeh plots. Spreadsheet rows are unchanged."
         ),
     )
+    parser.add_argument(
+        "--force-rebuild",
+        action="store_true",
+        help="Recompute the spreadsheet from rasters even if it already exists.",
+    )
     return parser.parse_args()
 
 
@@ -294,18 +299,6 @@ def main() -> None:
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     TABLES_DIR.mkdir(parents=True, exist_ok=True)
 
-    print(f"Loading Landsat {args.index} scenes for {args.aoi}...")
-    all_scenes = load_landsat_scenes(args.aoi, args.index)
-    scenes = filter_scenes_by_year(all_scenes, args.start_year, args.end_year)
-    print(f"  {len(scenes)} scenes matched {args.start_year}-{args.end_year}")
-
-    if not scenes:
-        raise SystemExit("No matching scenes found for the requested AOI/year range.")
-
-    df = build_scenelevel_dataframe(args.aoi, args.index, scenes)
-    if df.empty:
-        raise SystemExit("No ecozone summaries were produced. Check valid-pixel coverage.")
-
     year_label = (
         f"{args.start_year}"
         if args.start_year == args.end_year
@@ -317,8 +310,25 @@ def main() -> None:
     png_path = FIGURES_DIR / f"{stem}.png"
     bokeh_path = FIGURES_DIR / f"{stem}.bokeh.html"
 
-    df.to_excel(table_path, index=False)
-    print(f"Saved: {table_path}")
+    if table_path.exists() and not args.force_rebuild:
+        print(f"Using existing spreadsheet: {table_path}")
+        df = pd.read_excel(table_path)
+    else:
+        print(f"Loading Landsat {args.index} scenes for {args.aoi}...")
+        all_scenes = load_landsat_scenes(args.aoi, args.index)
+        scenes = filter_scenes_by_year(all_scenes, args.start_year, args.end_year)
+        print(f"  {len(scenes)} scenes matched {args.start_year}-{args.end_year}")
+
+        if not scenes:
+            raise SystemExit("No matching scenes found for the requested AOI/year range.")
+
+        df = build_scenelevel_dataframe(args.aoi, args.index, scenes)
+        if df.empty:
+            raise SystemExit("No ecozone summaries were produced. Check valid-pixel coverage.")
+
+        df.to_excel(table_path, index=False)
+        print(f"Saved: {table_path}")
+
     build_png(df, args.aoi, args.index, png_path, args.plot_zscore_threshold)
     build_bokeh(df, args.aoi, args.index, bokeh_path, args.plot_zscore_threshold)
 
