@@ -83,12 +83,15 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--plot-zscore-threshold",
+        nargs="?",
         type=float,
-        default=3.0,
+        const=3.0,
+        default=None,
         help=(
             "Plot-only outlier filter applied separately to each ecozone x summary "
-            "series. Points with absolute z-score above this threshold are omitted "
-            "from PNG and Bokeh plots. Spreadsheet rows are unchanged."
+            "series. Omit the flag for no filtering. Use the flag with no value for "
+            "the default threshold of 3.0, or pass a numeric threshold explicitly. "
+            "Spreadsheet rows are unchanged."
         ),
     )
     parser.add_argument(
@@ -157,6 +160,8 @@ def build_scenelevel_dataframe(aoi: str, index_name: str, scenes: list[dict]) ->
 
 
 def filter_plot_series(values: pd.Series, zscore_threshold: float) -> pd.Series:
+    if zscore_threshold is None:
+        return pd.Series(True, index=values.index)
     numeric = pd.to_numeric(values, errors="coerce")
     mean = numeric.mean()
     std = numeric.std(ddof=0)
@@ -190,9 +195,10 @@ def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zscor
                 label=label,
             )
 
+    filter_note = "no plot z-filter" if zscore_threshold is None else f"plot filter: |z| <= {zscore_threshold:g}"
     ax.set_title(
         f"Landsat {index_name} Scene-Level Ecozone Summaries — {AOI_DISPLAY[aoi]} "
-        f"({int(plot_df['Year'].min())}-{int(plot_df['Year'].max())}, plot filter: |z| <= {zscore_threshold:g})"
+        f"({int(plot_df['Year'].min())}-{int(plot_df['Year'].max())}, {filter_note})"
     )
     ax.set_xlabel("Scene date")
     ax.set_ylabel(index_name)
@@ -219,7 +225,8 @@ def build_bokeh(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zsc
     p = figure(
         title=(
             f"Landsat {index_name} Scene-Level Ecozone Summaries — {AOI_DISPLAY[aoi]} "
-            f"({int(plot_df['Year'].min())}-{int(plot_df['Year'].max())}, plot filter: |z| <= {zscore_threshold:g})"
+            f"({int(plot_df['Year'].min())}-{int(plot_df['Year'].max())}, "
+            f"{'no plot z-filter' if zscore_threshold is None else f'plot filter: |z| <= {zscore_threshold:g}'})"
         ),
         x_axis_type="datetime",
         width=1400,
