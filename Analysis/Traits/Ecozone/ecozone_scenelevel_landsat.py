@@ -184,7 +184,7 @@ def zscore_suffix(zscore_threshold: float) -> str:
 
 
 def scenelevel_figure_dir(aoi: str, index_name: str) -> Path:
-    return FIGURES_DIR / aoi / "scene_level" / "by_ecozone" / index_name.lower()
+    return FIGURES_DIR / aoi / "seasonal_curves" / "by_ecozone" / index_name.lower()
 
 
 def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zscore_threshold: float) -> None:
@@ -330,13 +330,13 @@ def main() -> None:
     indices = [args.index.upper()] if args.index else INDEX_OPTIONS
 
     for index_name in indices:
-        stem = f"landsat_{index_name.lower()}_scenelevel_ecozone_{args.aoi}_{year_label}"
+        stem = f"landsat_{index_name.lower()}_seasonalcurves_ecozone_{args.aoi}_{year_label}"
         table_path = TABLES_DIR / f"{stem}.xlsx"
         plot_dir = scenelevel_figure_dir(args.aoi, index_name)
         plot_dir.mkdir(parents=True, exist_ok=True)
         plot_stem = (
             f"{year_label}_{zscore_suffix(args.plot_zscore_threshold)}"
-            f"_landsat_{args.aoi}_scenelevel_byecozone_{index_name.lower()}"
+            f"_landsat_{args.aoi}_seasonalcurves_byecozone_{index_name.lower()}"
         )
         png_path = plot_dir / f"{plot_stem}.png"
         bokeh_path = plot_dir / f"{plot_stem}.bokeh.html"
