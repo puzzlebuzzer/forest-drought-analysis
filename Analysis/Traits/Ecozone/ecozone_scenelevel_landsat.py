@@ -99,6 +99,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Recompute the spreadsheet from rasters even if it already exists.",
     )
+    parser.add_argument(
+        "--png",
+        action="store_true",
+        help="Also generate a static PNG plot. By default only the Bokeh plot is written.",
+    )
     return parser.parse_args()
 
 
@@ -348,7 +353,8 @@ def main() -> None:
             df.to_excel(table_path, index=False)
             print(f"[{index_name}] Saved: {table_path}")
 
-        build_png(df, args.aoi, index_name, png_path, args.plot_zscore_threshold)
+        if args.png:
+            build_png(df, args.aoi, index_name, png_path, args.plot_zscore_threshold)
         build_bokeh(df, args.aoi, index_name, bokeh_path, args.plot_zscore_threshold)
 
 
