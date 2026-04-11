@@ -41,6 +41,7 @@ VALID_ECOZONE_CODES = [1, 2, 3]
 ECOZONE_LABELS = {1: "Cool", 2: "Intermediate", 3: "Hot"}
 ECOZONE_COLORS = {1: "#4E90C8", 2: "#72B063", 3: "#D9534F"}
 AOI_DISPLAY = {"north": "GWNF", "south": "Smoky"}
+INDEX_OPTIONS = ["NDVI", "NDMI", "EVI"]
 SUMMARY_SPECS = [
     ("p50", 50),
     ("p75", 75),
@@ -77,9 +78,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--index",
-        choices=["NDVI"],
-        default="NDVI",
-        help="Index to process. Kept parameterized for future expansion.",
+        choices=["ndvi", "ndmi", "evi"],
+        help="Index to process. Omit to run all supported indices.",
     )
     parser.add_argument(
         "--plot-zscore-threshold",
@@ -311,33 +311,37 @@ def main() -> None:
         if args.start_year == args.end_year
         else f"{args.start_year}_{args.end_year}"
     )
-    stem = f"landsat_{args.index.lower()}_scenelevel_ecozone_{args.aoi}_{year_label}"
+    indices = [args.index.upper()] if args.index else INDEX_OPTIONS
 
-    table_path = TABLES_DIR / f"{stem}.xlsx"
-    png_path = FIGURES_DIR / f"{stem}.png"
-    bokeh_path = FIGURES_DIR / f"{stem}.bokeh.html"
+    for index_name in indices:
+        stem = f"landsat_{index_name.lower()}_scenelevel_ecozone_{args.aoi}_{year_label}"
+        table_path = TABLES_DIR / f"{stem}.xlsx"
+        png_path = FIGURES_DIR / f"{stem}.png"
+        bokeh_path = FIGURES_DIR / f"{stem}.bokeh.html"
 
-    if table_path.exists() and not args.force_rebuild:
-        print(f"Using existing spreadsheet: {table_path}")
-        df = pd.read_excel(table_path)
-    else:
-        print(f"Loading Landsat {args.index} scenes for {args.aoi}...")
-        all_scenes = load_landsat_scenes(args.aoi, args.index)
-        scenes = filter_scenes_by_year(all_scenes, args.start_year, args.end_year)
-        print(f"  {len(scenes)} scenes matched {args.start_year}-{args.end_year}")
+        if table_path.exists() and not args.force_rebuild:
+            print(f"[{index_name}] Using existing spreadsheet: {table_path}")
+            df = pd.read_excel(table_path)
+        else:
+            print(f"[{index_name}] Loading Landsat scenes for {args.aoi}...")
+            all_scenes = load_landsat_scenes(args.aoi, index_name)
+            scenes = filter_scenes_by_year(all_scenes, args.start_year, args.end_year)
+            print(f"[{index_name}]   {len(scenes)} scenes matched {args.start_year}-{args.end_year}")
 
-        if not scenes:
-            raise SystemExit("No matching scenes found for the requested AOI/year range.")
+            if not scenes:
+                print(f"[{index_name}] Skipping — no matching scenes found for the requested AOI/year range.")
+                continue
 
-        df = build_scenelevel_dataframe(args.aoi, args.index, scenes)
-        if df.empty:
-            raise SystemExit("No ecozone summaries were produced. Check valid-pixel coverage.")
+            df = build_scenelevel_dataframe(args.aoi, index_name, scenes)
+            if df.empty:
+                print(f"[{index_name}] Skipping — no ecozone summaries were produced.")
+                continue
 
-        df.to_excel(table_path, index=False)
-        print(f"Saved: {table_path}")
+            df.to_excel(table_path, index=False)
+            print(f"[{index_name}] Saved: {table_path}")
 
-    build_png(df, args.aoi, args.index, png_path, args.plot_zscore_threshold)
-    build_bokeh(df, args.aoi, args.index, bokeh_path, args.plot_zscore_threshold)
+        build_png(df, args.aoi, index_name, png_path, args.plot_zscore_threshold)
+        build_bokeh(df, args.aoi, index_name, bokeh_path, args.plot_zscore_threshold)
 
 
 if __name__ == "__main__":
