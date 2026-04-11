@@ -81,6 +81,16 @@ def parse_args() -> argparse.Namespace:
         default="NDVI",
         help="Index to process. Kept parameterized for future expansion.",
     )
+    parser.add_argument(
+        "--plot-zscore-threshold",
+        type=float,
+        default=3.0,
+        help=(
+            "Plot-only outlier filter applied separately to each ecozone x summary "
+            "series. Points with absolute z-score above this threshold are omitted "
+            "from PNG and Bokeh plots. Spreadsheet rows are unchanged."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -141,7 +151,17 @@ def build_scenelevel_dataframe(aoi: str, index_name: str, scenes: list[dict]) ->
     return df.sort_values(["Scene Date", "Ecozone Code"]).reset_index(drop=True)
 
 
-def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path) -> None:
+def filter_plot_series(values: pd.Series, zscore_threshold: float) -> pd.Series:
+    numeric = pd.to_numeric(values, errors="coerce")
+    mean = numeric.mean()
+    std = numeric.std(ddof=0)
+    if pd.isna(mean) or pd.isna(std) or std == 0:
+        return pd.Series(True, index=values.index)
+    zscores = ((numeric - mean) / std).abs()
+    return zscores <= zscore_threshold
+
+
+def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zscore_threshold: float) -> None:
     fig, ax = plt.subplots(figsize=(15, 8))
     plot_df = df.copy()
     plot_df["Scene Date"] = pd.to_datetime(plot_df["Scene Date"])
@@ -150,10 +170,12 @@ def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path) -> No
         ecozone_df = plot_df[plot_df["Ecozone Code"] == ecozone_code].sort_values("Scene Date")
         color = ECOZONE_COLORS[ecozone_code]
         for summary_name, _ in SUMMARY_SPECS:
+            series_mask = filter_plot_series(ecozone_df[summary_name], zscore_threshold)
+            series_df = ecozone_df.loc[series_mask].copy()
             label = f"{ECOZONE_LABELS[ecozone_code]} {summary_name}"
             ax.plot(
-                ecozone_df["Scene Date"],
-                ecozone_df[summary_name],
+                series_df["Scene Date"],
+                series_df[summary_name],
                 color=color,
                 linestyle="-",
                 linewidth=1.8,
@@ -164,7 +186,8 @@ def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path) -> No
             )
 
     ax.set_title(
-        f"Landsat {index_name} Scene-Level Ecozone Summaries — {AOI_DISPLAY[aoi]} ({int(plot_df['Year'].min())}-{int(plot_df['Year'].max())})"
+        f"Landsat {index_name} Scene-Level Ecozone Summaries — {AOI_DISPLAY[aoi]} "
+        f"({int(plot_df['Year'].min())}-{int(plot_df['Year'].max())}, plot filter: |z| <= {zscore_threshold:g})"
     )
     ax.set_xlabel("Scene date")
     ax.set_ylabel(index_name)
@@ -181,7 +204,7 @@ def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path) -> No
     print(f"Saved: {out_path}")
 
 
-def build_bokeh(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path) -> None:
+def build_bokeh(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zscore_threshold: float) -> None:
     if figure is None:
         raise SystemExit("Bokeh is not installed. Install it with: pip install bokeh")
 
@@ -191,7 +214,7 @@ def build_bokeh(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path) -> 
     p = figure(
         title=(
             f"Landsat {index_name} Scene-Level Ecozone Summaries — {AOI_DISPLAY[aoi]} "
-            f"({int(plot_df['Year'].min())}-{int(plot_df['Year'].max())})"
+            f"({int(plot_df['Year'].min())}-{int(plot_df['Year'].max())}, plot filter: |z| <= {zscore_threshold:g})"
         ),
         x_axis_type="datetime",
         width=1400,
@@ -222,15 +245,17 @@ def build_bokeh(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path) -> 
         ecozone_df = plot_df[plot_df["Ecozone Code"] == ecozone_code].sort_values("Scene Date")
         color = ECOZONE_COLORS[ecozone_code]
         for summary_name, _ in SUMMARY_SPECS:
+            series_mask = filter_plot_series(ecozone_df[summary_name], zscore_threshold)
+            series_df = ecozone_df.loc[series_mask].copy()
             series_df = pd.DataFrame(
                 {
-                    "scene_date": ecozone_df["Scene Date"],
-                    "value": ecozone_df[summary_name],
-                    "ecozone": ecozone_df["Ecozone"],
-                    "summary_label": [summary_name] * len(ecozone_df),
-                    "platform": ecozone_df["Platform"],
-                    "path_row": ecozone_df["Path/Row"],
-                    "valid_pixels": ecozone_df["Valid Pixels"],
+                    "scene_date": series_df["Scene Date"],
+                    "value": series_df[summary_name],
+                    "ecozone": series_df["Ecozone"],
+                    "summary_label": [summary_name] * len(series_df),
+                    "platform": series_df["Platform"],
+                    "path_row": series_df["Path/Row"],
+                    "valid_pixels": series_df["Valid Pixels"],
                 }
             )
             source = ColumnDataSource(series_df)
@@ -294,8 +319,8 @@ def main() -> None:
 
     df.to_excel(table_path, index=False)
     print(f"Saved: {table_path}")
-    build_png(df, args.aoi, args.index, png_path)
-    build_bokeh(df, args.aoi, args.index, bokeh_path)
+    build_png(df, args.aoi, args.index, png_path, args.plot_zscore_threshold)
+    build_bokeh(df, args.aoi, args.index, bokeh_path, args.plot_zscore_threshold)
 
 
 if __name__ == "__main__":
