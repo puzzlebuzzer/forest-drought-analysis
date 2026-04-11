@@ -82,7 +82,7 @@ def parse_args() -> argparse.Namespace:
         help="Index to process. Omit to run all supported indices.",
     )
     parser.add_argument(
-        "--plot-zscore-threshold",
+        "--z",
         nargs="?",
         type=float,
         const=3.0,
@@ -335,7 +335,7 @@ def main() -> None:
         plot_dir = scenelevel_figure_dir(args.aoi, index_name)
         plot_dir.mkdir(parents=True, exist_ok=True)
         plot_stem = (
-            f"{year_label}_{zscore_suffix(args.plot_zscore_threshold)}"
+            f"{year_label}_{zscore_suffix(args.z)}"
             f"_landsat_{args.aoi}_seasonalcurves_byecozone_{index_name.lower()}"
         )
         png_path = plot_dir / f"{plot_stem}.png"
@@ -363,8 +363,8 @@ def main() -> None:
             print(f"[{index_name}] Saved: {table_path}")
 
         if args.png:
-            build_png(df, args.aoi, index_name, png_path, args.plot_zscore_threshold)
-        build_bokeh(df, args.aoi, index_name, bokeh_path, args.plot_zscore_threshold)
+            build_png(df, args.aoi, index_name, png_path, args.z)
+        build_bokeh(df, args.aoi, index_name, bokeh_path, args.z)
 
 
 if __name__ == "__main__":
