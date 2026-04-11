@@ -183,6 +183,10 @@ def zscore_suffix(zscore_threshold: float) -> str:
     return f"z{label}"
 
 
+def scenelevel_figure_dir(aoi: str, index_name: str) -> Path:
+    return FIGURES_DIR / aoi / "scene_level" / "by_ecozone" / index_name.lower()
+
+
 def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zscore_threshold: float) -> None:
     fig, ax = plt.subplots(figsize=(15, 8))
     plot_df = df.copy()
@@ -327,10 +331,15 @@ def main() -> None:
 
     for index_name in indices:
         stem = f"landsat_{index_name.lower()}_scenelevel_ecozone_{args.aoi}_{year_label}"
-        plot_stem = f"{stem}_{zscore_suffix(args.plot_zscore_threshold)}"
         table_path = TABLES_DIR / f"{stem}.xlsx"
-        png_path = FIGURES_DIR / f"{plot_stem}.png"
-        bokeh_path = FIGURES_DIR / f"{plot_stem}.bokeh.html"
+        plot_dir = scenelevel_figure_dir(args.aoi, index_name)
+        plot_dir.mkdir(parents=True, exist_ok=True)
+        plot_stem = (
+            f"{year_label}_{zscore_suffix(args.plot_zscore_threshold)}"
+            f"_landsat_{args.aoi}_scenelevel_byecozone_{index_name.lower()}"
+        )
+        png_path = plot_dir / f"{plot_stem}.png"
+        bokeh_path = plot_dir / f"{plot_stem}.bokeh.html"
 
         if table_path.exists() and not args.force_rebuild:
             print(f"[{index_name}] Using existing spreadsheet: {table_path}")
