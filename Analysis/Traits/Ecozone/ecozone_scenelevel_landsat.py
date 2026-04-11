@@ -1,0 +1,311 @@
+#!/usr/bin/env python3
+"""
+ecozone_scenelevel_landsat.py
+-----------------------------
+Build per-scene Landsat NDVI summaries by ecozone for one AOI and year range.
+
+For each cached Landsat NDVI scene, compute ecozone-level p50, p75, p95, and
+max values. Write:
+
+- an Excel spreadsheet with one row per scene per ecozone
+- a static PNG line plot
+- a standalone Bokeh HTML line plot
+
+Default use case:
+  python Analysis/Traits/Ecozone/ecozone_scenelevel_landsat.py --aoi north --start-year 2023 --end-year 2023
+"""
+
+import argparse
+from pathlib import Path
+
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import rasterio
+
+try:
+    from bokeh.models import ColumnDataSource, HoverTool
+    from bokeh.plotting import figure, output_file, save
+except ImportError:
+    ColumnDataSource = None
+    HoverTool = None
+    figure = None
+    output_file = None
+    save = None
+
+from src.landsat import load_landsat_ecozone, load_landsat_scenes
+from src.paths import project_path
+
+VALID_ECOZONE_CODES = [1, 2, 3]
+ECOZONE_LABELS = {1: "Cool", 2: "Intermediate", 3: "Hot"}
+ECOZONE_COLORS = {1: "#4E90C8", 2: "#72B063", 3: "#D9534F"}
+AOI_DISPLAY = {"north": "GWNF", "south": "Smoky"}
+SUMMARY_SPECS = [
+    ("p50", 50, "-"),
+    ("p75", 75, "--"),
+    ("p95", 95, "-."),
+    ("max", 100, ":"),
+]
+MIN_PIXELS = 100
+
+FIGURES_DIR = project_path("results_figures_landsat_dir")
+TABLES_DIR = project_path("results_tables_landsat_dir")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Build scene-level Landsat NDVI ecozone summaries."
+    )
+    parser.add_argument(
+        "--aoi",
+        choices=sorted(AOI_DISPLAY),
+        default="north",
+        help="AOI key to process",
+    )
+    parser.add_argument(
+        "--start-year",
+        type=int,
+        default=2023,
+        help="First year to include",
+    )
+    parser.add_argument(
+        "--end-year",
+        type=int,
+        default=2023,
+        help="Last year to include",
+    )
+    parser.add_argument(
+        "--index",
+        choices=["NDVI"],
+        default="NDVI",
+        help="Index to process. Kept parameterized for future expansion.",
+    )
+    return parser.parse_args()
+
+
+def filter_scenes_by_year(scenes: list[dict], start_year: int, end_year: int) -> list[dict]:
+    return [
+        scene for scene in scenes
+        if start_year <= scene["date"].year <= end_year
+    ]
+
+
+def build_scenelevel_dataframe(aoi: str, index_name: str, scenes: list[dict]) -> pd.DataFrame:
+    ecozone_arr, _, _, _ = load_landsat_ecozone(aoi)
+    eco_masks = {code: (ecozone_arr == code) for code in VALID_ECOZONE_CODES}
+
+    records: list[dict] = []
+    for i, scene in enumerate(scenes, start=1):
+        if i == 1 or i % 25 == 0:
+            print(f"  Processing scene {i}/{len(scenes)}...", flush=True)
+
+        with rasterio.open(scene["filepath"]) as src:
+            data = src.read(1)
+
+        valid = np.isfinite(data)
+        for ecozone_code in VALID_ECOZONE_CODES:
+            combined = eco_masks[ecozone_code] & valid
+            valid_pixels = int(combined.sum())
+            if valid_pixels < MIN_PIXELS:
+                continue
+
+            pixels = data[combined]
+            summaries = {
+                "p50": float(np.percentile(pixels, 50)),
+                "p75": float(np.percentile(pixels, 75)),
+                "p95": float(np.percentile(pixels, 95)),
+                "max": float(np.percentile(pixels, 100)),
+            }
+            record = {
+                "AOI": AOI_DISPLAY[aoi],
+                "AOI Key": aoi,
+                "Index": index_name,
+                "Scene Date": scene["date"].date().isoformat(),
+                "Year": scene["date"].year,
+                "Month": scene["date"].month,
+                "Day": scene["date"].day,
+                "Ecozone": ECOZONE_LABELS[ecozone_code],
+                "Ecozone Code": ecozone_code,
+                "Platform": scene.get("platform", "unknown"),
+                "Path/Row": scene.get("path_row", ""),
+                "Valid Pixels": valid_pixels,
+            }
+            record.update({name: round(value, 6) for name, value in summaries.items()})
+            records.append(record)
+
+    if not records:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(records)
+    return df.sort_values(["Scene Date", "Ecozone Code"]).reset_index(drop=True)
+
+
+def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path) -> None:
+    fig, ax = plt.subplots(figsize=(15, 8))
+    plot_df = df.copy()
+    plot_df["Scene Date"] = pd.to_datetime(plot_df["Scene Date"])
+
+    for ecozone_code in VALID_ECOZONE_CODES:
+        ecozone_df = plot_df[plot_df["Ecozone Code"] == ecozone_code].sort_values("Scene Date")
+        color = ECOZONE_COLORS[ecozone_code]
+        for summary_name, _, linestyle in SUMMARY_SPECS:
+            label = f"{ECOZONE_LABELS[ecozone_code]} {summary_name}"
+            ax.plot(
+                ecozone_df["Scene Date"],
+                ecozone_df[summary_name],
+                color=color,
+                linestyle=linestyle,
+                linewidth=1.8,
+                marker="o",
+                markersize=3,
+                alpha=0.9,
+                label=label,
+            )
+
+    ax.set_title(
+        f"Landsat {index_name} Scene-Level Ecozone Summaries — {AOI_DISPLAY[aoi]} ({int(plot_df['Year'].min())}-{int(plot_df['Year'].max())})"
+    )
+    ax.set_xlabel("Scene date")
+    ax.set_ylabel(index_name)
+    ax.grid(True, alpha=0.25, linestyle="--")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+    fig.autofmt_xdate()
+    ax.legend(ncol=3, fontsize=8, framealpha=0.9)
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved: {out_path}")
+
+
+def build_bokeh(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path) -> None:
+    if figure is None:
+        raise SystemExit("Bokeh is not installed. Install it with: pip install bokeh")
+
+    plot_df = df.copy()
+    plot_df["Scene Date"] = pd.to_datetime(plot_df["Scene Date"])
+
+    p = figure(
+        title=(
+            f"Landsat {index_name} Scene-Level Ecozone Summaries — {AOI_DISPLAY[aoi]} "
+            f"({int(plot_df['Year'].min())}-{int(plot_df['Year'].max())})"
+        ),
+        x_axis_type="datetime",
+        width=1400,
+        height=750,
+        tools="pan,wheel_zoom,box_zoom,reset,save",
+        active_scroll="wheel_zoom",
+    )
+    p.xaxis.axis_label = "Scene date"
+    p.yaxis.axis_label = index_name
+    p.grid.grid_line_alpha = 0.2
+    p.toolbar.logo = None
+
+    hover = HoverTool(
+        tooltips=[
+            ("Date", "@scene_date{%F}"),
+            ("Ecozone", "@ecozone"),
+            ("Summary", "@summary_label"),
+            ("Value", "@value{0.0000}"),
+            ("Platform", "@platform"),
+            ("Path/Row", "@path_row"),
+            ("Valid Pixels", "@valid_pixels"),
+        ],
+        formatters={"@scene_date": "datetime"},
+    )
+    p.add_tools(hover)
+
+    for ecozone_code in VALID_ECOZONE_CODES:
+        ecozone_df = plot_df[plot_df["Ecozone Code"] == ecozone_code].sort_values("Scene Date")
+        color = ECOZONE_COLORS[ecozone_code]
+        for summary_name, _, linestyle in SUMMARY_SPECS:
+            series_df = pd.DataFrame(
+                {
+                    "scene_date": ecozone_df["Scene Date"],
+                    "value": ecozone_df[summary_name],
+                    "ecozone": ecozone_df["Ecozone"],
+                    "summary_label": [summary_name] * len(ecozone_df),
+                    "platform": ecozone_df["Platform"],
+                    "path_row": ecozone_df["Path/Row"],
+                    "valid_pixels": ecozone_df["Valid Pixels"],
+                }
+            )
+            source = ColumnDataSource(series_df)
+            dash = "solid"
+            if linestyle == "--":
+                dash = "dashed"
+            elif linestyle == "-.":
+                dash = "dotdash"
+            elif linestyle == ":":
+                dash = "dotted"
+
+            legend_label = f"{ECOZONE_LABELS[ecozone_code]} {summary_name}"
+            p.line(
+                "scene_date",
+                "value",
+                source=source,
+                line_width=2,
+                line_dash=dash,
+                color=color,
+                alpha=0.9,
+                legend_label=legend_label,
+            )
+            p.circle(
+                "scene_date",
+                "value",
+                source=source,
+                size=5,
+                color=color,
+                alpha=0.75,
+                legend_label=legend_label,
+            )
+
+    p.legend.location = "top_left"
+    p.legend.click_policy = "hide"
+    output_file(out_path, title=p.title.text)
+    save(p)
+    print(f"Saved: {out_path}")
+
+
+def main() -> None:
+    args = parse_args()
+    if args.end_year < args.start_year:
+        raise SystemExit("--end-year must be greater than or equal to --start-year")
+
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    TABLES_DIR.mkdir(parents=True, exist_ok=True)
+
+    print(f"Loading Landsat {args.index} scenes for {args.aoi}...")
+    all_scenes = load_landsat_scenes(args.aoi, args.index)
+    scenes = filter_scenes_by_year(all_scenes, args.start_year, args.end_year)
+    print(f"  {len(scenes)} scenes matched {args.start_year}-{args.end_year}")
+
+    if not scenes:
+        raise SystemExit("No matching scenes found for the requested AOI/year range.")
+
+    df = build_scenelevel_dataframe(args.aoi, args.index, scenes)
+    if df.empty:
+        raise SystemExit("No ecozone summaries were produced. Check valid-pixel coverage.")
+
+    year_label = (
+        f"{args.start_year}"
+        if args.start_year == args.end_year
+        else f"{args.start_year}_{args.end_year}"
+    )
+    stem = f"landsat_{args.index.lower()}_scenelevel_ecozone_{args.aoi}_{year_label}"
+
+    table_path = TABLES_DIR / f"{stem}.xlsx"
+    png_path = FIGURES_DIR / f"{stem}.png"
+    bokeh_path = FIGURES_DIR / f"{stem}.bokeh.html"
+
+    df.to_excel(table_path, index=False)
+    print(f"Saved: {table_path}")
+    build_png(df, args.aoi, args.index, png_path)
+    build_bokeh(df, args.aoi, args.index, bokeh_path)
+
+
+if __name__ == "__main__":
+    main()

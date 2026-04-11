@@ -141,6 +141,9 @@ Layer packages (`.lpkx`) are documented in `LAYER_PACKAGES.txt` in each Results 
   - Prefer run commands like `python Analysis/...`
   - Avoid prepending `Python/` in run instructions unless explicitly needed
 - When an exchange results in repo changes, make one git commit for that exchange.
+- The user wants to execute analysis scripts manually.
+  - Do not run project analysis workflows without being asked
+  - Compile/syntax checking is fine
 - The user does not want a virtual environment by default
 - Static PNG outputs are the default preferred artifact for charts
 - Supporting spreadsheets/tables should also be saved when practical
