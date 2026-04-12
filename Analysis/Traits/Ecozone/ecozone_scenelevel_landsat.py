@@ -4,8 +4,7 @@ ecozone_scenelevel_landsat.py
 -----------------------------
 Build per-scene Landsat NDVI summaries by ecozone for one AOI and year range.
 
-For each cached Landsat NDVI scene, compute ecozone-level p50, p75, p95, and
-max values. Write:
+For each cached Landsat scene, compute ecozone-level percentile summaries and write:
 
 - an Excel spreadsheet with one row per scene per ecozone
 - a static PNG line plot
@@ -42,12 +41,7 @@ ECOZONE_LABELS = {1: "Cool", 2: "Intermediate", 3: "Hot"}
 ECOZONE_COLORS = {1: "#4E90C8", 2: "#72B063", 3: "#D9534F"}
 AOI_DISPLAY = {"north": "GWNF", "south": "Smoky"}
 INDEX_OPTIONS = ["NDVI", "NDMI", "EVI"]
-SUMMARY_SPECS = [
-    ("p50", 50),
-    ("p75", 75),
-    ("p95", 95),
-    ("max", 100),
-]
+DEFAULT_PERCENTILES = [50, 75, 95, 100]
 MIN_PIXELS = 100
 
 FIGURES_DIR = project_path("results_figures_dir")
@@ -82,6 +76,13 @@ def parse_args() -> argparse.Namespace:
         help="Index to process. Omit to run all supported indices.",
     )
     parser.add_argument(
+        "--percentiles",
+        nargs="+",
+        type=float,
+        default=DEFAULT_PERCENTILES,
+        help="Space-separated percentile list, e.g. --percentiles 50 75 95 100.",
+    )
+    parser.add_argument(
         "--z",
         nargs="?",
         type=float,
@@ -114,7 +115,29 @@ def filter_scenes_by_year(scenes: list[dict], start_year: int, end_year: int) ->
     ]
 
 
-def build_scenelevel_dataframe(aoi: str, index_name: str, scenes: list[dict]) -> pd.DataFrame:
+def percentile_label(percentile: float) -> str:
+    if float(percentile).is_integer():
+        return f"p{int(percentile)}"
+    return f"p{str(percentile).replace('.', 'p')}"
+
+
+def normalize_percentiles(percentiles: list[float]) -> list[float]:
+    normalized: list[float] = []
+    for percentile in percentiles:
+        if percentile < 0 or percentile > 100:
+            raise SystemExit("All percentiles must be between 0 and 100.")
+        normalized.append(float(percentile))
+    if not normalized:
+        raise SystemExit("Provide at least one percentile.")
+    return sorted(dict.fromkeys(normalized))
+
+
+def build_scenelevel_dataframe(
+    aoi: str,
+    index_name: str,
+    scenes: list[dict],
+    percentiles: list[float],
+) -> pd.DataFrame:
     ecozone_arr, _, _, _ = load_landsat_ecozone(aoi)
     eco_masks = {code: (ecozone_arr == code) for code in VALID_ECOZONE_CODES}
 
@@ -134,12 +157,6 @@ def build_scenelevel_dataframe(aoi: str, index_name: str, scenes: list[dict]) ->
                 continue
 
             pixels = data[combined]
-            summaries = {
-                "p50": float(np.percentile(pixels, 50)),
-                "p75": float(np.percentile(pixels, 75)),
-                "p95": float(np.percentile(pixels, 95)),
-                "max": float(np.percentile(pixels, 100)),
-            }
             record = {
                 "AOI": AOI_DISPLAY[aoi],
                 "AOI Key": aoi,
@@ -154,7 +171,8 @@ def build_scenelevel_dataframe(aoi: str, index_name: str, scenes: list[dict]) ->
                 "Path/Row": scene.get("path_row", ""),
                 "Valid Pixels": valid_pixels,
             }
-            record.update({name: round(value, 6) for name, value in summaries.items()})
+            for percentile in percentiles:
+                record[percentile_label(percentile)] = round(float(np.percentile(pixels, percentile)), 6)
             records.append(record)
 
     if not records:
@@ -183,11 +201,22 @@ def zscore_suffix(zscore_threshold: float) -> str:
     return f"z{label}"
 
 
+def percentiles_suffix(percentiles: list[float]) -> str:
+    return "pct" + "-".join(percentile_label(percentile) for percentile in percentiles)
+
+
 def scenelevel_figure_dir(aoi: str, index_name: str) -> Path:
     return FIGURES_DIR / "seasonal_curves" / "by_ecozone" / "landsat" / aoi / index_name.lower()
 
 
-def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zscore_threshold: float) -> None:
+def build_png(
+    df: pd.DataFrame,
+    aoi: str,
+    index_name: str,
+    out_path: Path,
+    zscore_threshold: float,
+    percentiles: list[float],
+) -> None:
     fig, ax = plt.subplots(figsize=(15, 8))
     plot_df = df.copy()
     plot_df["Scene Date"] = pd.to_datetime(plot_df["Scene Date"])
@@ -195,7 +224,8 @@ def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zscor
     for ecozone_code in VALID_ECOZONE_CODES:
         ecozone_df = plot_df[plot_df["Ecozone Code"] == ecozone_code].sort_values("Scene Date")
         color = ECOZONE_COLORS[ecozone_code]
-        for summary_name, _ in SUMMARY_SPECS:
+        for percentile in percentiles:
+            summary_name = percentile_label(percentile)
             series_mask = filter_plot_series(ecozone_df[summary_name], zscore_threshold)
             series_df = ecozone_df.loc[series_mask].copy()
             label = f"{ECOZONE_LABELS[ecozone_code]} {summary_name}"
@@ -231,7 +261,14 @@ def build_png(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zscor
     print(f"Saved: {out_path}")
 
 
-def build_bokeh(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zscore_threshold: float) -> None:
+def build_bokeh(
+    df: pd.DataFrame,
+    aoi: str,
+    index_name: str,
+    out_path: Path,
+    zscore_threshold: float,
+    percentiles: list[float],
+) -> None:
     if figure is None:
         raise SystemExit("Bokeh is not installed. Install it with: pip install bokeh")
 
@@ -272,7 +309,8 @@ def build_bokeh(df: pd.DataFrame, aoi: str, index_name: str, out_path: Path, zsc
     for ecozone_code in VALID_ECOZONE_CODES:
         ecozone_df = plot_df[plot_df["Ecozone Code"] == ecozone_code].sort_values("Scene Date")
         color = ECOZONE_COLORS[ecozone_code]
-        for summary_name, _ in SUMMARY_SPECS:
+        for percentile in percentiles:
+            summary_name = percentile_label(percentile)
             series_mask = filter_plot_series(ecozone_df[summary_name], zscore_threshold)
             series_df = ecozone_df.loc[series_mask].copy()
             series_df = pd.DataFrame(
@@ -318,6 +356,7 @@ def main() -> None:
     args = parse_args()
     if args.end_year < args.start_year:
         raise SystemExit("--end-year must be greater than or equal to --start-year")
+    percentiles = normalize_percentiles(args.percentiles)
 
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     TABLES_DIR.mkdir(parents=True, exist_ok=True)
@@ -330,12 +369,13 @@ def main() -> None:
     indices = [args.index.upper()] if args.index else INDEX_OPTIONS
 
     for index_name in indices:
-        stem = f"landsat_{index_name.lower()}_seasonalcurves_ecozone_{args.aoi}_{year_label}"
+        pct_suffix = percentiles_suffix(percentiles)
+        stem = f"landsat_{index_name.lower()}_seasonalcurves_ecozone_{args.aoi}_{year_label}_{pct_suffix}"
         table_path = TABLES_DIR / f"{stem}.xlsx"
         plot_dir = scenelevel_figure_dir(args.aoi, index_name)
         plot_dir.mkdir(parents=True, exist_ok=True)
         plot_stem = (
-            f"{year_label}_{zscore_suffix(args.z)}"
+            f"{year_label}_{pct_suffix}_{zscore_suffix(args.z)}"
             f"_seasonalcurves_byecozone_landsat_{args.aoi}_{index_name.lower()}"
         )
         png_path = plot_dir / f"{plot_stem}.png"
@@ -354,7 +394,7 @@ def main() -> None:
                 print(f"[{index_name}] Skipping — no matching scenes found for the requested AOI/year range.")
                 continue
 
-            df = build_scenelevel_dataframe(args.aoi, index_name, scenes)
+            df = build_scenelevel_dataframe(args.aoi, index_name, scenes, percentiles)
             if df.empty:
                 print(f"[{index_name}] Skipping — no ecozone summaries were produced.")
                 continue
@@ -363,8 +403,8 @@ def main() -> None:
             print(f"[{index_name}] Saved: {table_path}")
 
         if args.png:
-            build_png(df, args.aoi, index_name, png_path, args.z)
-        build_bokeh(df, args.aoi, index_name, bokeh_path, args.z)
+            build_png(df, args.aoi, index_name, png_path, args.z, percentiles)
+        build_bokeh(df, args.aoi, index_name, bokeh_path, args.z, percentiles)
 
 
 if __name__ == "__main__":
