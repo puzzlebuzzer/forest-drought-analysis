@@ -86,12 +86,12 @@ def parse_args() -> argparse.Namespace:
         "--z",
         nargs="?",
         type=float,
-        const=3.0,
+        const=1.5,
         default=None,
         help=(
             "Plot-only outlier filter applied separately to each ecozone x summary "
             "series. Omit the flag for no filtering. Use the flag with no value for "
-            "the default threshold of 3.0, or pass a numeric threshold explicitly. "
+            "the default threshold of 1.5, or pass a numeric threshold explicitly. "
             "Spreadsheet rows are unchanged."
         ),
     )
