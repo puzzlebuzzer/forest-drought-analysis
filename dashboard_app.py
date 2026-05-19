@@ -287,10 +287,10 @@ def _render_staged_download_button(
             data=data,
             file_name=file_name,
             mime=mime,
-            width="stretch",
+            width="content",
         )
         return
-    if container.button(label, width="stretch", disabled=unavailable_reason is not None):
+    if container.button(label, width="content", disabled=unavailable_reason is not None):
         prepared = {**prepared, export_key: prepare_fn()}
         st.session_state.prepared_exports[signature] = prepared
         st.rerun()
