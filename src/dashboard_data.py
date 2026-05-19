@@ -90,6 +90,25 @@ class DashboardDataBundle:
         return (min(years), max(years))
 
 
+def filters_for_config(config, extra_filters: dict | None = None) -> dict:
+    filters = {
+        "label": None,
+        "sensor": config.sensor,
+        "aoi": config.aoi,
+        "index": config.index,
+        "spatial_percentile": config.spatial_percentile,
+        "temporal_agg": config.temporal_agg,
+        "temporal_percentile": None if config.temporal_agg == "scene" else config.temporal_percentile,
+        "cloud_threshold": config.cloud_threshold,
+        "season_filter": config.season_filter,
+        "exclude_below_stddev": config.exclude_below_stddev,
+        "exclude_above_stddev": config.exclude_above_stddev,
+    }
+    if extra_filters:
+        filters.update(extra_filters)
+    return filters
+
+
 def _normalize_value_strings(series: pd.Series) -> pd.Series:
     normalized = series.where(series.isna(), series.astype(str).str.strip().str.lower())
     return normalized.replace({"<na>": pd.NA, "nan": pd.NA})

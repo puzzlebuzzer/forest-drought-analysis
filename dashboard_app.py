@@ -5,12 +5,11 @@ import hashlib
 import json
 from pathlib import Path
 
-import pandas as pd
 import plotly.colors as pc
 import plotly.io as pio
 import streamlit as st
 
-from src.dashboard_data import filter_frame, load_dashboard_data
+from src.dashboard_data import filter_frame, filters_for_config, load_dashboard_data
 from src.dashboard_figures import build_growing_season_figure, build_timeseries_figure
 from src.dashboard_schema import ComparisonConfig
 
@@ -248,18 +247,15 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             key="builder_spatial_percentile",
         )
         temporal_agg = _safe_selectbox("Temporal aggregation", temporal_aggs, "scene", scope=st, key="builder_temporal_agg")
+        temporal_percentile = _safe_selectbox(
+            "Temporal aggregation percentile",
+            list(spatial_percentiles),
+            "p95",
+            scope=st,
+            key="builder_temporal_percentile",
+        )
         if temporal_agg == "scene":
-            temporal_percentile = "none"
-            st.session_state["builder_temporal_percentile"] = "none"
-        else:
-            visible_temporal_percentiles = list(spatial_percentiles)
-            temporal_percentile = _safe_selectbox(
-                "Temporal aggregation percentile",
-                visible_temporal_percentiles,
-                "p95",
-                scope=st,
-                key="builder_temporal_percentile",
-            )
+            st.caption("doesn't affect scene")
         season_filter = _safe_selectbox("Season filter", season_filters, "all", scope=st, key="builder_season_filter")
         exclude_below_stddev = _safe_plain_selectbox(
             "Exclude below z-score",
@@ -336,7 +332,7 @@ def _build_export_subset(bundle, configs: list[ComparisonConfig], year_range: tu
     subsets = []
     for idx, config in enumerate(configs, start=1):
         frame = bundle.frame_for_config(config)
-        filtered = filter_frame(frame, filters=asdict(config) | {"label": None}, year_range=year_range).copy()
+        filtered = filter_frame(frame, filters=filters_for_config(config), year_range=year_range).copy()
         if filtered.empty:
             continue
         filtered.insert(0, "comparison_label", config.label or _config_display_label(asdict(config)))

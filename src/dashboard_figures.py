@@ -5,7 +5,7 @@ from dataclasses import asdict
 import pandas as pd
 import plotly.graph_objects as go
 
-from src.dashboard_data import DashboardDataBundle, filter_frame
+from src.dashboard_data import DashboardDataBundle, filter_frame, filters_for_config
 from src.dashboard_schema import ComparisonConfig
 
 
@@ -71,7 +71,7 @@ def build_timeseries_figure(
         frame = bundle.frame_for_config(config)
         filtered = filter_frame(
             frame,
-            filters=asdict(config) | {"label": None},
+            filters=filters_for_config(config),
             year_range=year_range,
         )
         if filtered.empty:
@@ -128,7 +128,7 @@ def build_growing_season_figure(
     config: ComparisonConfig,
     selected_year: int,
 ) -> tuple[go.Figure, str | None]:
-    filtered = filter_frame(bundle.scene_summary, filters=asdict(config) | {"label": None, "season_filter": "growing"})
+    filtered = filter_frame(bundle.scene_summary, filters=filters_for_config(config, {"season_filter": "growing"}))
     if filtered.empty:
         return go.Figure(), "No growing-season rows match the selected configuration."
     filtered = _apply_stddev_filters(filtered, config)
