@@ -229,7 +229,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             value=(year_min, year_max),
         )
 
-    if st.sidebar.button("Add layer"):
+    if st.sidebar.button("Add new layer"):
         _start_new_overlay(bundle)
         st.rerun()
 
@@ -280,7 +280,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             key="builder_exclude_above_stddev",
         )
         label = st.text_input("Optional custom label", key="builder_label")
-        action_label = "Add layer" if st.session_state.builder_mode == "new" else "Apply changes"
+        action_label = "Add new layer" if st.session_state.builder_mode == "new" else "Apply changes"
         submitted = st.form_submit_button(action_label, type="primary", width="stretch")
 
     if not all([sensor, aoi, index_name, spatial_percentile, temporal_agg, temporal_percentile, season_filter]):
