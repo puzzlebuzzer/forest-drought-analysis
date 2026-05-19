@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 import hashlib
+import importlib.util
 from io import BytesIO
 import json
 from pathlib import Path
@@ -284,67 +285,96 @@ def _prepare_plot_export(figure) -> tuple[bytes, bytes | None]:
     return html_bytes, png_bytes
 
 
+def _has_openpyxl() -> bool:
+    return importlib.util.find_spec("openpyxl") is not None
+
+
+def _render_staged_download_button(
+    container,
+    label: str,
+    export_key: str,
+    prepared: dict,
+    signature: str,
+    file_name: str,
+    mime: str,
+    data: bytes | None,
+    prepare_fn,
+    unavailable_reason: str | None = None,
+) -> None:
+    if data is not None:
+        container.download_button(
+            label,
+            data=data,
+            file_name=file_name,
+            mime=mime,
+            width="stretch",
+        )
+        return
+    if container.button(label, width="stretch", disabled=unavailable_reason is not None):
+        prepared = {**prepared, export_key: prepare_fn()}
+        st.session_state.prepared_exports[signature] = prepared
+        st.rerun()
+    if unavailable_reason:
+        container.caption(unavailable_reason)
+    else:
+        container.caption("First click prepares this export for the current view.")
+
+
 def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range: tuple[int, int], figure) -> None:
     st.subheader("Exports")
     signature = _export_signature(configs, year_range)
     prepared = st.session_state.prepared_exports.get(signature, {})
-
-    prep_cols = st.columns(2)
-    if prep_cols[0].button("Prepare data exports", use_container_width=True):
-        csv_bytes, xlsx_bytes = _prepare_data_export(bundle, configs, year_range)
-        prepared = {**prepared, "csv": csv_bytes, "xlsx": xlsx_bytes}
-        st.session_state.prepared_exports[signature] = prepared
-        st.rerun()
-    if prep_cols[1].button("Prepare plot exports", use_container_width=True):
-        html_bytes, png_bytes = _prepare_plot_export(figure)
-        prepared = {**prepared, "html": html_bytes, "png": png_bytes}
-        st.session_state.prepared_exports[signature] = prepared
-        st.rerun()
 
     col1, col2, col3, col4 = st.columns(4)
     csv_bytes = prepared.get("csv")
     xlsx_bytes = prepared.get("xlsx")
     html_bytes = prepared.get("html")
     png_bytes = prepared.get("png")
-
-    col1.download_button(
+    _render_staged_download_button(
+        col1,
         "Download CSV",
-        data=csv_bytes or b"",
-        file_name="dashboard_subset.csv",
-        mime="text/csv",
-        disabled=csv_bytes is None,
-        width="stretch",
+        "csv",
+        prepared,
+        signature,
+        "dashboard_subset.csv",
+        "text/csv",
+        csv_bytes,
+        lambda: _prepare_data_export(bundle, configs, year_range)[0],
     )
-    col2.download_button(
+    _render_staged_download_button(
+        col2,
         "Download Excel",
-        data=xlsx_bytes or b"",
-        file_name="dashboard_subset.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        disabled=xlsx_bytes is None,
-        width="stretch",
+        "xlsx",
+        prepared,
+        signature,
+        "dashboard_subset.xlsx",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        xlsx_bytes,
+        lambda: _prepare_data_export(bundle, configs, year_range)[1],
+        unavailable_reason="Requires `openpyxl` in the active environment." if not _has_openpyxl() else None,
     )
-    col3.download_button(
+    _render_staged_download_button(
+        col3,
         "Download PNG",
-        data=png_bytes or b"",
-        file_name="dashboard_plot.png",
-        mime="image/png",
-        disabled=png_bytes is None,
-        width="stretch",
+        "png",
+        prepared,
+        signature,
+        "dashboard_plot.png",
+        "image/png",
+        png_bytes,
+        lambda: _prepare_plot_export(figure)[1],
     )
-    col4.download_button(
+    _render_staged_download_button(
+        col4,
         "Download HTML",
-        data=html_bytes or b"",
-        file_name="dashboard_plot.html",
-        mime="text/html",
-        disabled=html_bytes is None,
-        width="stretch",
+        "html",
+        prepared,
+        signature,
+        "dashboard_plot.html",
+        "text/html",
+        html_bytes,
+        lambda: _prepare_plot_export(figure)[0],
     )
-    if csv_bytes is None or html_bytes is None:
-        st.caption("Prepare exports only when needed to keep dashboard load times down.")
-    if xlsx_bytes is None:
-        st.caption("Excel export requires `openpyxl` in the active environment.")
-    if png_bytes is None:
-        st.caption("PNG export requires Plotly static image support such as `kaleido` in the active environment.")
 
 
 def main() -> None:
