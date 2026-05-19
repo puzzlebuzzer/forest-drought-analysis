@@ -65,14 +65,14 @@ COLUMN_ALIASES = {
 }
 
 DEFAULT_VALUE_ORDER = {
-    "sensor": ["s2", "ls"],
+    "sensor": ["ls", "s2"],
     "aoi": ["north", "south"],
     "index": ["ndvi", "ndmi", "evi"],
     "spatial_percentile": ["p50", "p75", "p95", "p98", "p99", "p100"],
-    "temporal_agg": ["scene", "half_month", "month"],
+    "temporal_agg": ["month", "half_month", "scene"],
     "temporal_percentile": ["none", "p50", "p75", "p95", "p98", "p99", "p100"],
     "cloud_threshold": [30, 40, 50],
-    "season_filter": ["all", "growing"],
+    "season_filter": ["growing", "all"],
 }
 
 

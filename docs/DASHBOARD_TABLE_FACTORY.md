@@ -104,3 +104,4 @@ Notes:
 ## Stretch goals
 
 - Add a reproducible growing-season animation export workflow that renders one highlighted year at a time and writes a StoryMap-friendly GIF or MP4.
+- Update the Sentinel baseline used for dashboard-ready tables to a refreshed trusted version.

@@ -8,6 +8,15 @@ import plotly.graph_objects as go
 from src.dashboard_data import DashboardDataBundle, filter_frame, filters_for_config
 from src.dashboard_schema import ComparisonConfig
 
+AOI_LABELS = {
+    "north": "GW-Jeff",
+    "south": "Smoky",
+}
+SENSOR_LABELS = {
+    "ls": "landsat",
+    "s2": "sentinel-2",
+}
+
 
 def _apply_stddev_filters(frame: pd.DataFrame, config: ComparisonConfig) -> pd.DataFrame:
     if frame.empty:
@@ -30,8 +39,8 @@ def _apply_stddev_filters(frame: pd.DataFrame, config: ComparisonConfig) -> pd.D
 def _series_label(config: ComparisonConfig) -> str:
     return config.label or " / ".join(
         [
-            config.aoi,
-            config.sensor,
+            AOI_LABELS.get(config.aoi, config.aoi),
+            SENSOR_LABELS.get(config.sensor, config.sensor),
             config.index,
             str(config.cloud_threshold),
             config.spatial_percentile,

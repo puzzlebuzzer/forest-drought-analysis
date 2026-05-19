@@ -24,6 +24,10 @@ AOI_LABELS = {
     "north": "GW-Jeff",
     "south": "Smoky",
 }
+SENSOR_LABELS = {
+    "ls": "landsat",
+    "s2": "sentinel-2",
+}
 STDDEV_FILTER_OPTIONS = ["none", 1, 1.5, 2]
 
 
@@ -102,8 +106,8 @@ def _stddev_option(value):
 def _config_display_label(config_dict: dict, idx: int | None = None) -> str:
     label = config_dict.get("label") or " / ".join(
         [
-            str(config_dict["aoi"]),
-            str(config_dict["sensor"]),
+            str(AOI_LABELS.get(config_dict["aoi"], config_dict["aoi"])),
+            str(SENSOR_LABELS.get(config_dict["sensor"], config_dict["sensor"])),
             str(config_dict["index"]),
             str(config_dict["cloud_threshold"]),
             str(config_dict["spatial_percentile"]),
@@ -128,14 +132,14 @@ def _default_config_dict(bundle) -> dict:
     spatial_percentiles = bundle.available_values("spatial_percentile")
     return {
         "label": "",
-        "sensor": _select_or_default(bundle.available_values("sensor"), "s2"),
+        "sensor": _select_or_default(bundle.available_values("sensor"), "ls"),
         "aoi": _select_or_default(bundle.available_values("aoi"), "north"),
         "index": _select_or_default(bundle.available_values("index"), "ndvi"),
         "spatial_percentile": _select_or_default(spatial_percentiles, "p95"),
-        "temporal_agg": _select_or_default(bundle.available_values("temporal_agg"), "scene"),
+        "temporal_agg": _select_or_default(bundle.available_values("temporal_agg"), "month"),
         "temporal_percentile": _select_or_default(spatial_percentiles, "p95"),
         "cloud_threshold": _select_or_default(bundle.available_values("cloud_threshold"), 40),
-        "season_filter": _select_or_default(bundle.available_values("season_filter"), "all"),
+        "season_filter": _select_or_default(bundle.available_values("season_filter"), "growing"),
         "exclude_below_stddev": None,
         "exclude_above_stddev": None,
     }
@@ -240,7 +244,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
     _ensure_builder_state(bundle)
     with st.sidebar.form("comparison_builder_form", enter_to_submit=False):
         aoi = _safe_selectbox("AOI", aois, "north", scope=st, key="builder_aoi", format_func=lambda value: AOI_LABELS.get(value, value))
-        sensor = _safe_selectbox("Sensor", sensors, "s2", scope=st, key="builder_sensor")
+        sensor = _safe_selectbox("Sensor", sensors, "ls", scope=st, key="builder_sensor", format_func=lambda value: SENSOR_LABELS.get(value, value))
         index_name = _safe_selectbox("Index", indices, "ndvi", scope=st, key="builder_index")
         cloud_threshold = _safe_plain_selectbox("Cloud threshold", cloud_thresholds, 40, scope=st, key="builder_cloud_threshold")
         spatial_percentile = _safe_selectbox(
@@ -251,7 +255,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             scope=st,
             key="builder_spatial_percentile",
         )
-        temporal_agg = _safe_selectbox("Interval", temporal_aggs, "scene", scope=st, key="builder_temporal_agg")
+        temporal_agg = _safe_selectbox("Interval", temporal_aggs, "month", scope=st, key="builder_temporal_agg")
         temporal_percentile = _safe_selectbox(
             "Interval aggregation percentile",
             list(spatial_percentiles),
@@ -259,7 +263,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             scope=st,
             key="builder_temporal_percentile",
         )
-        season_filter = _safe_selectbox("Season filter", season_filters, "all", scope=st, key="builder_season_filter")
+        season_filter = _safe_selectbox("Season filter", season_filters, "growing", scope=st, key="builder_season_filter")
         exclude_below_stddev = _safe_plain_selectbox(
             "Exclude below z-score",
             STDDEV_FILTER_OPTIONS,
