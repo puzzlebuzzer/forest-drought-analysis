@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from dataclasses import asdict
 import hashlib
-import importlib.util
-from io import BytesIO
 import json
 from pathlib import Path
 
@@ -259,34 +257,17 @@ def _export_signature(configs: list[ComparisonConfig], year_range: tuple[int, in
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
 
-def _prepare_data_export(bundle, configs: list[ComparisonConfig], year_range: tuple[int, int]) -> tuple[bytes, bytes | None]:
+def _prepare_data_export(bundle, configs: list[ComparisonConfig], year_range: tuple[int, int]) -> bytes:
     export_frame = _build_export_subset(bundle, configs, year_range)
-    csv_bytes = export_frame.to_csv(index=False).encode("utf-8") if not export_frame.empty else b""
-    xlsx_bytes = None
-    try:
-        import openpyxl  # noqa: F401
-
-        xlsx_buffer = BytesIO()
-        if not export_frame.empty:
-            with pd.ExcelWriter(xlsx_buffer, engine="openpyxl") as writer:
-                export_frame.to_excel(writer, sheet_name="subset", index=False)
-        xlsx_bytes = xlsx_buffer.getvalue()
-    except Exception:
-        xlsx_bytes = None
-    return csv_bytes, xlsx_bytes
+    return export_frame.to_csv(index=False).encode("utf-8") if not export_frame.empty else b""
 
 
-def _prepare_plot_export(figure) -> tuple[bytes, bytes | None]:
-    html_bytes = figure.to_html(include_plotlyjs="cdn", full_html=True).encode("utf-8")
+def _prepare_plot_export(figure) -> bytes | None:
     try:
         png_bytes = pio.to_image(figure, format="png", width=1400, height=800, scale=2)
     except Exception:
         png_bytes = None
-    return html_bytes, png_bytes
-
-
-def _has_openpyxl() -> bool:
-    return importlib.util.find_spec("openpyxl") is not None
+    return png_bytes
 
 
 def _render_staged_download_button(
@@ -314,10 +295,6 @@ def _render_staged_download_button(
         prepared = {**prepared, export_key: prepare_fn()}
         st.session_state.prepared_exports[signature] = prepared
         st.rerun()
-    if unavailable_reason:
-        container.caption(unavailable_reason)
-    else:
-        container.caption("First click prepares this export for the current view.")
 
 
 def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range: tuple[int, int], figure) -> None:
@@ -325,10 +302,9 @@ def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range:
     signature = _export_signature(configs, year_range)
     prepared = st.session_state.prepared_exports.get(signature, {})
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1 = st.container()
+    col2 = st.container()
     csv_bytes = prepared.get("csv")
-    xlsx_bytes = prepared.get("xlsx")
-    html_bytes = prepared.get("html")
     png_bytes = prepared.get("png")
     _render_staged_download_button(
         col1,
@@ -339,22 +315,10 @@ def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range:
         "dashboard_subset.csv",
         "text/csv",
         csv_bytes,
-        lambda: _prepare_data_export(bundle, configs, year_range)[0],
+        lambda: _prepare_data_export(bundle, configs, year_range),
     )
     _render_staged_download_button(
         col2,
-        "Download Excel",
-        "xlsx",
-        prepared,
-        signature,
-        "dashboard_subset.xlsx",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        xlsx_bytes,
-        lambda: _prepare_data_export(bundle, configs, year_range)[1],
-        unavailable_reason="Requires `openpyxl` in the active environment." if not _has_openpyxl() else None,
-    )
-    _render_staged_download_button(
-        col3,
         "Download PNG",
         "png",
         prepared,
@@ -362,18 +326,7 @@ def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range:
         "dashboard_plot.png",
         "image/png",
         png_bytes,
-        lambda: _prepare_plot_export(figure)[1],
-    )
-    _render_staged_download_button(
-        col4,
-        "Download HTML",
-        "html",
-        prepared,
-        signature,
-        "dashboard_plot.html",
-        "text/html",
-        html_bytes,
-        lambda: _prepare_plot_export(figure)[0],
+        lambda: _prepare_plot_export(figure),
     )
 
 
