@@ -334,6 +334,7 @@ Current note:
 - the in-dashboard growing-season overlay is temporarily disabled behind a feature flag while the main overlay workflow is stabilized
 - a standalone animated export for StoryMaps is logged as a stretch goal
 - update the Sentinel dashboard-data baseline to a refreshed trusted version is logged as a stretch goal
+- add an RNG view from the scene catalog to the dashboard that matches the selected layer is logged as a stretch goal
 - final dashboard test/polish is still pending
 
 ---
