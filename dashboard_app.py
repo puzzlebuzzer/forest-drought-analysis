@@ -47,6 +47,10 @@ def _init_state() -> None:
         st.session_state.default_overlay_seeded = False
     if "prepared_exports" not in st.session_state:
         st.session_state.prepared_exports = {}
+    if "builder_mode" not in st.session_state:
+        st.session_state.builder_mode = "edit"
+    if "builder_target_index" not in st.session_state:
+        st.session_state.builder_target_index = None
 
 
 def _select_or_default(options: list, preferred):
@@ -57,11 +61,11 @@ def _select_or_default(options: list, preferred):
     return None
 
 
-def _safe_selectbox(label: str, options: list, preferred, format_func=None, scope=st.sidebar):
+def _safe_selectbox(label: str, options: list, preferred, format_func=None, scope=st.sidebar, key: str | None = None):
     if not options:
         scope.caption(f"No available values for {label.lower()} in the loaded CSVs.")
         return None
-    selected = _select_or_default(options, preferred)
+    selected = _select_or_default(options, st.session_state.get(key, preferred) if key else preferred)
     try:
         return scope.selectbox(
             label,
@@ -69,19 +73,20 @@ def _safe_selectbox(label: str, options: list, preferred, format_func=None, scop
             index=options.index(selected),
             filter_mode=None,
             format_func=format_func,
+            key=key,
         )
     except TypeError:
         if format_func is not None:
-            return scope.selectbox(label, options, index=options.index(selected), format_func=format_func)
-        return scope.selectbox(label, options, index=options.index(selected))
+            return scope.selectbox(label, options, index=options.index(selected), format_func=format_func, key=key)
+        return scope.selectbox(label, options, index=options.index(selected), key=key)
 
 
-def _safe_plain_selectbox(label: str, options: list, preferred, scope=st.sidebar):
+def _safe_plain_selectbox(label: str, options: list, preferred, scope=st.sidebar, key: str | None = None):
     if not options:
         scope.caption(f"No available values for {label.lower()} in the loaded CSVs.")
         return None
-    selected = _select_or_default(options, preferred)
-    return scope.selectbox(label, options, index=options.index(selected))
+    selected = _select_or_default(options, st.session_state.get(key, preferred) if key else preferred)
+    return scope.selectbox(label, options, index=options.index(selected), key=key)
 
 
 def _stddev_option(value):
@@ -114,7 +119,86 @@ def _load_dashboard_data_cached(data_dir: str):
     return load_dashboard_data(data_dir)
 
 
+def _default_config_dict(bundle) -> dict:
+    spatial_percentiles = bundle.available_values("spatial_percentile")
+    return {
+        "label": "",
+        "sensor": _select_or_default(bundle.available_values("sensor"), "s2"),
+        "aoi": _select_or_default(bundle.available_values("aoi"), "north"),
+        "index": _select_or_default(bundle.available_values("index"), "ndvi"),
+        "spatial_percentile": _select_or_default(spatial_percentiles, "p95"),
+        "temporal_agg": _select_or_default(bundle.available_values("temporal_agg"), "scene"),
+        "temporal_percentile": _select_or_default(spatial_percentiles, "p95"),
+        "cloud_threshold": _select_or_default(bundle.available_values("cloud_threshold"), 40),
+        "season_filter": _select_or_default(bundle.available_values("season_filter"), "all"),
+        "exclude_below_stddev": None,
+        "exclude_above_stddev": None,
+    }
+
+
+def _load_builder_values(config_dict: dict) -> None:
+    st.session_state["builder_sensor"] = config_dict.get("sensor")
+    st.session_state["builder_aoi"] = config_dict.get("aoi")
+    st.session_state["builder_index"] = config_dict.get("index")
+    st.session_state["builder_spatial_percentile"] = config_dict.get("spatial_percentile")
+    st.session_state["builder_temporal_agg"] = config_dict.get("temporal_agg")
+    st.session_state["builder_temporal_percentile"] = config_dict.get("temporal_percentile")
+    st.session_state["builder_cloud_threshold"] = config_dict.get("cloud_threshold")
+    st.session_state["builder_season_filter"] = config_dict.get("season_filter")
+    st.session_state["builder_exclude_below_stddev"] = "none" if config_dict.get("exclude_below_stddev") is None else config_dict.get("exclude_below_stddev")
+    st.session_state["builder_exclude_above_stddev"] = "none" if config_dict.get("exclude_above_stddev") is None else config_dict.get("exclude_above_stddev")
+    st.session_state["builder_label"] = config_dict.get("label", "")
+
+
+def _start_new_overlay(bundle) -> None:
+    st.session_state.builder_mode = "new"
+    st.session_state.builder_target_index = None
+    _load_builder_values(_default_config_dict(bundle))
+
+
+def _start_edit_overlay(config_dict: dict, index: int) -> None:
+    st.session_state.builder_mode = "edit"
+    st.session_state.builder_target_index = index
+    _load_builder_values(config_dict)
+
+
+def _ensure_builder_state(bundle) -> None:
+    if st.session_state.builder_mode == "edit":
+        target_index = st.session_state.builder_target_index
+        if target_index is None or not (0 <= target_index < len(st.session_state.comparison_configs)):
+            if st.session_state.comparison_configs:
+                target_index = len(st.session_state.comparison_configs) - 1
+                _start_edit_overlay(st.session_state.comparison_configs[target_index], target_index)
+            else:
+                _start_new_overlay(bundle)
+                return
+    required_keys = [
+        "builder_sensor",
+        "builder_aoi",
+        "builder_index",
+        "builder_spatial_percentile",
+        "builder_temporal_agg",
+        "builder_temporal_percentile",
+        "builder_cloud_threshold",
+        "builder_season_filter",
+        "builder_exclude_below_stddev",
+        "builder_exclude_above_stddev",
+        "builder_label",
+    ]
+    if all(key in st.session_state for key in required_keys):
+        return
+    if st.session_state.comparison_configs:
+        target_index = len(st.session_state.comparison_configs) - 1
+        _start_edit_overlay(st.session_state.comparison_configs[target_index], target_index)
+    else:
+        _start_new_overlay(bundle)
+
+
 def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, str | None, int | None]:
+    if st.sidebar.button("Create new overlay"):
+        _start_new_overlay(bundle)
+        st.rerun()
+
     year_min, year_max = bundle.available_year_range()
     if year_min == year_max:
         st.sidebar.caption(f"Only one year is available in the loaded tables: {year_min}")
@@ -132,66 +216,58 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
     indices = bundle.available_values("index")
     spatial_percentiles = bundle.available_values("spatial_percentile")
     temporal_aggs = bundle.available_values("temporal_agg")
-    temporal_percentiles = bundle.available_values("temporal_percentile")
     cloud_thresholds = bundle.available_values("cloud_threshold")
     season_filters = bundle.available_values("season_filter")
 
+    _ensure_builder_state(bundle)
     st.sidebar.header("Comparison builder")
     with st.sidebar.form("comparison_builder_form"):
-        builder_modes = ["Create new overlay", "Edit existing overlay"]
-        builder_mode = st.radio("Builder mode", builder_modes, index=0)
-        selected_existing = None
-        if builder_mode == "Edit existing overlay" and st.session_state.comparison_configs:
-            selected_existing = st.selectbox(
-                "Overlay to edit",
-                list(range(len(st.session_state.comparison_configs))),
-                format_func=lambda idx: _config_display_label(st.session_state.comparison_configs[idx], idx),
-            )
-        existing_defaults = st.session_state.comparison_configs[selected_existing] if selected_existing is not None else {}
-
-        sensor = _safe_selectbox("Sensor", sensors, existing_defaults.get("sensor", "s2"), scope=st)
-        aoi = _safe_selectbox("AOI", aois, existing_defaults.get("aoi", "north"), scope=st)
-        index_name = _safe_selectbox("Index", indices, existing_defaults.get("index", "ndvi"), scope=st)
+        sensor = _safe_selectbox("Sensor", sensors, "s2", scope=st, key="builder_sensor")
+        aoi = _safe_selectbox("AOI", aois, "north", scope=st, key="builder_aoi")
+        index_name = _safe_selectbox("Index", indices, "ndvi", scope=st, key="builder_index")
         spatial_percentile = _safe_selectbox(
             "Spatial aggregation percentile",
             spatial_percentiles,
-            existing_defaults.get("spatial_percentile", "p95"),
+            "p95",
             format_func=lambda value: SPATIAL_PERCENTILE_LABELS.get(value, value),
             scope=st,
+            key="builder_spatial_percentile",
         )
-        temporal_agg = _safe_selectbox("Temporal aggregation", temporal_aggs, existing_defaults.get("temporal_agg", "scene"), scope=st)
+        temporal_agg = _safe_selectbox("Temporal aggregation", temporal_aggs, "scene", scope=st, key="builder_temporal_agg")
         if temporal_agg == "scene":
             temporal_percentile = "none"
+            st.session_state["builder_temporal_percentile"] = "none"
         else:
             visible_temporal_percentiles = list(spatial_percentiles)
             temporal_percentile = _safe_selectbox(
                 "Temporal aggregation percentile",
                 visible_temporal_percentiles,
-                existing_defaults.get("temporal_percentile", "p95"),
+                "p95",
                 scope=st,
+                key="builder_temporal_percentile",
             )
-        cloud_threshold = _safe_plain_selectbox("Cloud threshold", cloud_thresholds, existing_defaults.get("cloud_threshold", 40), scope=st)
-        season_filter = _safe_selectbox("Season filter", season_filters, existing_defaults.get("season_filter", "all"), scope=st)
-        exclude_below_default = existing_defaults.get("exclude_below_stddev")
-        exclude_above_default = existing_defaults.get("exclude_above_stddev")
+        cloud_threshold = _safe_plain_selectbox("Cloud threshold", cloud_thresholds, 40, scope=st, key="builder_cloud_threshold")
+        season_filter = _safe_selectbox("Season filter", season_filters, "all", scope=st, key="builder_season_filter")
         exclude_below_stddev = _safe_plain_selectbox(
             "Exclude below z-score",
             STDDEV_FILTER_OPTIONS,
-            "none" if exclude_below_default is None else exclude_below_default,
+            "none",
             scope=st,
+            key="builder_exclude_below_stddev",
         )
         exclude_above_stddev = _safe_plain_selectbox(
             "Exclude above z-score",
             STDDEV_FILTER_OPTIONS,
-            "none" if exclude_above_default is None else exclude_above_default,
+            "none",
             scope=st,
+            key="builder_exclude_above_stddev",
         )
-        label = st.text_input("Optional custom label", value=existing_defaults.get("label", ""))
-        action_label = "Update overlay" if builder_mode == "Edit existing overlay" and selected_existing is not None else "Add overlay"
-        submitted = st.form_submit_button(action_label, type="primary", use_container_width=True)
+        label = st.text_input("Optional custom label", key="builder_label")
+        action_label = "Add overlay" if st.session_state.builder_mode == "new" else "Apply changes"
+        submitted = st.form_submit_button(action_label, type="primary", width="stretch")
 
     if not all([sensor, aoi, index_name, spatial_percentile, temporal_agg, temporal_percentile, season_filter]):
-        return selected_year_range, None, None, selected_existing
+        return selected_year_range, None, None, st.session_state.builder_target_index
 
     config = ComparisonConfig(
         label=label.strip(),
@@ -208,8 +284,8 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
     )
     action = None
     if submitted:
-        action = "update" if builder_mode == "Edit existing overlay" and selected_existing is not None else "add"
-    return selected_year_range, config, action, selected_existing
+        action = "add" if st.session_state.builder_mode == "new" else "update"
+    return selected_year_range, config, action, st.session_state.builder_target_index
 
 
 def _render_config_table() -> None:
@@ -218,7 +294,7 @@ def _render_config_table() -> None:
         return
     palette = pc.qualitative.Plotly
     for idx, config_dict in enumerate(st.session_state.comparison_configs):
-        columns = st.columns([0.6, 4.4, 1])
+        columns = st.columns([0.6, 4.0, 0.8, 1])
         label = _config_display_label(config_dict, idx).split(". ", 1)[1]
         color = palette[idx % len(palette)]
         columns[0].markdown(
@@ -228,8 +304,17 @@ def _render_config_table() -> None:
             unsafe_allow_html=True,
         )
         columns[1].markdown(f"`{idx + 1}` {label}")
-        if columns[2].button("Remove", key=f"remove_{idx}"):
+        if columns[2].button("Edit", key=f"edit_{idx}"):
+            _start_edit_overlay(config_dict, idx)
+            st.rerun()
+        if columns[3].button("Remove", key=f"remove_{idx}"):
             st.session_state.comparison_configs.pop(idx)
+            if st.session_state.comparison_configs:
+                next_index = min(idx, len(st.session_state.comparison_configs) - 1)
+                _start_edit_overlay(st.session_state.comparison_configs[next_index], next_index)
+            else:
+                st.session_state.builder_target_index = None
+                st.session_state.builder_mode = "new"
             st.rerun()
 
 
@@ -340,15 +425,21 @@ def main() -> None:
     year_range, config, builder_action, selected_existing = _build_sidebar(bundle)
 
     if config and not st.session_state.default_overlay_seeded and not st.session_state.comparison_configs:
-        st.session_state.comparison_configs.append(asdict(config))
+        seeded_config = asdict(config)
+        st.session_state.comparison_configs.append(seeded_config)
         st.session_state.default_overlay_seeded = True
+        _start_edit_overlay(seeded_config, 0)
         st.rerun()
 
     if config and builder_action is not None:
         if builder_action == "update" and selected_existing is not None:
-            st.session_state.comparison_configs[selected_existing] = asdict(config)
+            updated_config = asdict(config)
+            st.session_state.comparison_configs[selected_existing] = updated_config
+            _start_edit_overlay(updated_config, selected_existing)
         else:
-            st.session_state.comparison_configs.append(asdict(config))
+            new_config = asdict(config)
+            st.session_state.comparison_configs.append(new_config)
+            _start_edit_overlay(new_config, len(st.session_state.comparison_configs) - 1)
         st.rerun()
 
     st.subheader("Time-series overlay")
