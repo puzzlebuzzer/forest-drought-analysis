@@ -273,6 +273,69 @@ results/figures/
 
 ---
 
+# Dashboard Deliverable
+
+The first dashboard deliverable is included for exploring precomputed CSV summaries without live raster recomputation.
+
+Files:
+
+- `Analysis/TableFactory/build_dashboard_tables.py` — canonical table-factory CLI
+- `dashboard_app.py` — Streamlit app
+- `Charts/export_dashboard_figures.py` — static PNG export script
+- `docs/DASHBOARD_TABLE_FACTORY.md` — preprocessing/table-layer architecture
+- `docs/DASHBOARD_DATA_DICTIONARY.md` — schema notes for sample/public CSVs
+- `Results/tables/dashboard_samples/` — tiny example CSV fixtures
+- `Results/tables/dashboard_data/` — generated dashboard-ready tables
+- `requirements-dashboard.txt` — dashboard/runtime dependencies
+
+Run from the `Python/` directory:
+
+```bash
+python Analysis/TableFactory/build_dashboard_tables.py
+```
+
+Or build incrementally:
+
+```bash
+python Analysis/TableFactory/build_dashboard_tables.py scene-catalog
+python Analysis/TableFactory/build_dashboard_tables.py scene-summary --limit-scenes-per-group 5
+python Analysis/TableFactory/build_dashboard_tables.py temporal-summary
+```
+
+You can also process a bounded year window, for example one decade at a time:
+
+```bash
+python Analysis/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 scene-catalog
+python Analysis/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 scene-summary
+python Analysis/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 temporal-summary
+```
+
+Then launch the dashboard:
+
+```bash
+streamlit run dashboard_app.py
+```
+
+The app defaults to `Results/tables/dashboard_data/` and lets you point at a different summary-table folder from the sidebar.
+
+Example export command:
+
+```bash
+python Charts/export_dashboard_figures.py \
+  --figure-type timeseries \
+  --output Results/figures/dashboard/sample_timeseries.png \
+  --comparison-json '{"sensor":"s2","aoi":"north","index":"ndvi","spatial_percentile":"p95","temporal_agg":"scene","temporal_percentile":"none","cloud_threshold":40,"season_filter":"all","label":"Sentinel north scene"}'
+```
+
+The growing-season overlay view uses the first saved comparison configuration, renders all years as faint background lines, and emphasizes the selected year plus adjacent years. Sentinel and Landsat masks are fixed dataset definitions and are preserved as metadata, not exposed as dashboard toggles.
+
+Current note:
+
+- the in-dashboard growing-season overlay is temporarily disabled behind a feature flag while the main overlay workflow is stabilized
+- a standalone animated export for StoryMaps is logged as a stretch goal
+
+---
+
 # Future Work
 
 Possible extensions include:
