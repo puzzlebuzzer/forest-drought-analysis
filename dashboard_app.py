@@ -259,8 +259,8 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
 
     _ensure_builder_state(bundle)
     with st.sidebar.form("comparison_builder_form"):
-        sensor = _safe_selectbox("Sensor", sensors, "s2", scope=st, key="builder_sensor")
         aoi = _safe_selectbox("AOI", aois, "north", scope=st, key="builder_aoi")
+        sensor = _safe_selectbox("Sensor", sensors, "s2", scope=st, key="builder_sensor")
         index_name = _safe_selectbox("Index", indices, "ndvi", scope=st, key="builder_index")
         cloud_threshold = _safe_plain_selectbox("Cloud threshold", cloud_thresholds, 40, scope=st, key="builder_cloud_threshold")
         spatial_percentile = _safe_selectbox(
