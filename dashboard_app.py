@@ -216,7 +216,6 @@ def _render_config_table() -> None:
     if not st.session_state.comparison_configs:
         st.info("Add at least one comparison configuration to draw an overlay plot.")
         return
-    st.subheader("Selected overlays")
     palette = pc.qualitative.Plotly
     for idx, config_dict in enumerate(st.session_state.comparison_configs):
         columns = st.columns([0.6, 4.4, 1])
