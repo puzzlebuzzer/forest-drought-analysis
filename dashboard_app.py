@@ -122,13 +122,13 @@ def _stddev_option(value):
 def _config_display_label(config_dict: dict, idx: int | None = None) -> str:
     label = config_dict.get("label") or " / ".join(
         [
-            str(config_dict["sensor"]),
             str(config_dict["aoi"]),
+            str(config_dict["sensor"]),
             str(config_dict["index"]),
+            str(config_dict["cloud_threshold"]),
+            str(config_dict["spatial_percentile"]),
             str(config_dict["temporal_agg"]),
             str(config_dict["temporal_percentile"]),
-            str(config_dict["spatial_percentile"]),
-            str(config_dict["cloud_threshold"]),
         ]
     )
     return f"{idx + 1}. {label}" if idx is not None else label

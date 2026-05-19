@@ -30,13 +30,13 @@ def _apply_stddev_filters(frame: pd.DataFrame, config: ComparisonConfig) -> pd.D
 def _series_label(config: ComparisonConfig) -> str:
     return config.label or " / ".join(
         [
-            config.sensor,
             config.aoi,
+            config.sensor,
             config.index,
+            str(config.cloud_threshold),
+            config.spatial_percentile,
             config.temporal_agg,
             config.temporal_percentile,
-            config.spatial_percentile,
-            config.season_filter,
         ]
     )
 
