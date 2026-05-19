@@ -209,10 +209,6 @@ def _ensure_builder_state(bundle) -> None:
 def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, str | None, int | None]:
     _apply_pending_builder_values()
 
-    if st.sidebar.button("Add layer"):
-        _start_new_overlay(bundle)
-        st.rerun()
-
     year_min, year_max = bundle.available_year_range()
     if year_min == year_max:
         st.sidebar.caption(f"Only one year is available in the loaded tables: {year_min}")
@@ -224,6 +220,10 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             max_value=year_max,
             value=(year_min, year_max),
         )
+
+    if st.sidebar.button("Add layer"):
+        _start_new_overlay(bundle)
+        st.rerun()
 
     sensors = bundle.available_values("sensor")
     aois = bundle.available_values("aoi")
