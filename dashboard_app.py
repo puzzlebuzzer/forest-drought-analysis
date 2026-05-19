@@ -111,7 +111,6 @@ def _config_display_label(config_dict: dict, idx: int | None = None) -> str:
 
 
 def _render_data_dir_control() -> Path:
-    st.sidebar.header("Data")
     data_dir_input = st.sidebar.text_input("Summary CSV directory", value=str(DEFAULT_DATA_DIR))
     return Path(data_dir_input)
 
@@ -235,7 +234,6 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
     season_filters = bundle.available_values("season_filter")
 
     _ensure_builder_state(bundle)
-    st.sidebar.header("Comparison builder")
     with st.sidebar.form("comparison_builder_form"):
         sensor = _safe_selectbox("Sensor", sensors, "s2", scope=st, key="builder_sensor")
         aoi = _safe_selectbox("AOI", aois, "north", scope=st, key="builder_aoi")
