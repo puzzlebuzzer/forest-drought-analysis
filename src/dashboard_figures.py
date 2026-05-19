@@ -68,7 +68,7 @@ def build_timeseries_figure(
     messages: list[str] = []
 
     for config in configs:
-        frame = bundle.frame_for_temporal_agg(config.temporal_agg)
+        frame = bundle.frame_for_config(config)
         filtered = filter_frame(
             frame,
             filters=asdict(config) | {"label": None},

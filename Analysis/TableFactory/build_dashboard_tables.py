@@ -5,11 +5,13 @@ import argparse
 import shutil
 from datetime import datetime
 from pathlib import Path
+from typing import Iterable
 
 import pandas as pd
 
 from src.paths import PROJECT_ROOT
 from src.table_factory import (
+    CLOUD_THRESHOLDS,
     build_data_dictionary_markdown,
     build_scene_catalog,
     build_scene_summary,
@@ -35,6 +37,8 @@ MERGE_KEYS = {
         "pixel_mask_id",
     ],
 }
+
+SERIES_DIRNAME = "series_store"
 
 
 def _read_table(output_dir: Path, stem: str) -> pd.DataFrame:
@@ -94,6 +98,10 @@ def _archive_existing_file(path: Path) -> None:
     print(f"Archived existing {path.name} -> {archived_path}")
 
 
+def _series_slug(parts: Iterable[object]) -> str:
+    return "__".join(str(part).replace("/", "-").replace(" ", "_") for part in parts)
+
+
 def _merge_with_existing(output_dir: Path, stem: str, frame: pd.DataFrame) -> pd.DataFrame:
     key_columns = MERGE_KEYS.get(stem)
     if key_columns is None:
@@ -121,6 +129,82 @@ def _write_named_table(output_dir: Path, stem: str, frame: pd.DataFrame, merge_e
         print(f"Skipped parquet for {stem}.csv because no parquet engine is available")
     else:
         print(f"Wrote {parquet_path}")
+
+
+def _rebuild_series_store(
+    output_dir: Path,
+    stem: str,
+    frame: pd.DataFrame,
+) -> None:
+    if frame.empty:
+        return
+
+    store_root = output_dir / SERIES_DIRNAME / stem
+    if store_root.exists():
+        shutil.rmtree(store_root)
+    store_root.mkdir(parents=True, exist_ok=True)
+
+    manifest_rows = []
+    if stem == "scene_summary":
+        group_columns = ["sensor", "aoi", "index", "spatial_percentile"]
+        for group_key, group in frame.groupby(group_columns, dropna=False):
+            for threshold in CLOUD_THRESHOLDS:
+                subset = group[(group["cloud_percent"].isna()) | (group["cloud_percent"] <= threshold)].copy()
+                if subset.empty:
+                    continue
+                key_with_threshold = (*group_key, threshold)
+                relative_path = Path(stem) / f"{_series_slug(key_with_threshold)}.parquet"
+                _, parquet_path = write_table_with_optional_parquet(subset, output_dir / SERIES_DIRNAME / relative_path.with_suffix(".csv"))
+                actual_path = relative_path.with_suffix(".parquet" if parquet_path is not None else ".csv")
+                manifest_rows.append(
+                    {
+                        "sensor": group_key[0],
+                        "aoi": group_key[1],
+                        "index": group_key[2],
+                        "temporal_agg": "scene",
+                        "temporal_percentile": "none",
+                        "spatial_percentile": group_key[3],
+                        "cloud_threshold": threshold,
+                        "row_count": len(subset),
+                        "min_year": int(subset["year"].min()),
+                        "max_year": int(subset["year"].max()),
+                        "path": Path(SERIES_DIRNAME, actual_path).as_posix(),
+                    }
+                )
+    elif stem == "temporal_summary":
+        group_columns = ["sensor", "aoi", "index", "temporal_agg", "temporal_percentile", "spatial_percentile", "cloud_threshold"]
+        for group_key, subset in frame.groupby(group_columns, dropna=False):
+            if subset.empty:
+                continue
+            relative_path = Path(stem) / f"{_series_slug(group_key)}.parquet"
+            _, parquet_path = write_table_with_optional_parquet(subset, output_dir / SERIES_DIRNAME / relative_path.with_suffix(".csv"))
+            actual_path = relative_path.with_suffix(".parquet" if parquet_path is not None else ".csv")
+            manifest_rows.append(
+                {
+                    "sensor": group_key[0],
+                    "aoi": group_key[1],
+                    "index": group_key[2],
+                    "temporal_agg": group_key[3],
+                    "temporal_percentile": group_key[4],
+                    "spatial_percentile": group_key[5],
+                    "cloud_threshold": int(group_key[6]),
+                    "row_count": len(subset),
+                    "min_year": int(subset["year"].min()),
+                    "max_year": int(subset["year"].max()),
+                    "path": Path(SERIES_DIRNAME, actual_path).as_posix(),
+                }
+            )
+    else:
+        return
+
+    manifest = pd.DataFrame(manifest_rows).sort_values(
+        ["sensor", "aoi", "index", "temporal_agg", "temporal_percentile", "spatial_percentile", "cloud_threshold"]
+    )
+    manifest_stem = f"{stem}_manifest"
+    _archive_existing_file(output_dir / f"{manifest_stem}.csv")
+    _archive_existing_file(output_dir / f"{manifest_stem}.parquet")
+    write_table_with_optional_parquet(manifest, output_dir / f"{manifest_stem}.csv")
+    print(f"Rebuilt {stem} series store with {len(manifest_rows)} combinations")
 
 
 def _write_dictionary(output_dir: Path) -> None:
@@ -160,6 +244,7 @@ def parse_args() -> argparse.Namespace:
     subparsers.add_parser("scene-catalog", help="Build scene_catalog from cache manifests")
     subparsers.add_parser("scene-summary", help="Build scene_summary from scene_catalog")
     subparsers.add_parser("temporal-summary", help="Build temporal_summary from scene_summary")
+    subparsers.add_parser("series-store", help="Rebuild per-combination series files from existing scene_summary and temporal_summary tables")
     subparsers.add_parser("data-dictionary", help="Write the data dictionary only")
     subparsers.add_parser("all", help="Build all dashboard table products")
     return parser.parse_args()
@@ -203,7 +288,9 @@ def build_scene_summary_step(
     scene_summary = build_scene_summary(scene_catalog)
     print(f"Scene summary rows: {len(scene_summary)}")
     _write_named_table(output_dir, "scene_summary", scene_summary, merge_existing=True)
-    return scene_summary
+    combined_scene_summary = _read_table(output_dir, "scene_summary")
+    _rebuild_series_store(output_dir, "scene_summary", combined_scene_summary)
+    return combined_scene_summary
 
 
 def build_temporal_summary_step(
@@ -222,7 +309,17 @@ def build_temporal_summary_step(
     temporal_summary = build_temporal_summary(scene_summary)
     print(f"Temporal summary rows: {len(temporal_summary)}")
     _write_named_table(output_dir, "temporal_summary", temporal_summary, merge_existing=True)
-    return temporal_summary
+    combined_temporal_summary = _read_table(output_dir, "temporal_summary")
+    _rebuild_series_store(output_dir, "temporal_summary", combined_temporal_summary)
+    return combined_temporal_summary
+
+
+def rebuild_series_store_step(output_dir: Path) -> None:
+    print("Rebuilding per-combination series store from existing dashboard tables...")
+    scene_summary = _read_table(output_dir, "scene_summary")
+    temporal_summary = _read_table(output_dir, "temporal_summary")
+    _rebuild_series_store(output_dir, "scene_summary", scene_summary)
+    _rebuild_series_store(output_dir, "temporal_summary", temporal_summary)
 
 
 def build_all_steps(
@@ -249,6 +346,8 @@ def main() -> None:
         build_scene_summary_step(output_dir, args.limit_scenes_per_group, args.start_year, args.end_year)
     elif command == "temporal-summary":
         build_temporal_summary_step(output_dir, args.limit_scenes_per_group, args.start_year, args.end_year)
+    elif command == "series-store":
+        rebuild_series_store_step(output_dir)
     elif command == "data-dictionary":
         _write_dictionary(output_dir)
     else:

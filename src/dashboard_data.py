@@ -12,6 +12,8 @@ from src.dashboard_schema import CANONICAL_COLUMNS, COLUMN_ALIASES, DEFAULT_VALU
 class DashboardDataBundle:
     scene_summary: pd.DataFrame
     temporal_summary: pd.DataFrame
+    scene_summary_manifest: pd.DataFrame
+    temporal_summary_manifest: pd.DataFrame
     data_dir: Path
 
     def frame_for_temporal_agg(self, temporal_agg: str) -> pd.DataFrame:
@@ -19,9 +21,37 @@ class DashboardDataBundle:
             return self.scene_summary.copy()
         return self.temporal_summary[self.temporal_summary["temporal_agg"] == temporal_agg].copy()
 
+    def manifest_for_temporal_agg(self, temporal_agg: str) -> pd.DataFrame:
+        if temporal_agg == "scene":
+            return self.scene_summary_manifest.copy()
+        return self.temporal_summary_manifest[self.temporal_summary_manifest["temporal_agg"] == temporal_agg].copy()
+
+    def frame_for_config(self, config) -> pd.DataFrame:
+        manifest = self.manifest_for_temporal_agg(config.temporal_agg)
+        if not manifest.empty:
+            series_match = manifest[
+                (manifest["sensor"] == config.sensor)
+                & (manifest["aoi"] == config.aoi)
+                & (manifest["index"] == config.index)
+                & (manifest["spatial_percentile"] == config.spatial_percentile)
+                & (manifest["cloud_threshold"] == config.cloud_threshold)
+            ].copy()
+            if config.temporal_agg == "scene":
+                series_match = series_match[series_match["temporal_percentile"] == "none"]
+            else:
+                series_match = series_match[series_match["temporal_percentile"] == config.temporal_percentile]
+            if not series_match.empty:
+                manifest_row = series_match.iloc[0]
+                dataset_name = "scene_summary" if config.temporal_agg == "scene" else "temporal_summary"
+                return load_summary_csv(_resolve_series_path(self.data_dir, str(manifest_row["path"])), dataset_name)
+        return self.frame_for_temporal_agg(config.temporal_agg)
+
     def available_values(self, column: str) -> list:
         values = []
-        for frame in (self.scene_summary, self.temporal_summary):
+        manifest_frames = [self.scene_summary_manifest, self.temporal_summary_manifest]
+        data_frames = [self.scene_summary, self.temporal_summary]
+        source_frames = manifest_frames if any(not frame.empty for frame in manifest_frames) else data_frames
+        for frame in source_frames:
             if column in frame.columns:
                 values.extend(frame[column].dropna().tolist())
         preferred = DEFAULT_VALUE_ORDER.get(column)
@@ -45,10 +75,15 @@ class DashboardDataBundle:
         return unique_values
 
     def available_year_range(self) -> tuple[int, int]:
-        years = []
-        for frame in (self.scene_summary, self.temporal_summary):
-            if "year" in frame.columns:
-                years.extend(frame["year"].dropna().astype(int).tolist())
+        years: list[int] = []
+        for frame in (self.scene_summary_manifest, self.temporal_summary_manifest):
+            for column in ("min_year", "max_year"):
+                if column in frame.columns:
+                    years.extend(frame[column].dropna().astype(int).tolist())
+        if not years:
+            for frame in (self.scene_summary, self.temporal_summary):
+                if "year" in frame.columns:
+                    years.extend(frame["year"].dropna().astype(int).tolist())
         if not years:
             return (1984, pd.Timestamp.utcnow().year)
         return (min(years), max(years))
@@ -154,19 +189,68 @@ def normalize_summary_frame(frame: pd.DataFrame, dataset_name: str) -> pd.DataFr
 
 
 def load_summary_csv(path: Path, dataset_name: str) -> pd.DataFrame:
-    parquet_path = path.with_suffix(".parquet")
+    if path.suffix in {".csv", ".parquet"}:
+        parquet_path = path if path.suffix == ".parquet" else path.with_suffix(".parquet")
+        csv_path = path if path.suffix == ".csv" else path.with_suffix(".csv")
+    else:
+        parquet_path = path.with_suffix(".parquet")
+        csv_path = path
     if parquet_path.exists():
         return normalize_summary_frame(pd.read_parquet(parquet_path), dataset_name)
-    if path.exists():
-        return normalize_summary_frame(pd.read_csv(path), dataset_name)
+    if csv_path.exists():
+        return normalize_summary_frame(pd.read_csv(csv_path), dataset_name)
     return normalize_summary_frame(pd.DataFrame(columns=CANONICAL_COLUMNS), dataset_name)
+
+
+def load_manifest(path: Path) -> pd.DataFrame:
+    parquet_path = path.with_suffix(".parquet")
+    if parquet_path.exists():
+        return pd.read_parquet(parquet_path)
+    if path.exists():
+        return pd.read_csv(path)
+    return pd.DataFrame(
+        columns=[
+            "sensor",
+            "aoi",
+            "index",
+            "temporal_agg",
+            "temporal_percentile",
+            "spatial_percentile",
+            "cloud_threshold",
+            "row_count",
+            "min_year",
+            "max_year",
+            "path",
+        ]
+    )
+
+
+def _resolve_series_path(data_dir: Path, relative_path: str) -> Path:
+    candidate = data_dir / relative_path
+    if candidate.exists() or candidate.with_suffix(".parquet").exists() or candidate.with_suffix(".csv").exists():
+        return candidate
+    store_candidate = data_dir / "series_store" / relative_path
+    return store_candidate
 
 
 def load_dashboard_data(data_dir: str | Path) -> DashboardDataBundle:
     root = Path(data_dir).resolve()
+    scene_summary_manifest = load_manifest(root / "scene_summary_manifest.csv")
+    temporal_summary_manifest = load_manifest(root / "temporal_summary_manifest.csv")
+    use_series_store = not scene_summary_manifest.empty or not temporal_summary_manifest.empty
     return DashboardDataBundle(
-        scene_summary=load_summary_csv(root / "scene_summary.csv", "scene_summary"),
-        temporal_summary=load_summary_csv(root / "temporal_summary.csv", "temporal_summary"),
+        scene_summary=(
+            normalize_summary_frame(pd.DataFrame(columns=CANONICAL_COLUMNS), "scene_summary")
+            if use_series_store
+            else load_summary_csv(root / "scene_summary.csv", "scene_summary")
+        ),
+        temporal_summary=(
+            normalize_summary_frame(pd.DataFrame(columns=CANONICAL_COLUMNS), "temporal_summary")
+            if use_series_store
+            else load_summary_csv(root / "temporal_summary.csv", "temporal_summary")
+        ),
+        scene_summary_manifest=scene_summary_manifest,
+        temporal_summary_manifest=temporal_summary_manifest,
         data_dir=root,
     )
 

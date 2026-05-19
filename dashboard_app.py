@@ -224,7 +224,7 @@ def _render_config_table() -> None:
 def _build_export_subset(bundle, configs: list[ComparisonConfig], year_range: tuple[int, int]) -> pd.DataFrame:
     subsets = []
     for idx, config in enumerate(configs, start=1):
-        frame = bundle.frame_for_temporal_agg(config.temporal_agg)
+        frame = bundle.frame_for_config(config)
         filtered = filter_frame(frame, filters=asdict(config) | {"label": None}, year_range=year_range).copy()
         if filtered.empty:
             continue
