@@ -20,6 +20,10 @@ SPATIAL_PERCENTILE_LABELS = {
     "p75": "p75 (upper quartile)",
     "p100": "p100 (max)",
 }
+AOI_LABELS = {
+    "north": "GW-Jeff",
+    "south": "Smoky",
+}
 STDDEV_FILTER_OPTIONS = ["none", 1, 1.5, 2]
 
 
@@ -235,7 +239,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
 
     _ensure_builder_state(bundle)
     with st.sidebar.form("comparison_builder_form", enter_to_submit=False):
-        aoi = _safe_selectbox("AOI", aois, "north", scope=st, key="builder_aoi")
+        aoi = _safe_selectbox("AOI", aois, "north", scope=st, key="builder_aoi", format_func=lambda value: AOI_LABELS.get(value, value))
         sensor = _safe_selectbox("Sensor", sensors, "s2", scope=st, key="builder_sensor")
         index_name = _safe_selectbox("Index", indices, "ndvi", scope=st, key="builder_index")
         cloud_threshold = _safe_plain_selectbox("Cloud threshold", cloud_thresholds, 40, scope=st, key="builder_cloud_threshold")
