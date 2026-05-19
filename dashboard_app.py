@@ -209,7 +209,7 @@ def _ensure_builder_state(bundle) -> None:
 def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, str | None, int | None]:
     _apply_pending_builder_values()
 
-    if st.sidebar.button("Create new overlay"):
+    if st.sidebar.button("Add comparison"):
         _start_new_overlay(bundle)
         st.rerun()
 
@@ -276,7 +276,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             key="builder_exclude_above_stddev",
         )
         label = st.text_input("Optional custom label", key="builder_label")
-        action_label = "Add overlay" if st.session_state.builder_mode == "new" else "Apply changes"
+        action_label = "Add comparison" if st.session_state.builder_mode == "new" else "Apply changes"
         submitted = st.form_submit_button(action_label, type="primary", width="stretch")
 
     if not all([sensor, aoi, index_name, spatial_percentile, temporal_agg, temporal_percentile, season_filter]):
@@ -303,7 +303,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
 
 def _render_config_table() -> None:
     if not st.session_state.comparison_configs:
-        st.info("Add at least one comparison configuration to draw an overlay plot.")
+        st.info("Add at least one comparison configuration to draw a comparison plot.")
         return
     palette = pc.qualitative.Plotly
     for idx, config_dict in enumerate(st.session_state.comparison_configs):
@@ -338,8 +338,8 @@ def _build_export_subset(bundle, configs: list[ComparisonConfig], year_range: tu
         filtered = filter_frame(frame, filters=asdict(config) | {"label": None}, year_range=year_range).copy()
         if filtered.empty:
             continue
-        filtered.insert(0, "overlay_label", config.label or _config_display_label(asdict(config)))
-        filtered.insert(1, "overlay_order", idx)
+        filtered.insert(0, "comparison_label", config.label or _config_display_label(asdict(config)))
+        filtered.insert(1, "comparison_order", idx)
         subsets.append(filtered)
     if not subsets:
         return pd.DataFrame()
@@ -455,7 +455,7 @@ def main() -> None:
             _start_edit_overlay(new_config, len(st.session_state.comparison_configs) - 1)
         st.rerun()
 
-    st.subheader("Time-series overlay")
+    st.subheader("Time-series comparison")
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     figure, messages = build_timeseries_figure(bundle, config_objects, year_range)
     if figure.data:
