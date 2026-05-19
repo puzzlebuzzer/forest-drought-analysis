@@ -280,6 +280,7 @@ The first dashboard deliverable is included for exploring precomputed CSV summar
 Files:
 
 - `Analysis/TableFactory/build_dashboard_tables.py` — canonical table-factory CLI
+- `Analysis/TableFactory/build_dashboard_ecozone_tables.py` — ecozone-stratified table-factory CLI
 - `dashboard_app.py` — Streamlit app
 - `Charts/export_dashboard_figures.py` — static PNG export script
 - `docs/DASHBOARD_TABLE_FACTORY.md` — preprocessing/table-layer architecture
@@ -300,6 +301,14 @@ Or build incrementally:
 python Analysis/TableFactory/build_dashboard_tables.py scene-catalog
 python Analysis/TableFactory/build_dashboard_tables.py scene-summary --limit-scenes-per-group 5
 python Analysis/TableFactory/build_dashboard_tables.py temporal-summary
+```
+
+To prepare ecozone-stratified dashboard tables in the same output folder:
+
+```bash
+python Analysis/TableFactory/build_dashboard_ecozone_tables.py scene-summary
+python Analysis/TableFactory/build_dashboard_ecozone_tables.py temporal-summary
+python Analysis/TableFactory/build_dashboard_ecozone_tables.py data-dictionary
 ```
 
 You can also process a bounded year window, for example one decade at a time:

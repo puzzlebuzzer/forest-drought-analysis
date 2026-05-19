@@ -44,6 +44,10 @@ Products:
 - `scene_catalog.csv`
 - `scene_summary.csv`
 - `temporal_summary.csv`
+- optional parallel ecozone tables:
+  - `scene_summary_ecozone.csv`
+  - `temporal_summary_ecozone.csv`
+  - `data_dictionary_ecozone.md`
 - parquet versions when a parquet engine is installed
 - `data_dictionary.md`
 
@@ -62,6 +66,14 @@ From the `Python/` directory:
 
 ```bash
 python Analysis/TableFactory/build_dashboard_tables.py
+```
+
+Ecozone table prep:
+
+```bash
+python Analysis/TableFactory/build_dashboard_ecozone_tables.py scene-summary
+python Analysis/TableFactory/build_dashboard_ecozone_tables.py temporal-summary
+python Analysis/TableFactory/build_dashboard_ecozone_tables.py data-dictionary
 ```
 
 Optional dev limiter:
