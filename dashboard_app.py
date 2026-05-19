@@ -209,7 +209,7 @@ def _ensure_builder_state(bundle) -> None:
 def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, str | None, int | None]:
     _apply_pending_builder_values()
 
-    if st.sidebar.button("Add comparison"):
+    if st.sidebar.button("Add comparison layer"):
         _start_new_overlay(bundle)
         st.rerun()
 
@@ -276,7 +276,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             key="builder_exclude_above_stddev",
         )
         label = st.text_input("Optional custom label", key="builder_label")
-        action_label = "Add comparison" if st.session_state.builder_mode == "new" else "Apply changes"
+        action_label = "Add comparison layer" if st.session_state.builder_mode == "new" else "Apply changes"
         submitted = st.form_submit_button(action_label, type="primary", width="stretch")
 
     if not all([sensor, aoi, index_name, spatial_percentile, temporal_agg, temporal_percentile, season_filter]):
