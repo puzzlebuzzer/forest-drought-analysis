@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
@@ -189,6 +190,12 @@ def normalize_summary_frame(frame: pd.DataFrame, dataset_name: str) -> pd.DataFr
 
 
 def load_summary_csv(path: Path, dataset_name: str) -> pd.DataFrame:
+    return _load_summary_csv_cached(str(path), dataset_name).copy()
+
+
+@lru_cache(maxsize=512)
+def _load_summary_csv_cached(path_str: str, dataset_name: str) -> pd.DataFrame:
+    path = Path(path_str)
     if path.suffix in {".csv", ".parquet"}:
         parquet_path = path if path.suffix == ".parquet" else path.with_suffix(".parquet")
         csv_path = path if path.suffix == ".csv" else path.with_suffix(".csv")
@@ -203,6 +210,12 @@ def load_summary_csv(path: Path, dataset_name: str) -> pd.DataFrame:
 
 
 def load_manifest(path: Path) -> pd.DataFrame:
+    return _load_manifest_cached(str(path)).copy()
+
+
+@lru_cache(maxsize=32)
+def _load_manifest_cached(path_str: str) -> pd.DataFrame:
+    path = Path(path_str)
     parquet_path = path.with_suffix(".parquet")
     if parquet_path.exists():
         return pd.read_parquet(parquet_path)

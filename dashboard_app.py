@@ -240,10 +240,17 @@ def _render_export_controls(figure, export_frame: pd.DataFrame) -> None:
     st.subheader("Exports")
     col1, col2, col3, col4 = st.columns(4)
     csv_bytes = export_frame.to_csv(index=False).encode("utf-8") if not export_frame.empty else b""
-    xlsx_buffer = BytesIO()
-    if not export_frame.empty:
-        with pd.ExcelWriter(xlsx_buffer, engine="openpyxl") as writer:
-            export_frame.to_excel(writer, sheet_name="subset", index=False)
+    xlsx_bytes = None
+    try:
+        import openpyxl  # noqa: F401
+
+        xlsx_buffer = BytesIO()
+        if not export_frame.empty:
+            with pd.ExcelWriter(xlsx_buffer, engine="openpyxl") as writer:
+                export_frame.to_excel(writer, sheet_name="subset", index=False)
+        xlsx_bytes = xlsx_buffer.getvalue()
+    except Exception:
+        xlsx_bytes = None
     html_bytes = figure.to_html(include_plotlyjs="cdn", full_html=True).encode("utf-8")
     try:
         png_bytes = pio.to_image(figure, format="png", width=1400, height=800, scale=2)
@@ -256,15 +263,15 @@ def _render_export_controls(figure, export_frame: pd.DataFrame) -> None:
         file_name="dashboard_subset.csv",
         mime="text/csv",
         disabled=export_frame.empty,
-        use_container_width=True,
+        width="stretch",
     )
     col2.download_button(
         "Download Excel",
-        data=xlsx_buffer.getvalue(),
+        data=xlsx_bytes or b"",
         file_name="dashboard_subset.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        disabled=export_frame.empty,
-        use_container_width=True,
+        disabled=export_frame.empty or xlsx_bytes is None,
+        width="stretch",
     )
     col3.download_button(
         "Download PNG",
@@ -272,15 +279,17 @@ def _render_export_controls(figure, export_frame: pd.DataFrame) -> None:
         file_name="dashboard_plot.png",
         mime="image/png",
         disabled=png_bytes is None,
-        use_container_width=True,
+        width="stretch",
     )
     col4.download_button(
         "Download HTML",
         data=html_bytes,
         file_name="dashboard_plot.html",
         mime="text/html",
-        use_container_width=True,
+        width="stretch",
     )
+    if xlsx_bytes is None:
+        st.caption("Excel export requires `openpyxl` in the active environment.")
     if png_bytes is None:
         st.caption("PNG export requires Plotly static image support such as `kaleido` in the active environment.")
 
@@ -313,7 +322,7 @@ def main() -> None:
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     figure, messages = build_timeseries_figure(bundle, config_objects, year_range)
     if figure.data:
-        st.plotly_chart(figure, use_container_width=True)
+        st.plotly_chart(figure, width="stretch")
     else:
         st.warning("No lines could be drawn from the current configurations and year range.")
     for message in messages:
