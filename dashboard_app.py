@@ -305,6 +305,7 @@ def _render_config_table() -> None:
     if not st.session_state.comparison_configs:
         st.info("Add at least one comparison configuration to draw a comparison plot.")
         return
+    st.subheader("Layers")
     palette = pc.qualitative.Plotly
     for idx, config_dict in enumerate(st.session_state.comparison_configs):
         columns = st.columns([0.6, 4.0, 0.8, 1])
@@ -455,7 +456,6 @@ def main() -> None:
             _start_edit_overlay(new_config, len(st.session_state.comparison_configs) - 1)
         st.rerun()
 
-    st.subheader("Time-series comparison")
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     figure, messages = build_timeseries_figure(bundle, config_objects, year_range)
     if figure.data:
