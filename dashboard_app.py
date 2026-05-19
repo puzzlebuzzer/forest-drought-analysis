@@ -301,7 +301,7 @@ def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range:
     signature = _export_signature(configs, year_range)
     prepared = st.session_state.prepared_exports.get(signature, {})
 
-    col1, col2 = st.columns(2)
+    col1, col2, _ = st.columns([1, 1, 8])
     csv_bytes = prepared.get("csv")
     png_bytes = prepared.get("png")
     _render_staged_download_button(
