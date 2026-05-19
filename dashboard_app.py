@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+import hashlib
 from io import BytesIO
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -44,6 +46,8 @@ def _init_state() -> None:
         st.session_state.comparison_configs = []
     if "default_overlay_seeded" not in st.session_state:
         st.session_state.default_overlay_seeded = False
+    if "prepared_exports" not in st.session_state:
+        st.session_state.prepared_exports = {}
 
 
 def _select_or_default(options: list, preferred):
@@ -236,9 +240,16 @@ def _build_export_subset(bundle, configs: list[ComparisonConfig], year_range: tu
     return pd.concat(subsets, ignore_index=True)
 
 
-def _render_export_controls(figure, export_frame: pd.DataFrame) -> None:
-    st.subheader("Exports")
-    col1, col2, col3, col4 = st.columns(4)
+def _export_signature(configs: list[ComparisonConfig], year_range: tuple[int, int]) -> str:
+    payload = {
+        "year_range": list(year_range),
+        "configs": [asdict(config) for config in configs],
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def _prepare_data_export(bundle, configs: list[ComparisonConfig], year_range: tuple[int, int]) -> tuple[bytes, bytes | None]:
+    export_frame = _build_export_subset(bundle, configs, year_range)
     csv_bytes = export_frame.to_csv(index=False).encode("utf-8") if not export_frame.empty else b""
     xlsx_bytes = None
     try:
@@ -251,18 +262,47 @@ def _render_export_controls(figure, export_frame: pd.DataFrame) -> None:
         xlsx_bytes = xlsx_buffer.getvalue()
     except Exception:
         xlsx_bytes = None
+    return csv_bytes, xlsx_bytes
+
+
+def _prepare_plot_export(figure) -> tuple[bytes, bytes | None]:
     html_bytes = figure.to_html(include_plotlyjs="cdn", full_html=True).encode("utf-8")
     try:
         png_bytes = pio.to_image(figure, format="png", width=1400, height=800, scale=2)
     except Exception:
         png_bytes = None
+    return html_bytes, png_bytes
+
+
+def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range: tuple[int, int], figure) -> None:
+    st.subheader("Exports")
+    signature = _export_signature(configs, year_range)
+    prepared = st.session_state.prepared_exports.get(signature, {})
+
+    prep_cols = st.columns(2)
+    if prep_cols[0].button("Prepare data exports", use_container_width=True):
+        csv_bytes, xlsx_bytes = _prepare_data_export(bundle, configs, year_range)
+        prepared = {**prepared, "csv": csv_bytes, "xlsx": xlsx_bytes}
+        st.session_state.prepared_exports[signature] = prepared
+        st.rerun()
+    if prep_cols[1].button("Prepare plot exports", use_container_width=True):
+        html_bytes, png_bytes = _prepare_plot_export(figure)
+        prepared = {**prepared, "html": html_bytes, "png": png_bytes}
+        st.session_state.prepared_exports[signature] = prepared
+        st.rerun()
+
+    col1, col2, col3, col4 = st.columns(4)
+    csv_bytes = prepared.get("csv")
+    xlsx_bytes = prepared.get("xlsx")
+    html_bytes = prepared.get("html")
+    png_bytes = prepared.get("png")
 
     col1.download_button(
         "Download CSV",
-        data=csv_bytes,
+        data=csv_bytes or b"",
         file_name="dashboard_subset.csv",
         mime="text/csv",
-        disabled=export_frame.empty,
+        disabled=csv_bytes is None,
         width="stretch",
     )
     col2.download_button(
@@ -270,7 +310,7 @@ def _render_export_controls(figure, export_frame: pd.DataFrame) -> None:
         data=xlsx_bytes or b"",
         file_name="dashboard_subset.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        disabled=export_frame.empty or xlsx_bytes is None,
+        disabled=xlsx_bytes is None,
         width="stretch",
     )
     col3.download_button(
@@ -283,11 +323,14 @@ def _render_export_controls(figure, export_frame: pd.DataFrame) -> None:
     )
     col4.download_button(
         "Download HTML",
-        data=html_bytes,
+        data=html_bytes or b"",
         file_name="dashboard_plot.html",
         mime="text/html",
+        disabled=html_bytes is None,
         width="stretch",
     )
+    if csv_bytes is None or html_bytes is None:
+        st.caption("Prepare exports only when needed to keep dashboard load times down.")
     if xlsx_bytes is None:
         st.caption("Excel export requires `openpyxl` in the active environment.")
     if png_bytes is None:
@@ -329,8 +372,7 @@ def main() -> None:
         st.info(message)
 
     _render_config_table()
-    export_frame = _build_export_subset(bundle, config_objects, year_range)
-    _render_export_controls(figure, export_frame)
+    _render_export_controls(bundle, config_objects, year_range, figure)
 
 
 if __name__ == "__main__":
