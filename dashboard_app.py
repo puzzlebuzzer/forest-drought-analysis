@@ -306,7 +306,7 @@ def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range:
     png_bytes = prepared.get("png")
     _render_staged_download_button(
         col1,
-        "Download CSV",
+        "CSV",
         "csv",
         prepared,
         signature,
@@ -317,7 +317,7 @@ def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range:
     )
     _render_staged_download_button(
         col2,
-        "Download PNG",
+        "PNG",
         "png",
         prepared,
         signature,
