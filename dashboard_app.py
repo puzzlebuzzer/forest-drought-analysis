@@ -58,13 +58,13 @@ def _select_or_default(options: list, preferred):
     return None
 
 
-def _safe_selectbox(label: str, options: list, preferred, format_func=None):
+def _safe_selectbox(label: str, options: list, preferred, format_func=None, scope=st.sidebar):
     if not options:
-        st.sidebar.caption(f"No available values for {label.lower()} in the loaded CSVs.")
+        scope.caption(f"No available values for {label.lower()} in the loaded CSVs.")
         return None
     selected = _select_or_default(options, preferred)
     try:
-        return st.sidebar.selectbox(
+        return scope.selectbox(
             label,
             options,
             index=options.index(selected),
@@ -73,16 +73,16 @@ def _safe_selectbox(label: str, options: list, preferred, format_func=None):
         )
     except TypeError:
         if format_func is not None:
-            return st.sidebar.selectbox(label, options, index=options.index(selected), format_func=format_func)
-        return st.sidebar.selectbox(label, options, index=options.index(selected))
+            return scope.selectbox(label, options, index=options.index(selected), format_func=format_func)
+        return scope.selectbox(label, options, index=options.index(selected))
 
 
-def _safe_plain_selectbox(label: str, options: list, preferred):
+def _safe_plain_selectbox(label: str, options: list, preferred, scope=st.sidebar):
     if not options:
-        st.sidebar.caption(f"No available values for {label.lower()} in the loaded CSVs.")
+        scope.caption(f"No available values for {label.lower()} in the loaded CSVs.")
         return None
     selected = _select_or_default(options, preferred)
-    return st.sidebar.selectbox(label, options, index=options.index(selected))
+    return scope.selectbox(label, options, index=options.index(selected))
 
 
 def _stddev_option(value):
@@ -115,7 +115,7 @@ def _load_dashboard_data_cached(data_dir: str):
     return load_dashboard_data(data_dir)
 
 
-def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None]:
+def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, str | None, int | None]:
     year_min, year_max = bundle.available_year_range()
     if year_min == year_max:
         st.sidebar.caption(f"Only one year is available in the loaded tables: {year_min}")
@@ -138,54 +138,61 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None]:
     season_filters = bundle.available_values("season_filter")
 
     st.sidebar.header("Comparison builder")
-    builder_modes = ["Create new overlay", "Edit existing overlay"]
-    builder_mode = st.sidebar.radio("Builder mode", builder_modes, index=0 if not st.session_state.comparison_configs else 0)
-    selected_existing = None
-    if builder_mode == "Edit existing overlay" and st.session_state.comparison_configs:
-        selected_existing = st.sidebar.selectbox(
-            "Overlay to edit",
-            list(range(len(st.session_state.comparison_configs))),
-            format_func=lambda idx: _config_display_label(st.session_state.comparison_configs[idx], idx),
-        )
-    existing_defaults = st.session_state.comparison_configs[selected_existing] if selected_existing is not None else {}
+    with st.sidebar.form("comparison_builder_form"):
+        builder_modes = ["Create new overlay", "Edit existing overlay"]
+        builder_mode = st.radio("Builder mode", builder_modes, index=0)
+        selected_existing = None
+        if builder_mode == "Edit existing overlay" and st.session_state.comparison_configs:
+            selected_existing = st.selectbox(
+                "Overlay to edit",
+                list(range(len(st.session_state.comparison_configs))),
+                format_func=lambda idx: _config_display_label(st.session_state.comparison_configs[idx], idx),
+            )
+        existing_defaults = st.session_state.comparison_configs[selected_existing] if selected_existing is not None else {}
 
-    sensor = _safe_selectbox("Sensor", sensors, existing_defaults.get("sensor", "s2"))
-    aoi = _safe_selectbox("AOI", aois, existing_defaults.get("aoi", "north"))
-    index_name = _safe_selectbox("Index", indices, existing_defaults.get("index", "ndvi"))
-    spatial_percentile = _safe_selectbox(
-        "Spatial aggregation percentile",
-        spatial_percentiles,
-        existing_defaults.get("spatial_percentile", "p95"),
-        format_func=lambda value: SPATIAL_PERCENTILE_LABELS.get(value, value),
-    )
-    temporal_agg = _safe_selectbox("Temporal aggregation", temporal_aggs, existing_defaults.get("temporal_agg", "scene"))
-    if temporal_agg == "scene":
-        temporal_percentile = "none"
-    else:
-        visible_temporal_percentiles = list(spatial_percentiles)
-        temporal_percentile = _safe_selectbox(
-            "Temporal aggregation percentile",
-            visible_temporal_percentiles,
-            existing_defaults.get("temporal_percentile", "p95"),
+        sensor = _safe_selectbox("Sensor", sensors, existing_defaults.get("sensor", "s2"), scope=st)
+        aoi = _safe_selectbox("AOI", aois, existing_defaults.get("aoi", "north"), scope=st)
+        index_name = _safe_selectbox("Index", indices, existing_defaults.get("index", "ndvi"), scope=st)
+        spatial_percentile = _safe_selectbox(
+            "Spatial aggregation percentile",
+            spatial_percentiles,
+            existing_defaults.get("spatial_percentile", "p95"),
+            format_func=lambda value: SPATIAL_PERCENTILE_LABELS.get(value, value),
+            scope=st,
         )
-    cloud_threshold = _safe_plain_selectbox("Cloud threshold", cloud_thresholds, existing_defaults.get("cloud_threshold", 40))
-    season_filter = _safe_selectbox("Season filter", season_filters, existing_defaults.get("season_filter", "all"))
-    exclude_below_default = existing_defaults.get("exclude_below_stddev")
-    exclude_above_default = existing_defaults.get("exclude_above_stddev")
-    exclude_below_stddev = _safe_plain_selectbox(
-        "Exclude below z-score",
-        STDDEV_FILTER_OPTIONS,
-        "none" if exclude_below_default is None else exclude_below_default,
-    )
-    exclude_above_stddev = _safe_plain_selectbox(
-        "Exclude above z-score",
-        STDDEV_FILTER_OPTIONS,
-        "none" if exclude_above_default is None else exclude_above_default,
-    )
-    label = st.sidebar.text_input("Optional custom label", value=existing_defaults.get("label", ""))
+        temporal_agg = _safe_selectbox("Temporal aggregation", temporal_aggs, existing_defaults.get("temporal_agg", "scene"), scope=st)
+        if temporal_agg == "scene":
+            temporal_percentile = "none"
+        else:
+            visible_temporal_percentiles = list(spatial_percentiles)
+            temporal_percentile = _safe_selectbox(
+                "Temporal aggregation percentile",
+                visible_temporal_percentiles,
+                existing_defaults.get("temporal_percentile", "p95"),
+                scope=st,
+            )
+        cloud_threshold = _safe_plain_selectbox("Cloud threshold", cloud_thresholds, existing_defaults.get("cloud_threshold", 40), scope=st)
+        season_filter = _safe_selectbox("Season filter", season_filters, existing_defaults.get("season_filter", "all"), scope=st)
+        exclude_below_default = existing_defaults.get("exclude_below_stddev")
+        exclude_above_default = existing_defaults.get("exclude_above_stddev")
+        exclude_below_stddev = _safe_plain_selectbox(
+            "Exclude below z-score",
+            STDDEV_FILTER_OPTIONS,
+            "none" if exclude_below_default is None else exclude_below_default,
+            scope=st,
+        )
+        exclude_above_stddev = _safe_plain_selectbox(
+            "Exclude above z-score",
+            STDDEV_FILTER_OPTIONS,
+            "none" if exclude_above_default is None else exclude_above_default,
+            scope=st,
+        )
+        label = st.text_input("Optional custom label", value=existing_defaults.get("label", ""))
+        action_label = "Update overlay" if builder_mode == "Edit existing overlay" and selected_existing is not None else "Add overlay"
+        submitted = st.form_submit_button(action_label, type="primary", use_container_width=True)
 
     if not all([sensor, aoi, index_name, spatial_percentile, temporal_agg, temporal_percentile, season_filter]):
-        return selected_year_range, None
+        return selected_year_range, None, None, selected_existing
 
     config = ComparisonConfig(
         label=label.strip(),
@@ -200,7 +207,10 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None]:
         exclude_below_stddev=_stddev_option(exclude_below_stddev),
         exclude_above_stddev=_stddev_option(exclude_above_stddev),
     )
-    return selected_year_range, config, builder_mode, selected_existing
+    action = None
+    if submitted:
+        action = "update" if builder_mode == "Edit existing overlay" and selected_existing is not None else "add"
+    return selected_year_range, config, action, selected_existing
 
 
 def _render_config_table() -> None:
@@ -346,16 +356,15 @@ def main() -> None:
 
     data_dir = _render_data_dir_control()
     bundle = _load_dashboard_data_cached(str(data_dir))
-    year_range, config, builder_mode, selected_existing = _build_sidebar(bundle)
+    year_range, config, builder_action, selected_existing = _build_sidebar(bundle)
 
     if config and not st.session_state.default_overlay_seeded and not st.session_state.comparison_configs:
         st.session_state.comparison_configs.append(asdict(config))
         st.session_state.default_overlay_seeded = True
         st.rerun()
 
-    action_label = "Update overlay" if builder_mode == "Edit existing overlay" and selected_existing is not None else "Add overlay"
-    if config and st.sidebar.button(action_label, type="primary"):
-        if builder_mode == "Edit existing overlay" and selected_existing is not None:
+    if config and builder_action is not None:
+        if builder_action == "update" and selected_existing is not None:
             st.session_state.comparison_configs[selected_existing] = asdict(config)
         else:
             st.session_state.comparison_configs.append(asdict(config))
