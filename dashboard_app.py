@@ -238,6 +238,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
         sensor = _safe_selectbox("Sensor", sensors, "s2", scope=st, key="builder_sensor")
         aoi = _safe_selectbox("AOI", aois, "north", scope=st, key="builder_aoi")
         index_name = _safe_selectbox("Index", indices, "ndvi", scope=st, key="builder_index")
+        cloud_threshold = _safe_plain_selectbox("Cloud threshold", cloud_thresholds, 40, scope=st, key="builder_cloud_threshold")
         spatial_percentile = _safe_selectbox(
             "Spatial aggregation percentile",
             spatial_percentiles,
@@ -259,7 +260,6 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
                 scope=st,
                 key="builder_temporal_percentile",
             )
-        cloud_threshold = _safe_plain_selectbox("Cloud threshold", cloud_thresholds, 40, scope=st, key="builder_cloud_threshold")
         season_filter = _safe_selectbox("Season filter", season_filters, "all", scope=st, key="builder_season_filter")
         exclude_below_stddev = _safe_plain_selectbox(
             "Exclude below z-score",
