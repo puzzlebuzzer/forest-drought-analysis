@@ -271,15 +271,15 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             scope=st,
             key="builder_spatial_percentile",
         )
-        temporal_agg = _safe_selectbox("Temporal aggregation", temporal_aggs, "scene", scope=st, key="builder_temporal_agg")
+        temporal_agg = _safe_selectbox("Interval", temporal_aggs, "scene", scope=st, key="builder_temporal_agg")
         temporal_percentile = _safe_selectbox(
-            "Temporal aggregation percentile",
+            "Interval aggregation percentile",
             list(spatial_percentiles),
             "p95",
             scope=st,
             key="builder_temporal_percentile",
         ) if temporal_agg != "scene" else _safe_selectbox_disabled(
-            "Temporal aggregation percentile",
+            "Interval aggregation percentile",
             ["none"],
             "none",
             scope=st,
