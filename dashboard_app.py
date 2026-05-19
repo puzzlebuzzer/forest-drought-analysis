@@ -262,6 +262,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             "p95",
             scope=st,
             key="builder_temporal_percentile",
+            format_func=lambda value: SPATIAL_PERCENTILE_LABELS.get(value, value),
         )
         season_filter = _safe_selectbox("Season filter", season_filters, "growing", scope=st, key="builder_season_filter")
         exclude_below_stddev = _safe_plain_selectbox(
