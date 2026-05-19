@@ -75,6 +75,7 @@ def _safe_selectbox(label: str, options: list, preferred, format_func=None, scop
             filter_mode=None,
             format_func=format_func,
             key=key,
+            disabled=False,
         )
     except TypeError:
         if format_func is not None:
@@ -88,6 +89,30 @@ def _safe_plain_selectbox(label: str, options: list, preferred, scope=st.sidebar
         return None
     selected = _select_or_default(options, st.session_state.get(key, preferred) if key else preferred)
     return scope.selectbox(label, options, index=options.index(selected), key=key)
+
+
+def _safe_selectbox_disabled(
+    label: str,
+    options: list,
+    preferred,
+    scope=st.sidebar,
+    key: str | None = None,
+):
+    if not options:
+        scope.caption(f"No available values for {label.lower()} in the loaded CSVs.")
+        return None
+    selected = _select_or_default(options, st.session_state.get(key, preferred) if key else preferred)
+    try:
+        return scope.selectbox(
+            label,
+            options,
+            index=options.index(selected),
+            filter_mode=None,
+            key=key,
+            disabled=True,
+        )
+    except TypeError:
+        return scope.selectbox(label, options, index=options.index(selected), key=key, disabled=True)
 
 
 def _stddev_option(value):
@@ -253,9 +278,13 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             "p95",
             scope=st,
             key="builder_temporal_percentile",
+        ) if temporal_agg != "scene" else _safe_selectbox_disabled(
+            "Temporal aggregation percentile",
+            ["none"],
+            "none",
+            scope=st,
+            key="builder_temporal_percentile",
         )
-        if temporal_agg == "scene":
-            st.caption("doesn't affect scene")
         season_filter = _safe_selectbox("Season filter", season_filters, "all", scope=st, key="builder_season_filter")
         exclude_below_stddev = _safe_plain_selectbox(
             "Exclude below z-score",
