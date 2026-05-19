@@ -258,7 +258,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
     season_filters = bundle.available_values("season_filter")
 
     _ensure_builder_state(bundle)
-    with st.sidebar.form("comparison_builder_form"):
+    with st.sidebar.form("comparison_builder_form", enter_to_submit=False):
         aoi = _safe_selectbox("AOI", aois, "north", scope=st, key="builder_aoi")
         sensor = _safe_selectbox("Sensor", sensors, "s2", scope=st, key="builder_sensor")
         index_name = _safe_selectbox("Index", indices, "ndvi", scope=st, key="builder_index")
