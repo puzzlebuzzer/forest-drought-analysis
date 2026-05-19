@@ -297,11 +297,11 @@ def _render_staged_download_button(
 
 
 def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range: tuple[int, int], figure) -> None:
+    st.subheader("Exports")
     signature = _export_signature(configs, year_range)
     prepared = st.session_state.prepared_exports.get(signature, {})
 
-    col1 = st.container()
-    col2 = st.container()
+    col1, col2 = st.columns(2)
     csv_bytes = prepared.get("csv")
     png_bytes = prepared.get("png")
     _render_staged_download_button(
