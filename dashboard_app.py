@@ -297,7 +297,6 @@ def _render_staged_download_button(
 
 
 def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range: tuple[int, int], figure) -> None:
-    st.subheader("Exports")
     signature = _export_signature(configs, year_range)
     prepared = st.session_state.prepared_exports.get(signature, {})
 
