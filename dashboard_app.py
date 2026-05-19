@@ -51,6 +51,8 @@ def _init_state() -> None:
         st.session_state.builder_mode = "edit"
     if "builder_target_index" not in st.session_state:
         st.session_state.builder_target_index = None
+    if "builder_pending_values" not in st.session_state:
+        st.session_state.builder_pending_values = None
 
 
 def _select_or_default(options: list, preferred):
@@ -137,17 +139,28 @@ def _default_config_dict(bundle) -> dict:
 
 
 def _load_builder_values(config_dict: dict) -> None:
-    st.session_state["builder_sensor"] = config_dict.get("sensor")
-    st.session_state["builder_aoi"] = config_dict.get("aoi")
-    st.session_state["builder_index"] = config_dict.get("index")
-    st.session_state["builder_spatial_percentile"] = config_dict.get("spatial_percentile")
-    st.session_state["builder_temporal_agg"] = config_dict.get("temporal_agg")
-    st.session_state["builder_temporal_percentile"] = config_dict.get("temporal_percentile")
-    st.session_state["builder_cloud_threshold"] = config_dict.get("cloud_threshold")
-    st.session_state["builder_season_filter"] = config_dict.get("season_filter")
-    st.session_state["builder_exclude_below_stddev"] = "none" if config_dict.get("exclude_below_stddev") is None else config_dict.get("exclude_below_stddev")
-    st.session_state["builder_exclude_above_stddev"] = "none" if config_dict.get("exclude_above_stddev") is None else config_dict.get("exclude_above_stddev")
-    st.session_state["builder_label"] = config_dict.get("label", "")
+    st.session_state.builder_pending_values = {
+        "builder_sensor": config_dict.get("sensor"),
+        "builder_aoi": config_dict.get("aoi"),
+        "builder_index": config_dict.get("index"),
+        "builder_spatial_percentile": config_dict.get("spatial_percentile"),
+        "builder_temporal_agg": config_dict.get("temporal_agg"),
+        "builder_temporal_percentile": config_dict.get("temporal_percentile"),
+        "builder_cloud_threshold": config_dict.get("cloud_threshold"),
+        "builder_season_filter": config_dict.get("season_filter"),
+        "builder_exclude_below_stddev": "none" if config_dict.get("exclude_below_stddev") is None else config_dict.get("exclude_below_stddev"),
+        "builder_exclude_above_stddev": "none" if config_dict.get("exclude_above_stddev") is None else config_dict.get("exclude_above_stddev"),
+        "builder_label": config_dict.get("label", ""),
+    }
+
+
+def _apply_pending_builder_values() -> None:
+    pending_values = st.session_state.builder_pending_values
+    if not pending_values:
+        return
+    for key, value in pending_values.items():
+        st.session_state[key] = value
+    st.session_state.builder_pending_values = None
 
 
 def _start_new_overlay(bundle) -> None:
@@ -195,6 +208,8 @@ def _ensure_builder_state(bundle) -> None:
 
 
 def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, str | None, int | None]:
+    _apply_pending_builder_values()
+
     if st.sidebar.button("Create new overlay"):
         _start_new_overlay(bundle)
         st.rerun()
