@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+import time
 
 import numpy as np
 import pandas as pd
@@ -126,17 +127,27 @@ def _time_bin_columns(frame: pd.DataFrame, temporal_agg: str) -> pd.DataFrame:
 
 def build_temporal_summary_ecozone(scene_summary: pd.DataFrame) -> pd.DataFrame:
     records: list[dict] = []
+    total_start = time.perf_counter()
     for temporal_agg in TEMPORAL_AGGS:
+        agg_start = time.perf_counter()
+        print(f"  Interval={temporal_agg}: deriving time bins...", flush=True)
         expanded = _time_bin_columns(scene_summary, temporal_agg)
         for season_filter in ["all", "growing"]:
             season_frame = expanded if season_filter == "all" else expanded[expanded["growing_season_day"].notna()]
             if season_frame.empty:
+                print(f"    season={season_filter}: no rows, skipping", flush=True)
                 continue
+            print(
+                f"    season={season_filter}: source_rows={len(season_frame)}",
+                flush=True,
+            )
             for cloud_threshold in CLOUD_THRESHOLDS:
+                threshold_start = time.perf_counter()
                 threshold_frame = season_frame[
                     season_frame["cloud_percent"].isna() | (season_frame["cloud_percent"] <= cloud_threshold)
                 ]
                 if threshold_frame.empty:
+                    print(f"      cloud<={cloud_threshold}: no rows, skipping", flush=True)
                     continue
                 group_columns = [
                     "sensor",
@@ -154,7 +165,24 @@ def build_temporal_summary_ecozone(scene_summary: pd.DataFrame) -> pd.DataFrame:
                     "pixel_mask_version",
                 ]
                 grouped = threshold_frame.groupby(group_columns, dropna=False)
-                for group_key, group in grouped:
+                total_groups = grouped.ngroups
+                print(
+                    f"      cloud<={cloud_threshold}: rows={len(threshold_frame)} groups={total_groups}",
+                    flush=True,
+                )
+                for group_idx, (group_key, group) in enumerate(grouped, start=1):
+                    if group_idx == 1 or group_idx % 500 == 0 or group_idx == total_groups:
+                        elapsed = time.perf_counter() - threshold_start
+                        per_group = elapsed / group_idx if group_idx else 0.0
+                        remaining = total_groups - group_idx
+                        eta_minutes = (per_group * remaining) / 60.0
+                        print(
+                            "        "
+                            f"group {group_idx}/{total_groups} "
+                            f"elapsed={elapsed/60:.1f}m eta={eta_minutes:.1f}m "
+                            f"{group_key[0]}/{group_key[1]}/{group_key[2]}/ecozone{int(group_key[3])}",
+                            flush=True,
+                        )
                     values = group["value"].to_numpy(dtype=float)
                     for percentile in TEMPORAL_PERCENTILES:
                         records.append(
@@ -189,9 +217,21 @@ def build_temporal_summary_ecozone(scene_summary: pd.DataFrame) -> pd.DataFrame:
                                 "time_bin_end": group_key[7],
                             }
                         )
+                print(
+                    f"      cloud<={cloud_threshold}: completed in {(time.perf_counter() - threshold_start)/60:.1f}m",
+                    flush=True,
+                )
+        print(
+            f"  Interval={temporal_agg}: completed in {(time.perf_counter() - agg_start)/60:.1f}m",
+            flush=True,
+        )
 
     if not records:
         return pd.DataFrame()
+    print(
+        f"  Ecozone temporal summary total elapsed={(time.perf_counter() - total_start)/60:.1f}m rows={len(records)}",
+        flush=True,
+    )
     return pd.DataFrame.from_records(records).sort_values(
         [
             "sensor",
