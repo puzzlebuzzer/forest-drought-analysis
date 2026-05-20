@@ -228,11 +228,15 @@ def build_temporal_summary_ecozone(scene_summary: pd.DataFrame) -> pd.DataFrame:
 
     if not records:
         return pd.DataFrame()
+    frame = pd.DataFrame.from_records(records)
+    for column in ("date", "time_bin_start", "time_bin_end"):
+        if column in frame.columns:
+            frame[column] = pd.to_datetime(frame[column], utc=True, errors="coerce").dt.tz_localize(None)
     print(
         f"  Ecozone temporal summary total elapsed={(time.perf_counter() - total_start)/60:.1f}m rows={len(records)}",
         flush=True,
     )
-    return pd.DataFrame.from_records(records).sort_values(
+    return frame.sort_values(
         [
             "sensor",
             "aoi",
