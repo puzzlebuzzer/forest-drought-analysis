@@ -31,7 +31,14 @@ DASHBOARD_READ_COLUMNS = [
     "ecozone_code",
     "ecozone_label",
     "forest_community_code",
+    "forest_community_display_code",
     "forest_community_label",
+    "forest_community_source_dataset",
+    "forest_community_source_value",
+    "forest_community_source_key",
+    "ecozone_group_code",
+    "ecozone_group_label",
+    "ecozone_group_raw",
     "date",
     "year",
     "doy",
@@ -95,7 +102,7 @@ def _parquet_filter_value(column: str, value):
         return None
     if column == "cloud_threshold":
         return None
-    if column in {"ecozone_code", "forest_community_code", "year", "doy"}:
+    if column in {"ecozone_code", "forest_community_code", "forest_community_source_value", "ecozone_group_code", "year", "doy"}:
         return int(value)
     return value
 
@@ -493,6 +500,8 @@ def normalize_summary_frame(frame: pd.DataFrame, dataset_name: str) -> pd.DataFr
     numeric_columns = [
         "ecozone_code",
         "forest_community_code",
+        "forest_community_source_value",
+        "ecozone_group_code",
         "year",
         "doy",
         "growing_season_day",
@@ -529,6 +538,24 @@ def normalize_summary_frame(frame: pd.DataFrame, dataset_name: str) -> pd.DataFr
     )
     normalized["forest_community_label"] = normalized["forest_community_label"].fillna("overall")
     normalized["forest_community_label"] = normalized["forest_community_label"].map(normalize_label)
+    normalized["forest_community_display_code"] = normalized["forest_community_display_code"].fillna(
+        normalized["forest_community_code"].map(lambda value: str(int(value)) if pd.notna(value) else pd.NA)
+    )
+    normalized["forest_community_source_value"] = normalized["forest_community_source_value"].fillna(
+        normalized["forest_community_code"]
+    )
+    normalized["forest_community_source_key"] = normalized["forest_community_source_key"].fillna(
+        normalized.apply(
+            lambda row: (
+                f"{row['aoi']}:{row['forest_community_source_dataset']}:{int(row['forest_community_source_value'])}"
+                if pd.notna(row["forest_community_source_dataset"]) and pd.notna(row["forest_community_source_value"])
+                else pd.NA
+            ),
+            axis=1,
+        )
+    )
+    normalized["ecozone_group_raw"] = normalized["ecozone_group_raw"].fillna(normalized["ecozone_group_label"])
+    normalized["ecozone_group_label"] = normalized["ecozone_group_label"].fillna(normalized["ecozone_group_raw"])
 
     if normalized["year"].isna().all() and normalized["date"].notna().any():
         normalized["year"] = normalized["date"].dt.year
@@ -670,7 +697,14 @@ def _load_manifest_cached(path_str: str) -> pd.DataFrame:
             "ecozone_code",
             "ecozone_label",
             "forest_community_code",
+            "forest_community_display_code",
             "forest_community_label",
+            "forest_community_source_dataset",
+            "forest_community_source_value",
+            "forest_community_source_key",
+            "ecozone_group_code",
+            "ecozone_group_label",
+            "ecozone_group_raw",
             "temporal_agg",
             "temporal_percentile",
             "spatial_percentile",

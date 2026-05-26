@@ -59,6 +59,34 @@ class DashboardLoaderTests(unittest.TestCase):
         normalized = normalize_summary_frame(raw, "temporal_summary_forest_community")
         self.assertEqual(normalized.loc[0, "forest_community_label"], "Northern Hardwood Slope")
 
+    def test_normalization_preserves_forest_community_tier_fields(self) -> None:
+        raw = pd.DataFrame(
+            [
+                {
+                    "sensor": "s2",
+                    "aoi": "north",
+                    "index": "ndvi",
+                    "forest_community_code": 116,
+                    "forest_community_display_code": "16a",
+                    "forest_community_label": "Dry-mesic oak",
+                    "forest_community_source_dataset": "NBlueRidge",
+                    "forest_community_source_value": 16,
+                    "forest_community_source_key": "north:NBlueRidge:16",
+                    "ecozone_group_code": 6,
+                    "ecozone_group_label": "Dry-mesic oak",
+                    "ecozone_group_raw": "6-Dry-mesic oak",
+                    "date": "2024-07-01",
+                    "value": 0.75,
+                }
+            ]
+        )
+        normalized = normalize_summary_frame(raw, "temporal_summary_forest_community")
+        self.assertEqual(int(normalized.loc[0, "forest_community_code"]), 116)
+        self.assertEqual(normalized.loc[0, "forest_community_display_code"], "16a")
+        self.assertEqual(int(normalized.loc[0, "forest_community_source_value"]), 16)
+        self.assertEqual(int(normalized.loc[0, "ecozone_group_code"]), 6)
+        self.assertEqual(normalized.loc[0, "ecozone_group_raw"], "6-Dry-mesic oak")
+
     def test_filter_frame_applies_filters_and_year_range(self) -> None:
         bundle = load_dashboard_data(SAMPLE_DIR)
         filtered = filter_frame(
