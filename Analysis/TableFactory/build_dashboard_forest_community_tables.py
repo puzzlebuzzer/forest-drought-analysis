@@ -362,7 +362,7 @@ def build_scene_summary_step(
     )
     frame = build_scene_summary_forest_community(scene_catalog)
     print(f"Forest-community scene summary rows: {len(frame)}")
-    _write_named_table(output_dir, FOREST_COMMUNITY_SCENE_STEM, frame, merge_existing=True, write_csv=write_csv)
+    _write_named_table(output_dir, FOREST_COMMUNITY_SCENE_STEM, frame, merge_existing=False, write_csv=write_csv)
     return frame
 
 

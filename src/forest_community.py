@@ -61,6 +61,9 @@ def _metadata_from_inventory_value(value: Any) -> dict[str, Any]:
             "ecozone_code": _coerce_int(value.get("ecozone_code") or value.get("ecozone")),
             "ecozone_label": value.get("ecozone_label"),
             "pixels": _coerce_int(value.get("pixels")),
+            "include": bool(value.get("include", True)),
+            "source_pixel_count": _coerce_int(value.get("source_pixel_count")),
+            "source_score": _coerce_int(value.get("source_score")),
         }
     if value is None:
         return {}
