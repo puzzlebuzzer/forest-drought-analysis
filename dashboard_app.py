@@ -83,6 +83,25 @@ def _inject_ui_css() -> None:
         div[data-baseweb="select"] input {
             caret-color: transparent !important;
         }
+        div[data-testid="stCheckbox"] {
+            min-height: 1rem;
+        }
+        div[data-testid="stCheckbox"] label {
+            align-items: center;
+            min-height: 1rem;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        div[data-testid="stCheckbox"] label > div:first-child {
+            background-color: #eeeeee !important;
+            border-color: #b8b8b8 !important;
+            color: #111111 !important;
+            margin-top: 0 !important;
+        }
+        div[data-testid="stCheckbox"] svg {
+            color: #111111 !important;
+            fill: #111111 !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -274,6 +293,16 @@ def _segment_legend_entries(bundle, config: ComparisonConfig, year_range: tuple[
 
 def _segment_checkbox_key(layer_idx: int, segment_code: int) -> str:
     return f"layer_{layer_idx}_segment_{segment_code}_visible"
+
+
+def _segment_all_checkbox_key(layer_idx: int) -> str:
+    return f"layer_{layer_idx}_segments_all_visible"
+
+
+def _set_all_segment_checkboxes(all_key: str, child_keys: list[str]) -> None:
+    value = bool(st.session_state.get(all_key, True))
+    for child_key in child_keys:
+        st.session_state[child_key] = value
 
 
 def _visible_segments_by_layer(
@@ -595,6 +624,19 @@ def _render_segment_legend(
 ) -> None:
     if not entries:
         return
+    child_keys = [_segment_checkbox_key(layer_idx, code) for code, _ in entries]
+    all_key = _segment_all_checkbox_key(layer_idx)
+    all_selected = all(st.session_state.get(child_key, True) for child_key in child_keys)
+    st.session_state[all_key] = all_selected
+    _, all_checkbox_col, _, all_label_col, _, _ = st.columns([0.6, 0.35, 0.3, 3.35, 0.8, 1])
+    all_checkbox_col.checkbox(
+        f"Toggle all segments for layer {layer_idx + 1}",
+        key=all_key,
+        label_visibility="collapsed",
+        on_change=_set_all_segment_checkboxes,
+        args=(all_key, child_keys),
+    )
+    all_label_col.markdown("<span style='font-size: 0.9rem;'>All on/off</span>", unsafe_allow_html=True)
     for offset, (code, entry) in enumerate(entries):
         checkbox_key = _segment_checkbox_key(layer_idx, code)
         is_selected = st.session_state.get(checkbox_key, True)
@@ -605,10 +647,14 @@ def _render_segment_legend(
             color = "#c9c9c9"
         spacer, checkbox_col, swatch, label_col, _, _ = st.columns([0.6, 0.35, 0.3, 3.35, 0.8, 1])
         spacer.empty()
-        checkbox_col.checkbox("", key=checkbox_key, label_visibility="collapsed")
+        checkbox_col.checkbox(
+            f"Show {entry} for layer {layer_idx + 1}",
+            key=checkbox_key,
+            label_visibility="collapsed",
+        )
         swatch.markdown(
             f"""
-            <div style="width: 0.65rem; height: 0.65rem; background:{color}; border-radius: 2px; margin-top: 0.35rem;"></div>
+            <div style="width: 0.65rem; height: 0.65rem; background:{color}; border-radius: 2px; margin-top: 0.2rem;"></div>
             """,
             unsafe_allow_html=True,
         )
