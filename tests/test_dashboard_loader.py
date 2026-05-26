@@ -42,6 +42,23 @@ class DashboardLoaderTests(unittest.TestCase):
         self.assertEqual(normalized.loc[0, "index"], "ndvi")
         self.assertAlmostEqual(normalized.loc[0, "value"], 0.75)
 
+    def test_normalization_corrects_forest_community_label_typo(self) -> None:
+        raw = pd.DataFrame(
+            [
+                {
+                    "sensor": "s2",
+                    "aoi": "north",
+                    "index": "ndvi",
+                    "forest_community_code": 801,
+                    "forest_community_label": "Northern Hardwood Slop",
+                    "date": "2024-07-01",
+                    "value": 0.75,
+                }
+            ]
+        )
+        normalized = normalize_summary_frame(raw, "temporal_summary_forest_community")
+        self.assertEqual(normalized.loc[0, "forest_community_label"], "Northern Hardwood Slope")
+
     def test_filter_frame_applies_filters_and_year_range(self) -> None:
         bundle = load_dashboard_data(SAMPLE_DIR)
         filtered = filter_frame(

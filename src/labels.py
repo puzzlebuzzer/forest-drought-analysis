@@ -1,3 +1,14 @@
+LABEL_CORRECTIONS = {
+    "Northern Hardwood Slop": "Northern Hardwood Slope",
+}
+
+
+def normalize_label(value):
+    if value is None:
+        return value
+    return LABEL_CORRECTIONS.get(str(value), value)
+
+
 FOREST_GROUP_LABELS = {
     0: "Non-forest",
     100: "White/Red/Jack Pine Group",

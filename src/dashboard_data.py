@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.dashboard_schema import CANONICAL_COLUMNS, COLUMN_ALIASES, DEFAULT_VALUE_ORDER
+from src.labels import normalize_label
 
 ECOZONE_LABELS = {
     1: "Cool",
@@ -380,7 +381,7 @@ class DashboardDataBundle:
             labels = matches[label_column].dropna().astype(str)
             labels = labels[labels != ""]
             if not labels.empty:
-                return labels.iloc[0]
+                return str(normalize_label(labels.iloc[0]))
         return fallback
 
     def available_year_range(self) -> tuple[int, int]:
@@ -527,6 +528,7 @@ def normalize_summary_frame(frame: pd.DataFrame, dataset_name: str) -> pd.DataFr
         )
     )
     normalized["forest_community_label"] = normalized["forest_community_label"].fillna("overall")
+    normalized["forest_community_label"] = normalized["forest_community_label"].map(normalize_label)
 
     if normalized["year"].isna().all() and normalized["date"].notna().any():
         normalized["year"] = normalized["date"].dt.year
@@ -652,9 +654,14 @@ def _load_manifest_cached(path_str: str) -> pd.DataFrame:
     parquet_path = path.with_suffix(".parquet")
     parquet_frame = _read_parquet_or_none(parquet_path)
     if parquet_frame is not None:
+        if "forest_community_label" in parquet_frame.columns:
+            parquet_frame["forest_community_label"] = parquet_frame["forest_community_label"].map(normalize_label)
         return parquet_frame
     if path.exists():
-        return pd.read_csv(path)
+        frame = pd.read_csv(path)
+        if "forest_community_label" in frame.columns:
+            frame["forest_community_label"] = frame["forest_community_label"].map(normalize_label)
+        return frame
     return pd.DataFrame(
         columns=[
             "sensor",
