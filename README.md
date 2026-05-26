@@ -281,6 +281,7 @@ Files:
 
 - `Analysis/TableFactory/build_dashboard_tables.py` — canonical table-factory CLI
 - `Analysis/TableFactory/build_dashboard_ecozone_tables.py` — ecozone-stratified table-factory CLI
+- `Analysis/TableFactory/build_dashboard_forest_community_tables.py` — forest-community table-factory CLI
 - `dashboard_app.py` — Streamlit app
 - `Charts/export_dashboard_figures.py` — static PNG export script
 - `docs/DASHBOARD_TABLE_FACTORY.md` — preprocessing/table-layer architecture
@@ -309,6 +310,15 @@ To prepare ecozone-stratified dashboard tables in the same output folder:
 python Analysis/TableFactory/build_dashboard_ecozone_tables.py scene-summary
 python Analysis/TableFactory/build_dashboard_ecozone_tables.py temporal-summary
 python Analysis/TableFactory/build_dashboard_ecozone_tables.py data-dictionary
+```
+
+To prepare forest-community dashboard tables, following the same flow but writing Parquet by default,
+use a Python environment with `pyarrow` available:
+
+```bash
+./.venv/bin/python Analysis/TableFactory/build_dashboard_forest_community_tables.py scene-summary
+./.venv/bin/python Analysis/TableFactory/build_dashboard_forest_community_tables.py temporal-summary
+./.venv/bin/python Analysis/TableFactory/build_dashboard_forest_community_tables.py data-dictionary
 ```
 
 You can also process a bounded year window, for example one decade at a time:

@@ -3,9 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 CANONICAL_COLUMNS = [
+    "analysis_scope",
     "sensor",
     "aoi",
     "index",
+    "ecozone_code",
+    "ecozone_label",
+    "forest_community_code",
+    "forest_community_label",
     "date",
     "year",
     "doy",
@@ -31,9 +36,20 @@ CANONICAL_COLUMNS = [
 ]
 
 COLUMN_ALIASES = {
+    "analysis_scope": ["analysis_scope", "Analysis Scope"],
     "sensor": ["sensor", "Sensor", "platform_group", "Platform Group", "Platform"],
     "aoi": ["aoi", "AOI Key", "AOI", "study_area"],
     "index": ["index", "Index", "veg_index"],
+    "ecozone_code": ["ecozone_code", "Ecozone Code", "ecozone_id"],
+    "ecozone_label": ["ecozone_label", "Ecozone", "ecozone"],
+    "forest_community_code": ["forest_community_code", "Forest Community Code", "community_code", "forest_type_code"],
+    "forest_community_label": [
+        "forest_community_label",
+        "Forest Community",
+        "community_label",
+        "forest_type_label",
+        "forest_type",
+    ],
     "date": ["date", "Date", "Scene Date", "scene_date", "time_bin_start", "bin_start_date"],
     "year": ["year", "Year"],
     "doy": ["doy", "DOY", "day_of_year"],
@@ -65,9 +81,12 @@ COLUMN_ALIASES = {
 }
 
 DEFAULT_VALUE_ORDER = {
+    "analysis_scope": ["overall", "ecozone", "forest_community"],
     "sensor": ["ls", "s2"],
     "aoi": ["north", "south"],
     "index": ["ndvi", "ndmi", "evi"],
+    "ecozone_code": [1, 2, 3],
+    "ecozone_label": ["Cool", "Intermediate", "Hot"],
     "spatial_percentile": ["p50", "p75", "p95", "p98", "p99", "p100"],
     "temporal_agg": ["month", "half_month", "scene"],
     "temporal_percentile": ["none", "p50", "p75", "p95", "p98", "p99", "p100"],
@@ -89,3 +108,6 @@ class ComparisonConfig:
     season_filter: str
     exclude_below_stddev: float | None = None
     exclude_above_stddev: float | None = None
+    analysis_scope: str = "overall"
+    ecozone_code: int | None = None
+    forest_community_code: int | None = None

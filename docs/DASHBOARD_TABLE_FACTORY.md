@@ -17,6 +17,7 @@ It does not rely on legacy Excel outputs as source data.
 - Existing caches and manifests are treated as source material.
 - Dashboard products are regenerated into a new canonical schema.
 - The dashboard reads only precomputed tables.
+- The dashboard can view either whole-AOI summaries or ecozone-stratified summaries when the optional ecozone tables are present.
 - Scene masking is fixed by sensor-specific baseline definitions.
 
 ## Canonical masks
@@ -60,6 +61,12 @@ Products:
 5. Apply cloud-threshold filtering at summary time, not by recomputing rasters.
 6. Use `growing_season_day` in `scene_summary` so the dashboard can render a normalized growing-season overlay without a separate table.
 
+Ecozone dashboard viewing:
+
+- Use the dashboard's **Ecozone** control to switch between `All` whole-AOI summaries and individual ecozone summaries.
+- Ecozone rows add `analysis_scope`, `ecozone_code`, and `ecozone_label` to the canonical dashboard schema.
+- Until Parquet or per-series stores are generated for `temporal_summary_ecozone`, selected ecozone temporal layers are read from CSV in chunks.
+
 ## Run
 
 From the `Python/` directory:
@@ -75,6 +82,22 @@ python Analysis/TableFactory/build_dashboard_ecozone_tables.py scene-summary
 python Analysis/TableFactory/build_dashboard_ecozone_tables.py temporal-summary
 python Analysis/TableFactory/build_dashboard_ecozone_tables.py data-dictionary
 ```
+
+Streaming CSV-to-Parquet conversion:
+
+```bash
+python Analysis/TableFactory/convert_dashboard_csv_to_parquet.py --ecozone-only
+```
+
+This keeps the CSV files in place and writes `.parquet` siblings. The dashboard uses filtered Parquet reads for selected ecozone layers when those Parquet files exist.
+
+Ecozone Parquet optimization bundle:
+
+```bash
+python Analysis/TableFactory/optimize_dashboard_ecozone_parquet.py
+```
+
+This reads existing ecozone Parquet siblings, writes slim typed/sorted Parquet files under `optimized_parquet/`, writes moderately partitioned dashboard datasets under `partitioned_parquet/`, and writes `scene_summary_ecozone_manifest.*` / `temporal_summary_ecozone_manifest.*`. The dashboard prefers the partitioned datasets when present.
 
 Optional dev limiter:
 
