@@ -379,11 +379,13 @@ def build_timeseries_figure(
     year_range: tuple[int, int],
     visible_segments_by_layer: dict[int, set[int]] | None = None,
     combined_group_frames_by_layer: dict[int, list[pd.DataFrame | tuple[pd.DataFrame, str | None]]] | None = None,
+    segment_color_offsets_by_layer: dict[int, dict[int, int]] | None = None,
 ) -> tuple[go.Figure, list[str]]:
     fig = go.Figure()
     messages: list[str] = []
     visible_segments_by_layer = visible_segments_by_layer or {}
     combined_group_frames_by_layer = combined_group_frames_by_layer or {}
+    segment_color_offsets_by_layer = segment_color_offsets_by_layer or {}
 
     for layer_idx, config in enumerate(configs):
         frame = bundle.frame_for_config(config)
@@ -415,16 +417,23 @@ def build_timeseries_figure(
             any_trace = False
             visible_codes = visible_segments_by_layer.get(layer_idx)
             color_idx = 0
+            color_offsets = segment_color_offsets_by_layer.get(layer_idx, {})
             for community_code, community_frame in filtered.groupby("forest_community_code", dropna=True):
                 if visible_codes is not None and int(community_code) not in visible_codes:
                     continue
                 community_frame = _apply_stddev_filters(community_frame, config)
                 if community_frame.empty:
                     continue
-                _add_timeseries_trace(fig, config, community_frame, color_override=pc.qualitative.Plotly[color_idx % len(pc.qualitative.Plotly)])
+                color_offset = color_offsets.get(int(community_code), color_idx)
+                _add_timeseries_trace(
+                    fig,
+                    config,
+                    community_frame,
+                    color_override=pc.qualitative.Plotly[color_offset % len(pc.qualitative.Plotly)],
+                )
                 color_idx += 1
                 any_trace = True
-            if not any_trace:
+            if not any_trace and not combined_group_frames_by_layer.get(layer_idx):
                 messages.append(f"All rows for `{_series_label(config)}` were removed by the standard-deviation filters.")
             continue
 

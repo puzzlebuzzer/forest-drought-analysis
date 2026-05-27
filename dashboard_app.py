@@ -298,6 +298,18 @@ def _segment_checkbox_key(layer_idx: int, segment_code: int) -> str:
     return f"layer_{layer_idx}_segment_{segment_code}_visible"
 
 
+def _layer_combined_checkbox_key(layer_idx: int) -> str:
+    return f"layer_{layer_idx}_combined_visible"
+
+
+def _broad_ecozone_checkbox_key(layer_idx: int, ecozone_code: int) -> str:
+    return f"layer_{layer_idx}_broad_ecozone_{ecozone_code}_visible"
+
+
+def _broad_ecozone_group_checkbox_key(layer_idx: int) -> str:
+    return f"layer_{layer_idx}_broad_ecozone_group_visible"
+
+
 def _segment_group_checkbox_key(layer_idx: int, group_key: str) -> str:
     return f"layer_{layer_idx}_segment_group_{group_key}_visible"
 
@@ -316,6 +328,8 @@ def _segment_all_checkbox_key(layer_idx: int) -> str:
 
 def _clear_layer_segment_state(layer_idx: int) -> None:
     prefixes = (
+        f"layer_{layer_idx}_combined_visible",
+        f"layer_{layer_idx}_broad_ecozone_",
         f"layer_{layer_idx}_segment_",
         f"layer_{layer_idx}_segment_group_",
         f"layer_{layer_idx}_segments_all_visible",
@@ -401,6 +415,14 @@ def _set_layer_segmentation(layer_idx: int, selected_scope: str, checkbox_key: s
         _load_builder_values(config_dict)
 
 
+def _config_with_scope(config: ComparisonConfig, analysis_scope: str) -> ComparisonConfig:
+    config_dict = asdict(config)
+    config_dict["analysis_scope"] = analysis_scope
+    config_dict["ecozone_code"] = None
+    config_dict["forest_community_code"] = None
+    return ComparisonConfig(**config_dict)
+
+
 def _forest_community_grouped_legend_entries(
     entries: list[tuple[int, str]],
     bundle,
@@ -470,7 +492,7 @@ def _visible_segments_by_layer(
 ) -> dict[int, set[int]]:
     visible: dict[int, set[int]] = {}
     for idx, config in enumerate(configs):
-        entries = _segment_legend_entries(bundle, config, year_range)
+        entries = _segment_legend_entries(bundle, _config_with_scope(config, "forest_community"), year_range)
         if not entries:
             continue
         selected_codes = set()
@@ -484,8 +506,37 @@ def _visible_segments_by_layer(
     return visible
 
 
+def _visible_broad_ecozones_by_layer(
+    bundle,
+    configs: list[ComparisonConfig],
+    year_range: tuple[int, int],
+) -> dict[int, set[int]]:
+    visible: dict[int, set[int]] = {}
+    for idx, config in enumerate(configs):
+        entries = _segment_legend_entries(bundle, _config_with_scope(config, "ecozone"), year_range)
+        if not entries:
+            continue
+        selected_codes = set()
+        for code, _ in entries:
+            key = _broad_ecozone_checkbox_key(idx, code)
+            if key not in st.session_state:
+                st.session_state[key] = True
+            if st.session_state.get(key, True):
+                selected_codes.add(code)
+        visible[idx] = selected_codes
+    return visible
+
+
 def _combined_segment_id(group_key: str) -> str:
     return f"combined:{group_key}"
+
+
+def _broad_ecozone_segment_id(ecozone_code: int) -> str:
+    return f"broad:{ecozone_code}"
+
+
+def _overall_combined_segment_id() -> str:
+    return "combined:overall"
 
 
 def _combined_group_frames_by_layer(
@@ -499,23 +550,22 @@ def _combined_group_frames_by_layer(
     palette = palette or pc.qualitative.Plotly
     combined_frames: dict[int, list[tuple[pd.DataFrame, str | None]]] = {}
     for idx, config in enumerate(configs):
-        if getattr(config, "analysis_scope", "overall") != "forest_community" or config.forest_community_code is not None:
-            continue
-        entries = _segment_legend_entries(bundle, config, year_range)
-        grouped_entries = _forest_community_grouped_legend_entries(entries, bundle, config)
+        forest_config = _config_with_scope(config, "forest_community")
+        entries = _segment_legend_entries(bundle, forest_config, year_range)
+        grouped_entries = _forest_community_grouped_legend_entries(entries, bundle, forest_config)
         selected_groups = []
         for group_key, group_label, group_entries in grouped_entries:
             if len(group_entries) <= 1:
                 continue
             combined_key = _segment_group_combined_checkbox_key(idx, group_key)
             if combined_key not in st.session_state:
-                st.session_state[combined_key] = False
-            if st.session_state.get(combined_key, False):
+                st.session_state[combined_key] = True
+            if st.session_state.get(combined_key, True):
                 try:
                     group_code = int(group_key)
                 except ValueError:
                     continue
-                group_frame = bundle.frame_for_forest_community_group(config, group_code)
+                group_frame = bundle.frame_for_forest_community_group(forest_config, group_code)
                 group_frame = filter_frame(group_frame, filters={}, year_range=year_range).copy()
                 if group_frame.empty:
                     continue
@@ -536,25 +586,83 @@ def _selected_color_offsets_by_layer(
 ) -> dict[int, dict[object, int]]:
     selected_color_offsets_by_layer: dict[int, dict[object, int]] = {}
     for idx, config in enumerate(configs):
-        segment_entries = _segment_legend_entries(bundle, config, year_range)
         selected_segments: list[object] = []
-        if getattr(config, "analysis_scope", "overall") == "forest_community":
-            grouped_entries = _forest_community_grouped_legend_entries(segment_entries, bundle, config)
-            for group_key, _, group_entries in grouped_entries:
-                combined_key = _segment_group_combined_checkbox_key(idx, group_key)
-                if len(group_entries) > 1 and st.session_state.get(combined_key, False):
-                    selected_segments.append(_combined_segment_id(group_key))
-                for code, _ in group_entries:
-                    if st.session_state.get(_segment_checkbox_key(idx, code), True):
-                        selected_segments.append(code)
-        else:
-            selected_segments = [
-                code
-                for code, _ in segment_entries
-                if st.session_state.get(_segment_checkbox_key(idx, code), True)
-            ]
-        selected_color_offsets_by_layer[idx] = {code: offset for offset, code in enumerate(selected_segments)}
+        if st.session_state.get(_layer_combined_checkbox_key(idx), True):
+            selected_segments.append(_overall_combined_segment_id())
+
+        broad_entries = _segment_legend_entries(bundle, _config_with_scope(config, "ecozone"), year_range)
+        for code, _ in broad_entries:
+            if st.session_state.get(_broad_ecozone_checkbox_key(idx, code), True):
+                selected_segments.append(_broad_ecozone_segment_id(code))
+
+        forest_config = _config_with_scope(config, "forest_community")
+        segment_entries = _segment_legend_entries(bundle, forest_config, year_range)
+        grouped_entries = _forest_community_grouped_legend_entries(segment_entries, bundle, forest_config)
+        for group_key, _, group_entries in grouped_entries:
+            combined_key = _segment_group_combined_checkbox_key(idx, group_key)
+            if len(group_entries) > 1 and st.session_state.get(combined_key, True):
+                selected_segments.append(_combined_segment_id(group_key))
+            for code, _ in group_entries:
+                if st.session_state.get(_segment_checkbox_key(idx, code), True):
+                    selected_segments.append(code)
+        selected_color_offsets_by_layer[idx] = {segment_id: offset for offset, segment_id in enumerate(selected_segments)}
     return selected_color_offsets_by_layer
+
+
+def _build_plot_layers(
+    bundle,
+    configs: list[ComparisonConfig],
+    year_range: tuple[int, int],
+    selected_color_offsets_by_layer: dict[int, dict[object, int]],
+    palette: list[str] | None = None,
+) -> tuple[
+    list[ComparisonConfig],
+    dict[int, set[int]],
+    dict[int, list[tuple[pd.DataFrame, str | None]]],
+    dict[int, dict[int, int]],
+]:
+    palette = palette or pc.qualitative.Plotly
+    broad_visible_by_base = _visible_broad_ecozones_by_layer(bundle, configs, year_range)
+    forest_visible_by_base = _visible_segments_by_layer(bundle, configs, year_range)
+    combined_frames_by_base = _combined_group_frames_by_layer(
+        bundle,
+        configs,
+        year_range,
+        selected_color_offsets_by_layer,
+        palette,
+    )
+
+    plot_configs: list[ComparisonConfig] = []
+    visible_segments_by_plot: dict[int, set[int]] = {}
+    combined_frames_by_plot: dict[int, list[tuple[pd.DataFrame, str | None]]] = {}
+    segment_color_offsets_by_plot: dict[int, dict[int, int]] = {}
+
+    for base_idx, config in enumerate(configs):
+        if st.session_state.get(_layer_combined_checkbox_key(base_idx), True):
+            plot_configs.append(_config_with_scope(config, "overall"))
+
+        broad_visible = broad_visible_by_base.get(base_idx, set())
+        if broad_visible:
+            plot_idx = len(plot_configs)
+            plot_configs.append(_config_with_scope(config, "ecozone"))
+            visible_segments_by_plot[plot_idx] = broad_visible
+
+        forest_visible = forest_visible_by_base.get(base_idx, set())
+        group_frames = combined_frames_by_base.get(base_idx, [])
+        if forest_visible or group_frames:
+            plot_idx = len(plot_configs)
+            plot_configs.append(_config_with_scope(config, "forest_community"))
+            visible_segments_by_plot[plot_idx] = forest_visible
+            if group_frames:
+                combined_frames_by_plot[plot_idx] = group_frames
+            base_offsets = selected_color_offsets_by_layer.get(base_idx, {})
+            segment_color_offsets_by_plot[plot_idx] = {
+                int(code): offset
+                for code, offset in base_offsets.items()
+                if isinstance(code, int)
+            }
+
+    return plot_configs, visible_segments_by_plot, combined_frames_by_plot, segment_color_offsets_by_plot
 
 
 def _render_data_dir_control() -> Path:
@@ -703,7 +811,6 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
 
     _ensure_builder_state(bundle)
     _apply_pending_builder_values()
-    analysis_scope = _builder_default("builder_analysis_scope", "overall")
     with st.sidebar.form("comparison_builder_form", enter_to_submit=False):
         aoi = _safe_selectbox(
             "AOI",
@@ -781,12 +888,12 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
         action_label = "Add new layer" if st.session_state.builder_mode == "new" else "Apply changes"
         submitted = st.form_submit_button(action_label, type="primary", width="stretch")
 
-    if not all([analysis_scope, sensor, aoi, index_name, spatial_percentile, temporal_agg, temporal_percentile, season_filter]):
+    if not all([sensor, aoi, index_name, spatial_percentile, temporal_agg, temporal_percentile, season_filter]):
         return selected_year_range, None, None, st.session_state.builder_target_index
 
     config = ComparisonConfig(
         label=label.strip(),
-        analysis_scope=analysis_scope,
+        analysis_scope="overall",
         sensor=sensor,
         aoi=aoi,
         index=index_name,
@@ -813,24 +920,32 @@ def _segment_legend_color(config: ComparisonConfig, code: int, palette: list[str
 
 
 def _render_segment_legend(
-    entries: list[tuple[int, str]],
     config: ComparisonConfig,
     bundle,
     palette: list[str],
     start_color_idx: int,
     layer_idx: int,
-    selected_color_offsets: dict[int, int],
+    selected_color_offsets: dict[object, int],
+    year_range: tuple[int, int],
 ) -> None:
-    if not entries:
-        return
-    child_keys = [_segment_checkbox_key(layer_idx, code) for code, _ in entries]
-    if getattr(config, "analysis_scope", "overall") == "forest_community":
-        grouped_entries_for_keys = _forest_community_grouped_legend_entries(entries, bundle, config)
-        child_keys.extend(
-            _segment_group_combined_checkbox_key(layer_idx, group_key)
-            for group_key, _, group_entries in grouped_entries_for_keys
-            if len(group_entries) > 1
-        )
+    broad_config = _config_with_scope(config, "ecozone")
+    forest_config = _config_with_scope(config, "forest_community")
+    forest_entries = _segment_legend_entries(bundle, forest_config, year_range)
+    grouped_entries = _forest_community_grouped_legend_entries(forest_entries, bundle, forest_config)
+
+    broad_entries = _segment_legend_entries(bundle, broad_config, year_range)
+    combined_key = _layer_combined_checkbox_key(layer_idx)
+    broad_child_keys = [_broad_ecozone_checkbox_key(layer_idx, code) for code, _ in broad_entries]
+    forest_child_keys = [_segment_checkbox_key(layer_idx, code) for code, _ in forest_entries]
+    group_combined_keys = [
+        _segment_group_combined_checkbox_key(layer_idx, group_key)
+        for group_key, _, group_entries in grouped_entries
+        if len(group_entries) > 1
+    ]
+    child_keys = [combined_key, *broad_child_keys, *forest_child_keys, *group_combined_keys]
+    for child_key in child_keys:
+        if child_key not in st.session_state:
+            st.session_state[child_key] = True
     all_key = _segment_all_checkbox_key(layer_idx)
     all_selected = all(st.session_state.get(child_key, True) for child_key in child_keys)
     st.session_state[all_key] = all_selected
@@ -842,64 +957,80 @@ def _render_segment_legend(
         args=(all_key, child_keys),
     )
 
-    if getattr(config, "analysis_scope", "overall") == "forest_community":
-        grouped_entries = _forest_community_grouped_legend_entries(entries, bundle, config)
-        for group_key, group_label, group_entries in grouped_entries:
-            group_child_keys = [_segment_checkbox_key(layer_idx, code) for code, _ in group_entries]
-            combined_key = _segment_group_combined_checkbox_key(layer_idx, group_key)
-            if len(group_entries) > 1:
-                group_child_keys = [combined_key, *group_child_keys]
-            checkbox_key = _segment_group_checkbox_key(layer_idx, group_key)
-            st.session_state[checkbox_key] = all(st.session_state.get(child_key, True) for child_key in group_child_keys)
-            _render_indented_checkbox(
-                group_label,
+    overall_color_offset = selected_color_offsets.get(_overall_combined_segment_id(), start_color_idx)
+    overall_color = palette[overall_color_offset % len(palette)]
+    if not st.session_state.get(combined_key, True):
+        overall_color = "#c9c9c9"
+    _render_indented_segment_checkbox(
+        "Combined",
+        key=combined_key,
+        level=1,
+        color=overall_color,
+    )
+
+    if broad_entries:
+        broad_group_key = _broad_ecozone_group_checkbox_key(layer_idx)
+        st.session_state[broad_group_key] = all(st.session_state.get(child_key, True) for child_key in broad_child_keys)
+        _render_indented_checkbox(
+            "Broad ecozones",
+            key=broad_group_key,
+            level=1,
+            on_change=_set_all_segment_checkboxes,
+            args=(broad_group_key, broad_child_keys),
+        )
+        for code, entry in broad_entries:
+            checkbox_key = _broad_ecozone_checkbox_key(layer_idx, code)
+            is_selected = st.session_state.get(checkbox_key, True)
+            color = ECOZONE_TRACE_COLORS.get(int(code), palette[start_color_idx % len(palette)])
+            if not is_selected:
+                color = "#c9c9c9"
+            _render_indented_segment_checkbox(
+                entry,
                 key=checkbox_key,
                 level=2,
-                on_change=_set_all_segment_checkboxes,
-                args=(checkbox_key, group_child_keys),
+                color=color,
             )
-            if len(group_entries) > 1:
-                is_combined_selected = st.session_state.get(combined_key, False)
-                combined_segment_id = _combined_segment_id(group_key)
-                color_offset = selected_color_offsets.get(combined_segment_id, 0)
-                color = _segment_legend_color(config, 0, palette, color_offset)
-                if not is_combined_selected:
-                    color = "#c9c9c9"
-                _render_indented_segment_checkbox(
-                    "Combined",
-                    key=combined_key,
-                    level=3,
-                    color=color,
-                )
-            for code, entry in group_entries:
-                checkbox_key = _segment_checkbox_key(layer_idx, code)
-                is_selected = st.session_state.get(checkbox_key, True)
-                color_offset = selected_color_offsets.get(code, 0)
-                color = _segment_legend_color(config, code, palette, color_offset)
-                if not is_selected:
-                    color = "#c9c9c9"
-                _render_indented_segment_checkbox(
-                    entry,
-                    key=checkbox_key,
-                    level=3,
-                    color=color,
-                )
-        return
 
-    for offset, (code, entry) in enumerate(entries):
-        checkbox_key = _segment_checkbox_key(layer_idx, code)
-        is_selected = st.session_state.get(checkbox_key, True)
-        color_offset = selected_color_offsets.get(code, offset)
-        palette_idx = color_offset if getattr(config, "analysis_scope", "overall") == "forest_community" else start_color_idx + color_offset
-        color = _segment_legend_color(config, code, palette, palette_idx)
-        if not is_selected:
-            color = "#c9c9c9"
-        _render_indented_segment_checkbox(
-            entry,
+    for group_key, group_label, group_entries in grouped_entries:
+        group_child_keys = [_segment_checkbox_key(layer_idx, code) for code, _ in group_entries]
+        group_combined_key = _segment_group_combined_checkbox_key(layer_idx, group_key)
+        if len(group_entries) > 1:
+            group_child_keys = [group_combined_key, *group_child_keys]
+        checkbox_key = _segment_group_checkbox_key(layer_idx, group_key)
+        st.session_state[checkbox_key] = all(st.session_state.get(child_key, True) for child_key in group_child_keys)
+        _render_indented_checkbox(
+            group_label,
             key=checkbox_key,
-            level=2,
-            color=color,
+            level=1,
+            on_change=_set_all_segment_checkboxes,
+            args=(checkbox_key, group_child_keys),
         )
+        if len(group_entries) > 1:
+            is_combined_selected = st.session_state.get(group_combined_key, True)
+            combined_segment_id = _combined_segment_id(group_key)
+            color_offset = selected_color_offsets.get(combined_segment_id, 0)
+            color = palette[color_offset % len(palette)]
+            if not is_combined_selected:
+                color = "#c9c9c9"
+            _render_indented_segment_checkbox(
+                "Combined",
+                key=group_combined_key,
+                level=2,
+                color=color,
+            )
+        for code, entry in group_entries:
+            checkbox_key = _segment_checkbox_key(layer_idx, code)
+            is_selected = st.session_state.get(checkbox_key, True)
+            color_offset = selected_color_offsets.get(code, 0)
+            color = palette[color_offset % len(palette)]
+            if not is_selected:
+                color = "#c9c9c9"
+            _render_indented_segment_checkbox(
+                entry,
+                key=checkbox_key,
+                level=2,
+                color=color,
+            )
 
 
 def _render_layer_segmentation_controls(bundle, config_dict: dict, layer_idx: int) -> None:
@@ -942,12 +1073,12 @@ def _render_config_table(
     trace_color_idx = 0
     for idx, config_dict in enumerate(st.session_state.comparison_configs):
         config = ComparisonConfig(**config_dict)
-        segment_entries = _segment_legend_entries(bundle, config, year_range)
+        segment_entries = _segment_legend_entries(bundle, _config_with_scope(config, "forest_community"), year_range)
         selected_color_offsets = selected_color_offsets_by_layer.get(idx, {})
-        is_all_segment = _is_all_segment_config(config_dict)
         columns = st.columns([0.18, 4.8, 0.55, 0.7])
-        label = _config_display_label(config_dict, idx, bundle).split(". ", 1)[1]
-        color = "#888888" if is_all_segment and segment_entries else palette[trace_color_idx % len(palette)]
+        display_config = asdict(_config_with_scope(config, "overall"))
+        label = _config_display_label(display_config, idx, bundle).split(". ", 1)[1]
+        color = "#888888" if segment_entries else palette[trace_color_idx % len(palette)]
         columns[0].markdown(
             f"""
             <div style="width: 0.9rem; height: 0.9rem; background:{color}; border-radius: 2px; margin-top: 0.2rem;"></div>
@@ -967,10 +1098,8 @@ def _render_config_table(
                 st.session_state.builder_target_index = None
                 st.session_state.builder_mode = "new"
             st.rerun()
-        _render_layer_segmentation_controls(bundle, config_dict, idx)
-        if is_all_segment:
-            _render_segment_legend(segment_entries, config, bundle, palette, trace_color_idx, idx, selected_color_offsets)
-        trace_color_idx += max(1, len(segment_entries) if is_all_segment else 1)
+        _render_segment_legend(config, bundle, palette, trace_color_idx, idx, selected_color_offsets, year_range)
+        trace_color_idx += max(1, len(segment_entries))
 
 
 def _build_export_subset(bundle, configs: list[ComparisonConfig], year_range: tuple[int, int]) -> pd.DataFrame:
@@ -1316,9 +1445,8 @@ def main() -> None:
             _start_edit_overlay(new_config, len(st.session_state.comparison_configs) - 1)
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
-    visible_segments_by_layer = _visible_segments_by_layer(bundle, config_objects, year_range)
     selected_color_offsets_by_layer = _selected_color_offsets_by_layer(bundle, config_objects, year_range)
-    combined_group_frames_by_layer = _combined_group_frames_by_layer(
+    plot_configs, visible_segments_by_layer, combined_group_frames_by_layer, segment_color_offsets_by_layer = _build_plot_layers(
         bundle,
         config_objects,
         year_range,
@@ -1326,10 +1454,11 @@ def main() -> None:
     )
     figure, messages = build_timeseries_figure(
         bundle,
-        config_objects,
+        plot_configs,
         year_range,
         visible_segments_by_layer,
         combined_group_frames_by_layer,
+        segment_color_offsets_by_layer,
     )
     if figure.data:
         st.plotly_chart(figure, width="stretch")
@@ -1339,7 +1468,7 @@ def main() -> None:
         st.info(message)
 
     _render_config_table(bundle, year_range, selected_color_offsets_by_layer)
-    _render_export_controls(bundle, config_objects, year_range, figure)
+    _render_export_controls(bundle, plot_configs, year_range, figure)
 
 
 if __name__ == "__main__":
