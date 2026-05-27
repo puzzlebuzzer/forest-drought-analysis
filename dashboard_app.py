@@ -87,6 +87,7 @@ def _inject_ui_css() -> None:
         }
         div[data-testid="stCheckbox"] {
             min-height: 1rem;
+            margin-bottom: -0.45rem;
         }
         div[data-testid="stCheckbox"] label {
             align-items: center;
@@ -357,7 +358,7 @@ def _render_indented_segment_checkbox(
     if color:
         swatch_col.markdown(
             f"""
-            <div style="width: 0.65rem; height: 0.65rem; background:{color}; border-radius: 2px; margin-top: 0.45rem;"></div>
+            <div style="width: 0.65rem; height: 0.65rem; background:{color}; border-radius: 2px; margin-top: 0.25rem;"></div>
             """,
             unsafe_allow_html=True,
         )
