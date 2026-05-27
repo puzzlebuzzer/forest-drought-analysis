@@ -484,12 +484,12 @@ def _visible_segments_by_layer(
     return visible
 
 
-def _combined_group_placeholders_by_layer(
+def _combined_group_frames_by_layer(
     bundle,
     configs: list[ComparisonConfig],
     year_range: tuple[int, int],
-) -> dict[int, list[tuple[int, str]]]:
-    placeholders: dict[int, list[tuple[int, str]]] = {}
+) -> dict[int, list[pd.DataFrame]]:
+    combined_frames: dict[int, list[pd.DataFrame]] = {}
     for idx, config in enumerate(configs):
         if getattr(config, "analysis_scope", "overall") != "forest_community" or config.forest_community_code is not None:
             continue
@@ -507,10 +507,16 @@ def _combined_group_placeholders_by_layer(
                     group_code = int(group_key)
                 except ValueError:
                     continue
-                selected_groups.append((group_code, group_label))
+                group_frame = bundle.frame_for_forest_community_group(config, group_code)
+                group_frame = filter_frame(group_frame, filters={}, year_range=year_range).copy()
+                if group_frame.empty:
+                    continue
+                group_frame["forest_community_label"] = f"{group_label} Combined"
+                group_frame["forest_community_code"] = group_code
+                selected_groups.append(group_frame)
         if selected_groups:
-            placeholders[idx] = selected_groups
-    return placeholders
+            combined_frames[idx] = selected_groups
+    return combined_frames
 
 
 def _render_data_dir_control() -> Path:
@@ -1268,13 +1274,13 @@ def main() -> None:
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     visible_segments_by_layer = _visible_segments_by_layer(bundle, config_objects, year_range)
-    combined_group_placeholders_by_layer = _combined_group_placeholders_by_layer(bundle, config_objects, year_range)
+    combined_group_frames_by_layer = _combined_group_frames_by_layer(bundle, config_objects, year_range)
     figure, messages = build_timeseries_figure(
         bundle,
         config_objects,
         year_range,
         visible_segments_by_layer,
-        combined_group_placeholders_by_layer,
+        combined_group_frames_by_layer,
     )
     if figure.data:
         st.plotly_chart(figure, width="stretch")

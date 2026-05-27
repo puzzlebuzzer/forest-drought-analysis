@@ -19,6 +19,8 @@ ECOZONE_SCENE_STEM = "scene_summary_ecozone"
 ECOZONE_TEMPORAL_STEM = "temporal_summary_ecozone"
 FOREST_COMMUNITY_SCENE_STEM = "scene_summary_forest_community"
 FOREST_COMMUNITY_TEMPORAL_STEM = "temporal_summary_forest_community"
+FOREST_COMMUNITY_GROUP_SCENE_STEM = "scene_summary_forest_ecozone_group"
+FOREST_COMMUNITY_GROUP_TEMPORAL_STEM = "temporal_summary_forest_ecozone_group"
 BASE_SCENE_STEM = "scene_summary"
 BASE_TEMPORAL_STEM = "temporal_summary"
 OPTIMIZED_PARQUET_DIRNAME = "optimized_parquet"
@@ -107,7 +109,7 @@ def _parquet_filter_value(column: str, value):
     return value
 
 
-PARTITION_COLUMNS = ["sensor", "aoi", "index", "ecozone_code", "forest_community_code", "temporal_agg"]
+PARTITION_COLUMNS = ["sensor", "aoi", "index", "ecozone_code", "forest_community_code", "ecozone_group_code", "temporal_agg"]
 HIVE_NULL_PARTITION = "__HIVE_DEFAULT_PARTITION__"
 
 
@@ -151,7 +153,7 @@ def _partition_values_from_path(root: Path, path: Path) -> dict[str, object]:
             continue
         if raw_value == HIVE_NULL_PARTITION:
             values[column] = None
-        elif column in {"ecozone_code", "forest_community_code"}:
+        elif column in {"ecozone_code", "forest_community_code", "ecozone_group_code"}:
             values[column] = int(raw_value)
         else:
             values[column] = raw_value
@@ -249,6 +251,8 @@ class DashboardDataBundle:
     temporal_summary_ecozone_manifest: pd.DataFrame
     scene_summary_forest_community_manifest: pd.DataFrame
     temporal_summary_forest_community_manifest: pd.DataFrame
+    scene_summary_forest_community_group_manifest: pd.DataFrame
+    temporal_summary_forest_community_group_manifest: pd.DataFrame
     data_dir: Path
 
     def _has_segment_tables(self, scene_stem: str) -> bool:
@@ -267,6 +271,9 @@ class DashboardDataBundle:
 
     def has_forest_community_tables(self) -> bool:
         return self._has_segment_tables(FOREST_COMMUNITY_SCENE_STEM)
+
+    def has_forest_community_group_tables(self) -> bool:
+        return self._has_segment_tables(FOREST_COMMUNITY_GROUP_SCENE_STEM)
 
     def frame_for_temporal_agg(self, temporal_agg: str) -> pd.DataFrame:
         if temporal_agg == "scene":
@@ -312,6 +319,19 @@ class DashboardDataBundle:
             return load_summary_filtered(source, stem, filters_for_config(config))
         return self.frame_for_temporal_agg(config.temporal_agg)
 
+    def frame_for_forest_community_group(self, config, group_code: int | None = None) -> pd.DataFrame:
+        stem = FOREST_COMMUNITY_GROUP_SCENE_STEM if config.temporal_agg == "scene" else FOREST_COMMUNITY_GROUP_TEMPORAL_STEM
+        source = _best_segment_summary_source(self.data_dir, stem)
+        filters = filters_for_config(
+            config,
+            {
+                "analysis_scope": "forest_ecozone_group",
+                "forest_community_code": None,
+                "ecozone_group_code": group_code,
+            },
+        )
+        return load_summary_filtered(source, stem, filters)
+
     def available_values(self, column: str) -> list:
         if column == "analysis_scope":
             values = ["overall"]
@@ -335,6 +355,8 @@ class DashboardDataBundle:
             self.temporal_summary_ecozone_manifest,
             self.scene_summary_forest_community_manifest,
             self.temporal_summary_forest_community_manifest,
+            self.scene_summary_forest_community_group_manifest,
+            self.temporal_summary_forest_community_group_manifest,
         ]
         data_frames = [self.scene_summary, self.temporal_summary]
         source_frames = manifest_frames if any(not frame.empty for frame in manifest_frames) else data_frames
@@ -377,6 +399,8 @@ class DashboardDataBundle:
             self.temporal_summary_ecozone_manifest,
             self.scene_summary_forest_community_manifest,
             self.temporal_summary_forest_community_manifest,
+            self.scene_summary_forest_community_group_manifest,
+            self.temporal_summary_forest_community_group_manifest,
             self.scene_summary,
             self.temporal_summary,
         ]
@@ -400,6 +424,8 @@ class DashboardDataBundle:
             self.temporal_summary_ecozone_manifest,
             self.scene_summary_forest_community_manifest,
             self.temporal_summary_forest_community_manifest,
+            self.scene_summary_forest_community_group_manifest,
+            self.temporal_summary_forest_community_group_manifest,
         ):
             for column in ("min_year", "max_year"):
                 if column in frame.columns:
@@ -761,6 +787,8 @@ def load_dashboard_data(data_dir: str | Path) -> DashboardDataBundle:
     temporal_summary_ecozone_manifest = load_manifest(root / f"{ECOZONE_TEMPORAL_STEM}_manifest.csv")
     scene_summary_forest_community_manifest = load_manifest(root / f"{FOREST_COMMUNITY_SCENE_STEM}_manifest.csv")
     temporal_summary_forest_community_manifest = load_manifest(root / f"{FOREST_COMMUNITY_TEMPORAL_STEM}_manifest.csv")
+    scene_summary_forest_community_group_manifest = load_manifest(root / f"{FOREST_COMMUNITY_GROUP_SCENE_STEM}_manifest.csv")
+    temporal_summary_forest_community_group_manifest = load_manifest(root / f"{FOREST_COMMUNITY_GROUP_TEMPORAL_STEM}_manifest.csv")
     use_series_store = not scene_summary_manifest.empty or not temporal_summary_manifest.empty
     lazy_base_tables = _has_parquet_engine() and (
         (root / f"{BASE_SCENE_STEM}.parquet").exists()
@@ -785,6 +813,8 @@ def load_dashboard_data(data_dir: str | Path) -> DashboardDataBundle:
         temporal_summary_ecozone_manifest=temporal_summary_ecozone_manifest,
         scene_summary_forest_community_manifest=scene_summary_forest_community_manifest,
         temporal_summary_forest_community_manifest=temporal_summary_forest_community_manifest,
+        scene_summary_forest_community_group_manifest=scene_summary_forest_community_group_manifest,
+        temporal_summary_forest_community_group_manifest=temporal_summary_forest_community_group_manifest,
         data_dir=root,
     )
 

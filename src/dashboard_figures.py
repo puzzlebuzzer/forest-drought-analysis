@@ -378,12 +378,12 @@ def build_timeseries_figure(
     configs: list[ComparisonConfig],
     year_range: tuple[int, int],
     visible_segments_by_layer: dict[int, set[int]] | None = None,
-    combined_group_placeholders_by_layer: dict[int, list[tuple[int, str]]] | None = None,
+    combined_group_frames_by_layer: dict[int, list[pd.DataFrame]] | None = None,
 ) -> tuple[go.Figure, list[str]]:
     fig = go.Figure()
     messages: list[str] = []
     visible_segments_by_layer = visible_segments_by_layer or {}
-    combined_group_placeholders_by_layer = combined_group_placeholders_by_layer or {}
+    combined_group_frames_by_layer = combined_group_frames_by_layer or {}
 
     for layer_idx, config in enumerate(configs):
         frame = bundle.frame_for_config(config)
@@ -435,28 +435,15 @@ def build_timeseries_figure(
 
         _add_timeseries_trace(fig, config, filtered)
 
-    placeholder_start = pd.Timestamp(year=year_range[0], month=1, day=1)
-    placeholder_end = pd.Timestamp(year=year_range[1], month=12, day=31)
-    for layer_idx, groups in combined_group_placeholders_by_layer.items():
+    for layer_idx, group_frames in combined_group_frames_by_layer.items():
         if layer_idx >= len(configs):
             continue
         config = configs[layer_idx]
-        for group_code, group_label in groups:
-            fig.add_trace(
-                go.Scatter(
-                    x=[placeholder_start, placeholder_end],
-                    y=[0.99, 0.99],
-                    mode="lines",
-                    name=f"{_series_label(config)} / {group_label} / Combined",
-                    line={"color": "#b8b8b8", "width": 2, "dash": "dot"},
-                    hovertemplate=f"{group_label} Combined placeholder<br>%{{x|%Y-%m-%d}}<br>value=%{{y:.2f}}<extra></extra>",
-                    customdata=[[group_code], [group_code]],
-                )
-            )
-        if groups:
-            messages.append(
-                f"Combined ecozone-group line(s) for `{_series_label(config)}` are placeholders until group-summary preprocessing finishes."
-            )
+        for group_frame in group_frames:
+            group_frame = _apply_stddev_filters(group_frame, config)
+            if group_frame.empty:
+                continue
+            _add_timeseries_trace(fig, config, group_frame, color_override="#b8b8b8")
 
     fig.update_layout(
         template="plotly_white",

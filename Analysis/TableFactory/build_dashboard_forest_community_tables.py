@@ -25,6 +25,7 @@ from src.table_factory_forest_community import (
     build_temporal_summary_ecozone_group,
     build_temporal_summary_forest_community,
     default_forest_community_output_dir,
+    iter_scene_summary_ecozone_group_chunks,
     iter_temporal_summary_ecozone_group_chunks,
     iter_temporal_summary_forest_community_chunks,
 )
@@ -106,6 +107,9 @@ PARTITION_COLUMNS_BY_STEM = {
 
 
 def _read_table(output_dir: Path, stem: str) -> pd.DataFrame:
+    partitioned_path = output_dir / PARTITIONED_PARQUET_DIRNAME / stem
+    if partitioned_path.exists():
+        return pd.read_parquet(partitioned_path)
     parquet_path = output_dir / f"{stem}.parquet"
     csv_path = output_dir / f"{stem}.csv"
     if parquet_path.exists():
@@ -370,12 +374,21 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Store full joined source scene IDs in temporal rows. Off by default to reduce table size.",
     )
+    parser.add_argument(
+        "--scene-chunk-size",
+        type=int,
+        default=500,
+        help="Number of source scenes per chunk when writing forest community group scene summaries.",
+    )
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("scene-summary", help="Build scene_summary_forest_community from cache manifests and aligned rasters")
     subparsers.add_parser("temporal-summary", help="Build temporal_summary_forest_community from scene_summary_forest_community")
-    subparsers.add_parser("ecozone-group-scene-summary", help="Build scene_summary_forest_ecozone_group from cache manifests and aligned rasters")
-    subparsers.add_parser("ecozone-group-temporal-summary", help="Build temporal_summary_forest_ecozone_group from scene_summary_forest_ecozone_group")
-    subparsers.add_parser("ecozone-group-all", help="Build all forest ecozone-group dashboard table products")
+    subparsers.add_parser("forest-community-group-scene-summary", help="Build scene_summary_forest_ecozone_group from cache manifests and aligned rasters")
+    subparsers.add_parser("forest-community-group-temporal-summary", help="Build temporal_summary_forest_ecozone_group from scene_summary_forest_ecozone_group")
+    subparsers.add_parser("forest-community-group-all", help="Build all forest community-group dashboard table products")
+    subparsers.add_parser("ecozone-group-scene-summary", help="Legacy alias for forest-community-group-scene-summary")
+    subparsers.add_parser("ecozone-group-temporal-summary", help="Legacy alias for forest-community-group-temporal-summary")
+    subparsers.add_parser("ecozone-group-all", help="Legacy alias for forest-community-group-all")
     subparsers.add_parser("data-dictionary", help="Write the forest-community data dictionary only")
     subparsers.add_parser("all", help="Build all forest-community dashboard table products")
     return parser.parse_args()
@@ -409,6 +422,7 @@ def build_temporal_summary_step(
     *,
     write_csv: bool,
     include_scene_id_list: bool,
+    scene_chunk_size: int = 500,
 ) -> pd.DataFrame:
     try:
         scene_summary = _read_table(output_dir, FOREST_COMMUNITY_SCENE_STEM)
@@ -442,17 +456,19 @@ def build_ecozone_group_scene_summary_step(
     end_year: int | None,
     *,
     write_csv: bool,
+    scene_chunk_size: int = 500,
 ) -> pd.DataFrame:
-    print("Building forest ecozone-group scene summaries from aligned rasters...")
+    print("Building forest community-group scene summaries from aligned rasters...")
     scene_catalog = build_filtered_scene_catalog(
         limit_scenes_per_group=limit_scenes_per_group,
         start_year=start_year,
         end_year=end_year,
     )
-    frame = build_scene_summary_ecozone_group(scene_catalog)
-    print(f"Forest ecozone-group scene summary rows: {len(frame)}")
-    _write_named_table(output_dir, FOREST_ECOZONE_GROUP_SCENE_STEM, frame, merge_existing=False, write_csv=write_csv)
-    return frame
+    chunks = iter_scene_summary_ecozone_group_chunks(scene_catalog, chunk_size=scene_chunk_size)
+    manifest = _write_partitioned_table_chunks(output_dir, FOREST_ECOZONE_GROUP_SCENE_STEM, chunks)
+    if write_csv:
+        print("Skipping CSV write for partitioned forest community-group scene output.")
+    return manifest
 
 
 def build_ecozone_group_temporal_summary_step(
@@ -471,21 +487,23 @@ def build_ecozone_group_temporal_summary_step(
         if end_year is not None:
             scene_summary = scene_summary[scene_summary["year"] <= end_year]
     except FileNotFoundError:
-        scene_summary = build_ecozone_group_scene_summary_step(
+        build_ecozone_group_scene_summary_step(
             output_dir,
             limit_scenes_per_group,
             start_year,
             end_year,
             write_csv=write_csv,
+            scene_chunk_size=scene_chunk_size,
         )
-    print("Building forest ecozone-group temporal summaries as partitioned Parquet chunks...")
+        scene_summary = _read_table(output_dir, FOREST_ECOZONE_GROUP_SCENE_STEM)
+    print("Building forest community-group temporal summaries as partitioned Parquet chunks...")
     chunks = iter_temporal_summary_ecozone_group_chunks(
         scene_summary,
         include_scene_id_list=include_scene_id_list,
     )
     manifest = _write_partitioned_table_chunks(output_dir, FOREST_ECOZONE_GROUP_TEMPORAL_STEM, chunks)
     if write_csv:
-        print("Skipping CSV write for partitioned forest ecozone-group temporal output; expected row count is large.")
+        print("Skipping CSV write for partitioned forest community-group temporal output; expected row count is large.")
     return manifest
 
 
@@ -506,12 +524,13 @@ def main() -> None:
             args.end_year,
             write_csv=args.write_csv,
             include_scene_id_list=args.include_scene_id_list,
+            scene_chunk_size=args.scene_chunk_size,
         )
         return
-    if command == "ecozone-group-scene-summary":
-        build_ecozone_group_scene_summary_step(output_dir, args.limit_scenes_per_group, args.start_year, args.end_year, write_csv=args.write_csv)
+    if command in {"forest-community-group-scene-summary", "ecozone-group-scene-summary"}:
+        build_ecozone_group_scene_summary_step(output_dir, args.limit_scenes_per_group, args.start_year, args.end_year, write_csv=args.write_csv, scene_chunk_size=args.scene_chunk_size)
         return
-    if command == "ecozone-group-temporal-summary":
+    if command in {"forest-community-group-temporal-summary", "ecozone-group-temporal-summary"}:
         build_ecozone_group_temporal_summary_step(
             output_dir,
             args.limit_scenes_per_group,
@@ -519,10 +538,11 @@ def main() -> None:
             args.end_year,
             write_csv=args.write_csv,
             include_scene_id_list=args.include_scene_id_list,
+            scene_chunk_size=args.scene_chunk_size,
         )
         return
-    if command == "ecozone-group-all":
-        build_ecozone_group_scene_summary_step(output_dir, args.limit_scenes_per_group, args.start_year, args.end_year, write_csv=args.write_csv)
+    if command in {"forest-community-group-all", "ecozone-group-all"}:
+        build_ecozone_group_scene_summary_step(output_dir, args.limit_scenes_per_group, args.start_year, args.end_year, write_csv=args.write_csv, scene_chunk_size=args.scene_chunk_size)
         build_ecozone_group_temporal_summary_step(
             output_dir,
             args.limit_scenes_per_group,

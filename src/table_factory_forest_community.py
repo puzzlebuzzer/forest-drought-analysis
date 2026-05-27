@@ -72,7 +72,7 @@ def _ecozone_group_catalog(sensor: str, aoi: str) -> dict[int, dict]:
             code,
             {
                 "ecozone_group_code": code,
-                "ecozone_group_label": metadata.get("ecozone_group_label") or f"Ecozone group {code}",
+                "ecozone_group_label": metadata.get("ecozone_group_label") or f"Forest community group {code}",
                 "ecozone_group_raw": metadata.get("ecozone_group_raw") or metadata.get("ecozone_group_label"),
             },
         )
@@ -285,7 +285,7 @@ def build_scene_summary_ecozone_group(scene_catalog: pd.DataFrame) -> pd.DataFra
     total_scenes = len(scene_catalog)
     for scene_idx, row in enumerate(scene_catalog.itertuples(index=False), start=1):
         if scene_idx == 1 or scene_idx % 25 == 0 or scene_idx == total_scenes:
-            print(f"  Forest ecozone-group scene summaries: {scene_idx}/{total_scenes}", flush=True)
+            print(f"  Forest community-group scene summaries: {scene_idx}/{total_scenes}", flush=True)
         row_series = pd.Series(row._asdict())
         records.extend(summarize_scene_ecozone_group(row_series))
 
@@ -301,6 +301,46 @@ def build_scene_summary_ecozone_group(scene_catalog: pd.DataFrame) -> pd.DataFra
             "spatial_percentile",
         ]
     ).reset_index(drop=True)
+
+
+def iter_scene_summary_ecozone_group_chunks(
+    scene_catalog: pd.DataFrame,
+    *,
+    chunk_size: int = 500,
+) -> Iterator[pd.DataFrame]:
+    total_scenes = len(scene_catalog)
+    if total_scenes == 0:
+        return
+    chunk_size = max(1, int(chunk_size))
+    records: list[dict] = []
+    for scene_idx, row in enumerate(scene_catalog.itertuples(index=False), start=1):
+        if scene_idx == 1 or scene_idx % 25 == 0 or scene_idx == total_scenes:
+            print(f"  Forest community-group scene summaries: {scene_idx}/{total_scenes}", flush=True)
+        row_series = pd.Series(row._asdict())
+        records.extend(summarize_scene_ecozone_group(row_series))
+        if scene_idx % chunk_size == 0 and records:
+            yield pd.DataFrame.from_records(records).sort_values(
+                [
+                    "sensor",
+                    "aoi",
+                    "index",
+                    "ecozone_group_code",
+                    "date",
+                    "spatial_percentile",
+                ]
+            ).reset_index(drop=True)
+            records = []
+    if records:
+        yield pd.DataFrame.from_records(records).sort_values(
+            [
+                "sensor",
+                "aoi",
+                "index",
+                "ecozone_group_code",
+                "date",
+                "spatial_percentile",
+            ]
+        ).reset_index(drop=True)
 
 
 def _time_bin_columns(frame: pd.DataFrame, temporal_agg: str) -> pd.DataFrame:
@@ -549,7 +589,7 @@ def build_temporal_summary_ecozone_group(
         if column in frame.columns:
             frame[column] = pd.to_datetime(frame[column], utc=True, errors="coerce").dt.tz_localize(None)
     print(
-        f"  Forest ecozone-group temporal summary rows={len(frame)}",
+        f"  Forest community-group temporal summary rows={len(frame)}",
         flush=True,
     )
     return frame.sort_values(
@@ -583,8 +623,8 @@ Optional CSVs may also be present when requested from the builder.
 
 - `scene_summary_forest_community`: one row per scene x AOI x sensor x index x forest community x spatial percentile.
 - `temporal_summary_forest_community`: one row per forest community x temporal bin x cloud threshold x spatial percentile x temporal percentile.
-- `scene_summary_forest_ecozone_group`: one row per scene x AOI x sensor x index x forest-community ecozone group x spatial percentile.
-- `temporal_summary_forest_ecozone_group`: one row per forest-community ecozone group x temporal bin x cloud threshold x spatial percentile x temporal percentile.
+- `scene_summary_forest_ecozone_group`: one row per scene x AOI x sensor x index x forest community group x spatial percentile.
+- `temporal_summary_forest_ecozone_group`: one row per forest community group x temporal bin x cloud threshold x spatial percentile x temporal percentile.
 
 ## Added forest-community columns
 
@@ -596,9 +636,9 @@ Optional CSVs may also be present when requested from the builder.
 | `forest_community_source_dataset` | TNC source raster/table dataset name (`AppRidges`, `NBlueRidge`, `Simon`) |
 | `forest_community_source_value` | Original source `VALUE` from the TNC source |
 | `forest_community_source_key` | Stable AOI/source/value key used to preserve provenance |
-| `ecozone_group_code` | TNC forest-community ecozone-group code (`0`-`9`) |
-| `ecozone_group_label` | TNC forest-community ecozone-group label |
-| `ecozone_group_raw` | Raw TNC ecozone-group string |
+| `ecozone_group_code` | Legacy column name for TNC forest community group code (`0`-`9`) |
+| `ecozone_group_label` | Legacy column name for TNC forest community group label |
+| `ecozone_group_raw` | Raw TNC forest community group string |
 | `ecozone_code` | Reserved for the broader terrain/thermal ecozone lineage; not populated by the forest-community TNC group |
 | `ecozone_label` | Reserved for the broader terrain/thermal ecozone lineage; not populated by the forest-community TNC group |
 
@@ -608,7 +648,7 @@ Optional CSVs may also be present when requested from the builder.
 - The builder looks first for `forest_community.tif` in each AOI forest-type trait directory and falls back to the existing configured species/forest-type raster.
 - Landsat summaries reproject the same categorical raster to the Landsat canonical grid with nearest-neighbor resampling.
 - Rows are omitted where a community contributes fewer than `{MIN_PIXELS}` valid pixels for a scene.
-- Forest ecozone-group rows are recomputed from the combined pixel population for every included forest community in that group. They are not averages of forest-community summary rows.
+- Forest community-group rows are recomputed from the combined pixel population for every included forest community in that group. They are not averages of forest-community summary rows.
 - Temporal tables summarize provenance as a scene count by default to avoid very large repeated scene-id strings across the 24-community output.
 """
 
