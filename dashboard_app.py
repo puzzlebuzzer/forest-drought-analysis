@@ -821,7 +821,7 @@ def _ensure_builder_state(bundle) -> None:
         _start_new_overlay(bundle)
 
 
-def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, str | None, int | None]:
+def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, int | None]:
     _apply_pending_builder_values()
 
     year_min, year_max = bundle.available_year_range()
@@ -846,87 +846,85 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
 
     _ensure_builder_state(bundle)
     _apply_pending_builder_values()
-    with st.sidebar.form("comparison_builder_form", enter_to_submit=False):
-        target_index = st.session_state.builder_target_index
-        if target_index is not None and 0 <= target_index < len(st.session_state.comparison_configs):
-            st.markdown(f"Editing layer `{target_index + 1}`")
-        aoi = _safe_selectbox(
-            "AOI",
-            aois,
-            _builder_default("builder_aoi", "north"),
-            scope=st,
-            key="builder_aoi",
-            format_func=lambda value: AOI_LABELS.get(value, value),
-        )
-        sensor = _safe_selectbox(
-            "Sensor",
-            sensors,
-            _builder_default("builder_sensor", "ls"),
-            scope=st,
-            key="builder_sensor",
-            format_func=lambda value: SENSOR_LABELS.get(value, value),
-        )
-        index_name = _safe_selectbox("Index", indices, _builder_default("builder_index", "ndvi"), scope=st, key="builder_index")
-        cloud_threshold = _safe_plain_selectbox(
-            "Cloud threshold",
-            cloud_thresholds,
-            _builder_default("builder_cloud_threshold", 40),
-            scope=st,
-            key="builder_cloud_threshold",
-            format_func=_cloud_threshold_label,
-        )
-        spatial_percentile = _safe_selectbox(
-            "Spatial aggregation percentile",
-            spatial_percentiles,
-            _builder_default("builder_spatial_percentile", DEFAULT_SPATIAL_PERCENTILE),
-            format_func=lambda value: SPATIAL_PERCENTILE_LABELS.get(value, value),
-            scope=st,
-            key="builder_spatial_percentile",
-        )
-        temporal_agg = _safe_selectbox(
-            "Interval",
-            temporal_aggs,
-            _builder_default("builder_temporal_agg", DEFAULT_TEMPORAL_AGG),
-            scope=st,
-            key="builder_temporal_agg",
-        )
-        temporal_percentile = _safe_selectbox(
-            "Interval aggregation percentile",
-            list(spatial_percentiles),
-            _builder_default("builder_temporal_percentile", DEFAULT_TEMPORAL_PERCENTILE),
-            scope=st,
-            key="builder_temporal_percentile",
-            format_func=lambda value: SPATIAL_PERCENTILE_LABELS.get(value, value),
-        )
-        season_filter = _safe_selectbox(
-            "Season filter",
-            season_filters,
-            _builder_default("builder_season_filter", "growing"),
-            scope=st,
-            key="builder_season_filter",
-        )
-        exclude_above_stddev = _safe_plain_selectbox(
-            "Exclude above z-score",
-            STDDEV_FILTER_OPTIONS,
-            _builder_default("builder_exclude_above_stddev", "none"),
-            scope=st,
-            key="builder_exclude_above_stddev",
-        )
-        exclude_below_stddev = _safe_plain_selectbox(
-            "Exclude below z-score",
-            STDDEV_FILTER_OPTIONS,
-            _builder_default("builder_exclude_below_stddev", DEFAULT_EXCLUDE_BELOW_STDDEV),
-            scope=st,
-            key="builder_exclude_below_stddev",
-        )
-        label_kwargs = {"key": "builder_label"}
-        if "builder_label" not in st.session_state:
-            label_kwargs["value"] = _builder_default("builder_label", "")
-        label = st.text_input("Optional custom label", **label_kwargs)
-        submitted = st.form_submit_button("Apply changes", type="primary", width="stretch")
+    target_index = st.session_state.builder_target_index
+    if target_index is not None and 0 <= target_index < len(st.session_state.comparison_configs):
+        st.sidebar.markdown(f"Layer {target_index + 1}")
+    aoi = _safe_selectbox(
+        "AOI",
+        aois,
+        _builder_default("builder_aoi", "north"),
+        scope=st.sidebar,
+        key="builder_aoi",
+        format_func=lambda value: AOI_LABELS.get(value, value),
+    )
+    sensor = _safe_selectbox(
+        "Sensor",
+        sensors,
+        _builder_default("builder_sensor", "ls"),
+        scope=st.sidebar,
+        key="builder_sensor",
+        format_func=lambda value: SENSOR_LABELS.get(value, value),
+    )
+    index_name = _safe_selectbox("Index", indices, _builder_default("builder_index", "ndvi"), scope=st.sidebar, key="builder_index")
+    cloud_threshold = _safe_plain_selectbox(
+        "Cloud threshold",
+        cloud_thresholds,
+        _builder_default("builder_cloud_threshold", 40),
+        scope=st.sidebar,
+        key="builder_cloud_threshold",
+        format_func=_cloud_threshold_label,
+    )
+    spatial_percentile = _safe_selectbox(
+        "Spatial aggregation percentile",
+        spatial_percentiles,
+        _builder_default("builder_spatial_percentile", DEFAULT_SPATIAL_PERCENTILE),
+        format_func=lambda value: SPATIAL_PERCENTILE_LABELS.get(value, value),
+        scope=st.sidebar,
+        key="builder_spatial_percentile",
+    )
+    temporal_agg = _safe_selectbox(
+        "Interval",
+        temporal_aggs,
+        _builder_default("builder_temporal_agg", DEFAULT_TEMPORAL_AGG),
+        scope=st.sidebar,
+        key="builder_temporal_agg",
+    )
+    temporal_percentile = _safe_selectbox(
+        "Interval aggregation percentile",
+        list(spatial_percentiles),
+        _builder_default("builder_temporal_percentile", DEFAULT_TEMPORAL_PERCENTILE),
+        scope=st.sidebar,
+        key="builder_temporal_percentile",
+        format_func=lambda value: SPATIAL_PERCENTILE_LABELS.get(value, value),
+    )
+    season_filter = _safe_selectbox(
+        "Season filter",
+        season_filters,
+        _builder_default("builder_season_filter", "growing"),
+        scope=st.sidebar,
+        key="builder_season_filter",
+    )
+    exclude_above_stddev = _safe_plain_selectbox(
+        "Exclude above z-score",
+        STDDEV_FILTER_OPTIONS,
+        _builder_default("builder_exclude_above_stddev", "none"),
+        scope=st.sidebar,
+        key="builder_exclude_above_stddev",
+    )
+    exclude_below_stddev = _safe_plain_selectbox(
+        "Exclude below z-score",
+        STDDEV_FILTER_OPTIONS,
+        _builder_default("builder_exclude_below_stddev", DEFAULT_EXCLUDE_BELOW_STDDEV),
+        scope=st.sidebar,
+        key="builder_exclude_below_stddev",
+    )
+    label_kwargs = {"key": "builder_label"}
+    if "builder_label" not in st.session_state:
+        label_kwargs["value"] = _builder_default("builder_label", "")
+    label = st.sidebar.text_input("Optional custom label", **label_kwargs)
 
     if not all([sensor, aoi, index_name, spatial_percentile, temporal_agg, temporal_percentile, season_filter]):
-        return selected_year_range, None, None, st.session_state.builder_target_index
+        return selected_year_range, None, st.session_state.builder_target_index
 
     config = ComparisonConfig(
         label=label.strip(),
@@ -944,10 +942,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
         exclude_below_stddev=_stddev_option(exclude_below_stddev),
         exclude_above_stddev=_stddev_option(exclude_above_stddev),
     )
-    action = None
-    if submitted:
-        action = "update"
-    return selected_year_range, config, action, st.session_state.builder_target_index
+    return selected_year_range, config, st.session_state.builder_target_index
 
 
 def _segment_legend_color(config: ComparisonConfig, code: int, palette: list[str], color_idx: int) -> str:
@@ -1504,7 +1499,7 @@ def main() -> None:
 
     data_dir = _render_data_dir_control()
     bundle = _load_dashboard_data_cached(str(data_dir))
-    year_range, config, builder_action, selected_existing = _build_sidebar(bundle)
+    year_range, config, selected_existing = _build_sidebar(bundle)
 
     if config and not st.session_state.default_overlay_seeded and not st.session_state.comparison_configs:
         seeded_config = asdict(config)
@@ -1513,16 +1508,12 @@ def main() -> None:
         _start_edit_overlay(seeded_config, 0)
         st.rerun()
 
-    if config and builder_action is not None:
-        if builder_action == "update" and selected_existing is not None:
-            previous_config = st.session_state.comparison_configs[selected_existing]
-            updated_config = asdict(config)
-            st.session_state.comparison_configs[selected_existing] = updated_config
-            if previous_config.get("aoi") != updated_config.get("aoi"):
-                _clear_layer_segment_state(selected_existing)
-                _start_edit_overlay(updated_config, selected_existing)
-                st.rerun()
-            _start_edit_overlay(updated_config, selected_existing)
+    if config and selected_existing is not None:
+        previous_config = st.session_state.comparison_configs[selected_existing]
+        updated_config = asdict(config)
+        st.session_state.comparison_configs[selected_existing] = updated_config
+        if previous_config.get("aoi") != updated_config.get("aoi"):
+            _clear_layer_segment_state(selected_existing)
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     selected_color_offsets_by_layer = _selected_color_offsets_by_layer(bundle, config_objects, year_range)
