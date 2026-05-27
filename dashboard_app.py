@@ -314,6 +314,10 @@ def _layer_combined_checkbox_key(layer_idx: int) -> str:
     return f"layer_{layer_idx}_combined_visible"
 
 
+def _layer_expanded_key(layer_idx: int) -> str:
+    return f"layer_{layer_idx}_expanded"
+
+
 def _broad_ecozone_checkbox_key(layer_idx: int, ecozone_code: int) -> str:
     return f"layer_{layer_idx}_broad_ecozone_{ecozone_code}_visible"
 
@@ -349,6 +353,13 @@ def _clear_layer_segment_state(layer_idx: int) -> None:
     for key in list(st.session_state.keys()):
         if any(str(key).startswith(prefix) for prefix in prefixes):
             del st.session_state[key]
+
+
+def _set_only_layer_expanded(layer_idx: int) -> None:
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("layer_") and str(key).endswith("_expanded"):
+            st.session_state[key] = False
+    st.session_state[_layer_expanded_key(layer_idx)] = True
 
 
 def _render_indented_checkbox(
@@ -792,12 +803,15 @@ def _append_default_layer(bundle) -> None:
     config_dict = _default_config_dict(bundle)
     st.session_state.comparison_configs.append(config_dict)
     st.session_state.default_overlay_seeded = True
-    _start_edit_overlay(config_dict, len(st.session_state.comparison_configs) - 1)
+    new_index = len(st.session_state.comparison_configs) - 1
+    _set_only_layer_expanded(new_index)
+    _start_edit_overlay(config_dict, new_index)
 
 
 def _start_edit_overlay(config_dict: dict, index: int) -> None:
     st.session_state.builder_mode = "edit"
     st.session_state.builder_target_index = index
+    _set_only_layer_expanded(index)
     _load_builder_values(config_dict)
 
 
@@ -1112,13 +1126,20 @@ def _render_config_table(
     for idx, config_dict in enumerate(st.session_state.comparison_configs):
         config = ComparisonConfig(**config_dict)
         selected_color_offsets = selected_color_offsets_by_layer.get(idx, {})
-        columns = st.columns([4.43, 0.55, 0.55, 0.7])
+        expanded_key = _layer_expanded_key(idx)
+        if expanded_key not in st.session_state:
+            st.session_state[expanded_key] = len(st.session_state.comparison_configs) == 1
+        is_expanded = bool(st.session_state.get(expanded_key, False))
+        columns = st.columns([0.28, 4.15, 0.55, 0.55, 0.7])
         display_config = asdict(_config_with_scope(config, "overall"))
         label = _config_display_label(display_config, idx, bundle).split(". ", 1)[1]
-        columns[0].markdown(f"`{idx + 1}` {label}")
+        if columns[0].button("▾" if is_expanded else "▸", key=f"expand_{idx}", help="Show or hide layer details"):
+            st.session_state[expanded_key] = not is_expanded
+            st.rerun()
+        columns[1].markdown(f"`{idx + 1}` {label}")
         csv_bytes = _prepare_layer_data_export(bundle, config, idx, year_range)
         csv_filename = f"{_download_filename_stem(label)}_{_timestamp_for_download()}.csv"
-        columns[1].download_button(
+        columns[2].download_button(
             "CSV",
             data=csv_bytes,
             file_name=csv_filename,
@@ -1127,10 +1148,10 @@ def _render_config_table(
             width="content",
             disabled=not bool(csv_bytes),
         )
-        if columns[2].button("Edit", key=f"edit_{idx}"):
+        if columns[3].button("Edit", key=f"edit_{idx}"):
             _start_edit_overlay(config_dict, idx)
             st.rerun()
-        if columns[3].button("Remove", key=f"remove_{idx}"):
+        if columns[4].button("Remove", key=f"remove_{idx}"):
             st.session_state.comparison_configs.pop(idx)
             if st.session_state.comparison_configs:
                 next_index = min(idx, len(st.session_state.comparison_configs) - 1)
@@ -1140,7 +1161,8 @@ def _render_config_table(
                 st.session_state.builder_mode = "new"
                 st.session_state.default_overlay_seeded = False
             st.rerun()
-        _render_segment_legend(config, bundle, palette, trace_color_idx, idx, selected_color_offsets, year_range)
+        if st.session_state.get(expanded_key, False):
+            _render_segment_legend(config, bundle, palette, trace_color_idx, idx, selected_color_offsets, year_range)
         segment_entries = _segment_legend_entries(bundle, _config_with_scope(config, "forest_community"), year_range)
         trace_color_idx += max(1, len(segment_entries))
 
