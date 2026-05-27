@@ -445,7 +445,7 @@ def build_timeseries_figure(
             fig.add_trace(
                 go.Scatter(
                     x=[placeholder_start, placeholder_end],
-                    y=[0, 0],
+                    y=[0.99, 0.99],
                     mode="lines",
                     name=f"{_series_label(config)} / {group_label} / Combined",
                     line={"color": "#b8b8b8", "width": 2, "dash": "dot"},
