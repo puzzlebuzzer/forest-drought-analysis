@@ -351,8 +351,9 @@ def _render_indented_checkbox(
 ) -> None:
     indent = max(0.04, 0.18 + (0.32 * level) - 0.25)
     swatch_start = 1.25
+    total_width = 5.75
     checkbox_width = max(0.35, swatch_start - indent)
-    trailing_width = max(1.0, 5.5 - checkbox_width - 0.22)
+    trailing_width = max(1.0, total_width - indent - checkbox_width - 0.22)
     _, checkbox_col, _, _ = st.columns([indent, checkbox_width, 0.22, trailing_width])
     kwargs = {
         "key": key,
@@ -378,8 +379,9 @@ def _render_indented_segment_checkbox(
 ) -> None:
     indent = max(0.04, 0.18 + (0.32 * level) - 0.25)
     swatch_start = 1.25
+    total_width = 5.75
     checkbox_width = max(0.35, swatch_start - indent)
-    trailing_width = max(1.0, 5.5 - checkbox_width - 0.22)
+    trailing_width = max(1.0, total_width - indent - checkbox_width - 0.22)
     _, checkbox_col, swatch_col, _ = st.columns([indent, checkbox_width, 0.22, trailing_width])
     kwargs = {
         "key": key,
@@ -393,7 +395,7 @@ def _render_indented_segment_checkbox(
     if color:
         swatch_col.markdown(
             f"""
-            <div style="height: 1rem; display: flex; align-items: center; justify-content: flex-start; padding-top: 0.03rem;">
+            <div style="height: 1rem; display: flex; align-items: center; justify-content: flex-start; margin-top: 0.18rem;">
                 <div style="width: 0.65rem; height: 0.65rem; background:{color}; border-radius: 2px;"></div>
             </div>
             """,
