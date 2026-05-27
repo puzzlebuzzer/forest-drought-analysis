@@ -816,6 +816,9 @@ def _start_edit_overlay(config_dict: dict, index: int) -> None:
 
 
 def _ensure_builder_state(bundle) -> None:
+    if not st.session_state.comparison_configs and not st.session_state.default_overlay_seeded:
+        _start_new_overlay(bundle)
+        return
     if st.session_state.builder_mode == "new":
         if not st.session_state.builder_defaults and not st.session_state.builder_pending_values:
             _load_builder_values(_default_config_dict(bundle))
