@@ -134,6 +134,7 @@ def _init_state() -> None:
             for key in BUILDER_WIDGET_KEYS
             if key in st.session_state
         }
+        st.session_state.builder_defaults["builder_exclude_below_stddev"] = DEFAULT_EXCLUDE_BELOW_STDDEV
         for key in BUILDER_WIDGET_KEYS:
             if key in st.session_state:
                 del st.session_state[key]
