@@ -378,7 +378,7 @@ def build_timeseries_figure(
     configs: list[ComparisonConfig],
     year_range: tuple[int, int],
     visible_segments_by_layer: dict[int, set[int]] | None = None,
-    combined_group_frames_by_layer: dict[int, list[pd.DataFrame]] | None = None,
+    combined_group_frames_by_layer: dict[int, list[pd.DataFrame | tuple[pd.DataFrame, str | None]]] | None = None,
 ) -> tuple[go.Figure, list[str]]:
     fig = go.Figure()
     messages: list[str] = []
@@ -439,11 +439,16 @@ def build_timeseries_figure(
         if layer_idx >= len(configs):
             continue
         config = configs[layer_idx]
-        for group_frame in group_frames:
+        for group_item in group_frames:
+            if isinstance(group_item, tuple):
+                group_frame, color = group_item
+            else:
+                group_frame = group_item
+                color = None
             group_frame = _apply_stddev_filters(group_frame, config)
             if group_frame.empty:
                 continue
-            _add_timeseries_trace(fig, config, group_frame, color_override="#b8b8b8")
+            _add_timeseries_trace(fig, config, group_frame, color_override=color)
 
     fig.update_layout(
         template="plotly_white",

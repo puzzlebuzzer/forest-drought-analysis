@@ -484,12 +484,20 @@ def _visible_segments_by_layer(
     return visible
 
 
+def _combined_segment_id(group_key: str) -> str:
+    return f"combined:{group_key}"
+
+
 def _combined_group_frames_by_layer(
     bundle,
     configs: list[ComparisonConfig],
     year_range: tuple[int, int],
-) -> dict[int, list[pd.DataFrame]]:
-    combined_frames: dict[int, list[pd.DataFrame]] = {}
+    selected_color_offsets_by_layer: dict[int, dict[object, int]] | None = None,
+    palette: list[str] | None = None,
+) -> dict[int, list[tuple[pd.DataFrame, str | None]]]:
+    selected_color_offsets_by_layer = selected_color_offsets_by_layer or {}
+    palette = palette or pc.qualitative.Plotly
+    combined_frames: dict[int, list[tuple[pd.DataFrame, str | None]]] = {}
     for idx, config in enumerate(configs):
         if getattr(config, "analysis_scope", "overall") != "forest_community" or config.forest_community_code is not None:
             continue
@@ -513,10 +521,40 @@ def _combined_group_frames_by_layer(
                     continue
                 group_frame["forest_community_label"] = f"{group_label} Combined"
                 group_frame["forest_community_code"] = group_code
-                selected_groups.append(group_frame)
+                color_offset = selected_color_offsets_by_layer.get(idx, {}).get(_combined_segment_id(group_key))
+                color = palette[color_offset % len(palette)] if color_offset is not None else None
+                selected_groups.append((group_frame, color))
         if selected_groups:
             combined_frames[idx] = selected_groups
     return combined_frames
+
+
+def _selected_color_offsets_by_layer(
+    bundle,
+    configs: list[ComparisonConfig],
+    year_range: tuple[int, int],
+) -> dict[int, dict[object, int]]:
+    selected_color_offsets_by_layer: dict[int, dict[object, int]] = {}
+    for idx, config in enumerate(configs):
+        segment_entries = _segment_legend_entries(bundle, config, year_range)
+        selected_segments: list[object] = []
+        if getattr(config, "analysis_scope", "overall") == "forest_community":
+            grouped_entries = _forest_community_grouped_legend_entries(segment_entries, bundle, config)
+            for group_key, _, group_entries in grouped_entries:
+                combined_key = _segment_group_combined_checkbox_key(idx, group_key)
+                if len(group_entries) > 1 and st.session_state.get(combined_key, False):
+                    selected_segments.append(_combined_segment_id(group_key))
+                for code, _ in group_entries:
+                    if st.session_state.get(_segment_checkbox_key(idx, code), True):
+                        selected_segments.append(code)
+        else:
+            selected_segments = [
+                code
+                for code, _ in segment_entries
+                if st.session_state.get(_segment_checkbox_key(idx, code), True)
+            ]
+        selected_color_offsets_by_layer[idx] = {code: offset for offset, code in enumerate(selected_segments)}
+    return selected_color_offsets_by_layer
 
 
 def _render_data_dir_control() -> Path:
@@ -821,11 +859,17 @@ def _render_segment_legend(
                 args=(checkbox_key, group_child_keys),
             )
             if len(group_entries) > 1:
+                is_combined_selected = st.session_state.get(combined_key, False)
+                combined_segment_id = _combined_segment_id(group_key)
+                color_offset = selected_color_offsets.get(combined_segment_id, 0)
+                color = _segment_legend_color(config, 0, palette, color_offset)
+                if not is_combined_selected:
+                    color = "#c9c9c9"
                 _render_indented_segment_checkbox(
                     "Combined",
                     key=combined_key,
                     level=3,
-                    color="#b8b8b8" if st.session_state.get(combined_key, False) else "#c9c9c9",
+                    color=color,
                 )
             for code, entry in group_entries:
                 checkbox_key = _segment_checkbox_key(layer_idx, code)
@@ -885,7 +929,11 @@ def _render_layer_segmentation_controls(bundle, config_dict: dict, layer_idx: in
     )
 
 
-def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
+def _render_config_table(
+    bundle,
+    year_range: tuple[int, int],
+    selected_color_offsets_by_layer: dict[int, dict[object, int]],
+) -> None:
     if not st.session_state.comparison_configs:
         st.info("Add at least one comparison configuration to draw a comparison plot.")
         return
@@ -895,12 +943,7 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
     for idx, config_dict in enumerate(st.session_state.comparison_configs):
         config = ComparisonConfig(**config_dict)
         segment_entries = _segment_legend_entries(bundle, config, year_range)
-        selected_codes = [
-            code
-            for code, _ in segment_entries
-            if st.session_state.get(_segment_checkbox_key(idx, code), True)
-        ]
-        selected_color_offsets = {code: offset for offset, code in enumerate(selected_codes)}
+        selected_color_offsets = selected_color_offsets_by_layer.get(idx, {})
         is_all_segment = _is_all_segment_config(config_dict)
         columns = st.columns([0.18, 4.8, 0.55, 0.7])
         label = _config_display_label(config_dict, idx, bundle).split(". ", 1)[1]
@@ -1274,7 +1317,13 @@ def main() -> None:
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     visible_segments_by_layer = _visible_segments_by_layer(bundle, config_objects, year_range)
-    combined_group_frames_by_layer = _combined_group_frames_by_layer(bundle, config_objects, year_range)
+    selected_color_offsets_by_layer = _selected_color_offsets_by_layer(bundle, config_objects, year_range)
+    combined_group_frames_by_layer = _combined_group_frames_by_layer(
+        bundle,
+        config_objects,
+        year_range,
+        selected_color_offsets_by_layer,
+    )
     figure, messages = build_timeseries_figure(
         bundle,
         config_objects,
@@ -1289,7 +1338,7 @@ def main() -> None:
     for message in messages:
         st.info(message)
 
-    _render_config_table(bundle, year_range)
+    _render_config_table(bundle, year_range, selected_color_offsets_by_layer)
     _render_export_controls(bundle, config_objects, year_range, figure)
 
 
