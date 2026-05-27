@@ -753,6 +753,13 @@ def _start_new_overlay(bundle) -> None:
     _load_builder_values(_default_config_dict(bundle))
 
 
+def _append_default_layer(bundle) -> None:
+    config_dict = _default_config_dict(bundle)
+    st.session_state.comparison_configs.append(config_dict)
+    st.session_state.default_overlay_seeded = True
+    _start_edit_overlay(config_dict, len(st.session_state.comparison_configs) - 1)
+
+
 def _start_edit_overlay(config_dict: dict, index: int) -> None:
     st.session_state.builder_mode = "edit"
     st.session_state.builder_target_index = index
@@ -807,7 +814,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
         )
 
     if st.sidebar.button("Add new layer"):
-        _start_new_overlay(bundle)
+        _append_default_layer(bundle)
         st.rerun()
 
     sensors = bundle.available_values("sensor")
@@ -894,8 +901,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
         if "builder_label" not in st.session_state:
             label_kwargs["value"] = _builder_default("builder_label", "")
         label = st.text_input("Optional custom label", **label_kwargs)
-        action_label = "Add new layer" if st.session_state.builder_mode == "new" else "Apply changes"
-        submitted = st.form_submit_button(action_label, type="primary", width="stretch")
+        submitted = st.form_submit_button("Apply changes", type="primary", width="stretch")
 
     if not all([sensor, aoi, index_name, spatial_percentile, temporal_agg, temporal_percentile, season_filter]):
         return selected_year_range, None, None, st.session_state.builder_target_index
@@ -918,7 +924,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
     )
     action = None
     if submitted:
-        action = "add" if st.session_state.builder_mode == "new" else "update"
+        action = "update"
     return selected_year_range, config, action, st.session_state.builder_target_index
 
 
@@ -1098,6 +1104,7 @@ def _render_config_table(
             else:
                 st.session_state.builder_target_index = None
                 st.session_state.builder_mode = "new"
+                st.session_state.default_overlay_seeded = False
             st.rerun()
         _render_segment_legend(config, bundle, palette, trace_color_idx, idx, selected_color_offsets, year_range)
         segment_entries = _segment_legend_entries(bundle, _config_with_scope(config, "forest_community"), year_range)
@@ -1490,11 +1497,6 @@ def main() -> None:
                 _start_edit_overlay(updated_config, selected_existing)
                 st.rerun()
             _start_edit_overlay(updated_config, selected_existing)
-        else:
-            new_config = asdict(config)
-            st.session_state.comparison_configs.append(new_config)
-            _start_edit_overlay(new_config, len(st.session_state.comparison_configs) - 1)
-            st.rerun()
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     selected_color_offsets_by_layer = _selected_color_offsets_by_layer(bundle, config_objects, year_range)
