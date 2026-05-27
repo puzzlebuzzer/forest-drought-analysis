@@ -1136,7 +1136,14 @@ def _render_config_table(
         if columns[0].button("▾" if is_expanded else "▸", key=f"expand_{idx}", help="Show or hide layer details"):
             st.session_state[expanded_key] = not is_expanded
             st.rerun()
-        columns[1].markdown(f"`{idx + 1}` {label}")
+        columns[1].markdown(
+            f"""
+            <div style="height: 2.35rem; display: flex; align-items: center;">
+                <span><code>{idx + 1}</code> {label}</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         csv_bytes = _prepare_layer_data_export(bundle, config, idx, year_range)
         csv_filename = f"{_download_filename_stem(label)}_{_timestamp_for_download()}.csv"
         columns[2].download_button(
