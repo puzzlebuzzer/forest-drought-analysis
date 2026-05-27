@@ -302,6 +302,10 @@ def _segment_group_checkbox_key(layer_idx: int, group_key: str) -> str:
     return f"layer_{layer_idx}_segment_group_{group_key}_visible"
 
 
+def _segment_group_combined_checkbox_key(layer_idx: int, group_key: str) -> str:
+    return f"layer_{layer_idx}_segment_group_{group_key}_combined_visible"
+
+
 def _layer_segmentation_checkbox_key(layer_idx: int, selected_scope: str, current_scope: str) -> str:
     return f"layer_{layer_idx}_select_{selected_scope}_{current_scope}"
 
@@ -478,6 +482,35 @@ def _visible_segments_by_layer(
                 selected_codes.add(code)
         visible[idx] = selected_codes
     return visible
+
+
+def _combined_group_placeholders_by_layer(
+    bundle,
+    configs: list[ComparisonConfig],
+    year_range: tuple[int, int],
+) -> dict[int, list[tuple[int, str]]]:
+    placeholders: dict[int, list[tuple[int, str]]] = {}
+    for idx, config in enumerate(configs):
+        if getattr(config, "analysis_scope", "overall") != "forest_community" or config.forest_community_code is not None:
+            continue
+        entries = _segment_legend_entries(bundle, config, year_range)
+        grouped_entries = _forest_community_grouped_legend_entries(entries, bundle, config)
+        selected_groups = []
+        for group_key, group_label, group_entries in grouped_entries:
+            if len(group_entries) <= 1:
+                continue
+            combined_key = _segment_group_combined_checkbox_key(idx, group_key)
+            if combined_key not in st.session_state:
+                st.session_state[combined_key] = False
+            if st.session_state.get(combined_key, False):
+                try:
+                    group_code = int(group_key)
+                except ValueError:
+                    continue
+                selected_groups.append((group_code, group_label))
+        if selected_groups:
+            placeholders[idx] = selected_groups
+    return placeholders
 
 
 def _render_data_dir_control() -> Path:
@@ -747,6 +780,13 @@ def _render_segment_legend(
     if not entries:
         return
     child_keys = [_segment_checkbox_key(layer_idx, code) for code, _ in entries]
+    if getattr(config, "analysis_scope", "overall") == "forest_community":
+        grouped_entries_for_keys = _forest_community_grouped_legend_entries(entries, bundle, config)
+        child_keys.extend(
+            _segment_group_combined_checkbox_key(layer_idx, group_key)
+            for group_key, _, group_entries in grouped_entries_for_keys
+            if len(group_entries) > 1
+        )
     all_key = _segment_all_checkbox_key(layer_idx)
     all_selected = all(st.session_state.get(child_key, True) for child_key in child_keys)
     st.session_state[all_key] = all_selected
@@ -762,6 +802,9 @@ def _render_segment_legend(
         grouped_entries = _forest_community_grouped_legend_entries(entries, bundle, config)
         for group_key, group_label, group_entries in grouped_entries:
             group_child_keys = [_segment_checkbox_key(layer_idx, code) for code, _ in group_entries]
+            combined_key = _segment_group_combined_checkbox_key(layer_idx, group_key)
+            if len(group_entries) > 1:
+                group_child_keys = [combined_key, *group_child_keys]
             checkbox_key = _segment_group_checkbox_key(layer_idx, group_key)
             st.session_state[checkbox_key] = all(st.session_state.get(child_key, True) for child_key in group_child_keys)
             _render_indented_checkbox(
@@ -771,6 +814,13 @@ def _render_segment_legend(
                 on_change=_set_all_segment_checkboxes,
                 args=(checkbox_key, group_child_keys),
             )
+            if len(group_entries) > 1:
+                _render_indented_segment_checkbox(
+                    "Combined",
+                    key=combined_key,
+                    level=3,
+                    color="#b8b8b8" if st.session_state.get(combined_key, False) else "#c9c9c9",
+                )
             for code, entry in group_entries:
                 checkbox_key = _segment_checkbox_key(layer_idx, code)
                 is_selected = st.session_state.get(checkbox_key, True)
@@ -1218,7 +1268,14 @@ def main() -> None:
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     visible_segments_by_layer = _visible_segments_by_layer(bundle, config_objects, year_range)
-    figure, messages = build_timeseries_figure(bundle, config_objects, year_range, visible_segments_by_layer)
+    combined_group_placeholders_by_layer = _combined_group_placeholders_by_layer(bundle, config_objects, year_range)
+    figure, messages = build_timeseries_figure(
+        bundle,
+        config_objects,
+        year_range,
+        visible_segments_by_layer,
+        combined_group_placeholders_by_layer,
+    )
     if figure.data:
         st.plotly_chart(figure, width="stretch")
     else:
