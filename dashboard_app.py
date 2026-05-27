@@ -310,6 +310,17 @@ def _segment_all_checkbox_key(layer_idx: int) -> str:
     return f"layer_{layer_idx}_segments_all_visible"
 
 
+def _clear_layer_segment_state(layer_idx: int) -> None:
+    prefixes = (
+        f"layer_{layer_idx}_segment_",
+        f"layer_{layer_idx}_segment_group_",
+        f"layer_{layer_idx}_segments_all_visible",
+    )
+    for key in list(st.session_state.keys()):
+        if any(str(key).startswith(prefix) for prefix in prefixes):
+            del st.session_state[key]
+
+
 def _render_indented_checkbox(
     label: str,
     *,
@@ -1192,14 +1203,16 @@ def main() -> None:
 
     if config and builder_action is not None:
         if builder_action == "update" and selected_existing is not None:
+            previous_config = st.session_state.comparison_configs[selected_existing]
             updated_config = asdict(config)
             st.session_state.comparison_configs[selected_existing] = updated_config
+            if previous_config.get("aoi") != updated_config.get("aoi"):
+                _clear_layer_segment_state(selected_existing)
             _start_edit_overlay(updated_config, selected_existing)
         else:
             new_config = asdict(config)
             st.session_state.comparison_configs.append(new_config)
             _start_edit_overlay(new_config, len(st.session_state.comparison_configs) - 1)
-        st.rerun()
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     visible_segments_by_layer = _visible_segments_by_layer(bundle, config_objects, year_range)
