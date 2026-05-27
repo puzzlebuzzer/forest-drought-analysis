@@ -301,6 +301,10 @@ def _segment_group_checkbox_key(layer_idx: int, group_key: str) -> str:
     return f"layer_{layer_idx}_segment_group_{group_key}_visible"
 
 
+def _layer_segmentation_checkbox_key(layer_idx: int, selected_scope: str, current_scope: str) -> str:
+    return f"layer_{layer_idx}_select_{selected_scope}_{current_scope}"
+
+
 def _segment_all_checkbox_key(layer_idx: int) -> str:
     return f"layer_{layer_idx}_segments_all_visible"
 
@@ -309,6 +313,22 @@ def _set_all_segment_checkboxes(all_key: str, child_keys: list[str]) -> None:
     value = bool(st.session_state.get(all_key, True))
     for child_key in child_keys:
         st.session_state[child_key] = value
+
+
+def _set_layer_segmentation(layer_idx: int, selected_scope: str, checkbox_key: str) -> None:
+    if not (0 <= layer_idx < len(st.session_state.comparison_configs)):
+        return
+    config_dict = dict(st.session_state.comparison_configs[layer_idx])
+    current_scope = config_dict.get("analysis_scope", "overall")
+    if st.session_state.get(checkbox_key, False):
+        config_dict["analysis_scope"] = selected_scope
+    elif current_scope == selected_scope:
+        config_dict["analysis_scope"] = "overall"
+    config_dict["ecozone_code"] = None
+    config_dict["forest_community_code"] = None
+    st.session_state.comparison_configs[layer_idx] = config_dict
+    if st.session_state.get("builder_target_index") == layer_idx:
+        _load_builder_values(config_dict)
 
 
 def _forest_community_grouped_legend_entries(
@@ -479,36 +499,6 @@ def _start_edit_overlay(config_dict: dict, index: int) -> None:
     _load_builder_values(config_dict)
 
 
-def _ensure_builder_segmentation_state() -> None:
-    analysis_scope = st.session_state.get(
-        "builder_analysis_scope",
-        _builder_default("builder_analysis_scope", "overall"),
-    )
-    if "builder_select_broad_ecozone" not in st.session_state:
-        st.session_state.builder_select_broad_ecozone = analysis_scope == "ecozone"
-    if "builder_select_forest_communities" not in st.session_state:
-        st.session_state.builder_select_forest_communities = analysis_scope == "forest_community"
-    if analysis_scope == "ecozone":
-        st.session_state.builder_select_broad_ecozone = True
-        st.session_state.builder_select_forest_communities = False
-    elif analysis_scope == "forest_community":
-        st.session_state.builder_select_broad_ecozone = False
-        st.session_state.builder_select_forest_communities = True
-    else:
-        st.session_state.builder_select_broad_ecozone = False
-        st.session_state.builder_select_forest_communities = False
-
-
-def _set_builder_segmentation(selected_scope: str, selected_key: str, other_key: str) -> None:
-    if st.session_state.get(selected_key, False):
-        st.session_state.builder_analysis_scope = selected_scope
-        st.session_state[other_key] = False
-    elif st.session_state.get("builder_analysis_scope") == selected_scope:
-        st.session_state.builder_analysis_scope = "overall"
-    st.session_state.builder_ecozone_code = ECOZONE_ALL_OPTION
-    st.session_state.builder_forest_community_code = ECOZONE_ALL_OPTION
-
-
 def _ensure_builder_state(bundle) -> None:
     if st.session_state.builder_mode == "new":
         if not st.session_state.builder_defaults and not st.session_state.builder_pending_values:
@@ -561,26 +551,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
 
     _ensure_builder_state(bundle)
     _apply_pending_builder_values()
-    _ensure_builder_segmentation_state()
-    available_scopes = bundle.available_values("analysis_scope")
-    can_select_broad_ecozone = "ecozone" in available_scopes
-    can_select_forest_communities = "forest_community" in available_scopes
-    segmentation_scope = st.session_state.get("builder_analysis_scope", "overall")
-    st.sidebar.checkbox(
-        "Select broad ecozone",
-        key="builder_select_broad_ecozone",
-        disabled=segmentation_scope == "forest_community" or not can_select_broad_ecozone,
-        on_change=_set_builder_segmentation,
-        args=("ecozone", "builder_select_broad_ecozone", "builder_select_forest_communities"),
-    )
-    st.sidebar.checkbox(
-        "Select forest communities",
-        key="builder_select_forest_communities",
-        disabled=segmentation_scope == "ecozone" or not can_select_forest_communities,
-        on_change=_set_builder_segmentation,
-        args=("forest_community", "builder_select_forest_communities", "builder_select_broad_ecozone"),
-    )
-    analysis_scope = st.session_state.get("builder_analysis_scope", "overall")
+    analysis_scope = _builder_default("builder_analysis_scope", "overall")
     with st.sidebar.form("comparison_builder_form", enter_to_submit=False):
         aoi = _safe_selectbox(
             "AOI",
@@ -777,6 +748,32 @@ def _render_segment_legend(
         label_col.markdown(f"<span style='font-size: 0.9rem;'>{entry}</span>", unsafe_allow_html=True)
 
 
+def _render_layer_segmentation_controls(bundle, config_dict: dict, layer_idx: int) -> None:
+    available_scopes = bundle.available_values("analysis_scope")
+    current_scope = config_dict.get("analysis_scope", "overall")
+    can_select_broad_ecozone = "ecozone" in available_scopes
+    can_select_forest_communities = "forest_community" in available_scopes
+    broad_key = _layer_segmentation_checkbox_key(layer_idx, "ecozone", current_scope)
+    forest_key = _layer_segmentation_checkbox_key(layer_idx, "forest_community", current_scope)
+    _, broad_col, forest_col, _ = st.columns([0.6, 1.8, 2.4, 1.0])
+    broad_col.checkbox(
+        "Select broad ecozone",
+        value=current_scope == "ecozone",
+        key=broad_key,
+        disabled=current_scope == "forest_community" or not can_select_broad_ecozone,
+        on_change=_set_layer_segmentation,
+        args=(layer_idx, "ecozone", broad_key),
+    )
+    forest_col.checkbox(
+        "Select forest communities",
+        value=current_scope == "forest_community",
+        key=forest_key,
+        disabled=current_scope == "ecozone" or not can_select_forest_communities,
+        on_change=_set_layer_segmentation,
+        args=(layer_idx, "forest_community", forest_key),
+    )
+
+
 def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
     if not st.session_state.comparison_configs:
         st.info("Add at least one comparison configuration to draw a comparison plot.")
@@ -816,6 +813,7 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
                 st.session_state.builder_target_index = None
                 st.session_state.builder_mode = "new"
             st.rerun()
+        _render_layer_segmentation_controls(bundle, config_dict, idx)
         if is_all_segment:
             _render_segment_legend(segment_entries, config, bundle, palette, trace_color_idx, idx, selected_color_offsets)
         trace_color_idx += max(1, len(segment_entries) if is_all_segment else 1)
