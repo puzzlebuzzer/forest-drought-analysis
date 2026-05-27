@@ -215,6 +215,8 @@ def _prism_stripes_for_configs(
     aois = sorted({config.aoi for config in configs if config.aoi})
     if not aois:
         return pd.DataFrame(columns=["year", "classification", "stripe_strength", "annual_precip_mm", "precip_zscore"])
+    if len(aois) != 1:
+        return pd.DataFrame(columns=["year", "classification", "stripe_strength", "annual_precip_mm", "precip_zscore"])
 
     classes = _load_prism_year_classes() if prism_classes is None else prism_classes.copy()
     if classes.empty:
@@ -246,21 +248,7 @@ def _prism_stripes_for_configs(
         for zscore, group_max in zip(classes["precip_zscore"], max_excess)
     ]
 
-    if len(aois) == 1:
-        return classes[["year", "classification", "stripe_strength", "annual_precip_mm", "precip_zscore"]].drop_duplicates().sort_values("year")
-
-    counts = (
-        classes.groupby(["year", "classification"], dropna=False)
-        .agg(
-            aoi_count=("aoi", "nunique"),
-            stripe_strength=("stripe_strength", "mean"),
-            annual_precip_mm=("annual_precip_mm", "mean"),
-            precip_zscore=("precip_zscore", "mean"),
-        )
-        .reset_index()
-    )
-    consensus = counts[counts["aoi_count"] == len(aois)]
-    return consensus[["year", "classification", "stripe_strength", "annual_precip_mm", "precip_zscore"]].sort_values("year")
+    return classes[["year", "classification", "stripe_strength", "annual_precip_mm", "precip_zscore"]].drop_duplicates().sort_values("year")
 
 
 def _stripe_label(row) -> str:

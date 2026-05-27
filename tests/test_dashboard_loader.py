@@ -280,7 +280,7 @@ class DashboardLoaderTests(unittest.TestCase):
             ],
         )
 
-    def test_prism_stripes_for_mixed_aois_require_consensus(self) -> None:
+    def test_prism_stripes_for_mixed_aois_are_hidden(self) -> None:
         north = ComparisonConfig(
             label="",
             sensor="ls",
@@ -312,18 +312,7 @@ class DashboardLoaderTests(unittest.TestCase):
             ]
         )
         stripes = _prism_stripes_for_configs([north, south], (2000, 2001), prism)
-        self.assertEqual(
-            stripes.to_dict("records"),
-            [
-                {
-                    "year": 2001,
-                    "classification": "dry",
-                    "stripe_strength": 1.0,
-                    "annual_precip_mm": 370.0,
-                    "precip_zscore": -1.75,
-                }
-            ],
-        )
+        self.assertTrue(stripes.empty)
 
     def test_prism_stripe_color_ramp_increases_with_extremity(self) -> None:
         self.assertEqual(_stripe_fillcolor("wet", 0), "rgba(68, 150, 248, 0.300)")
