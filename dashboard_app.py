@@ -1208,6 +1208,8 @@ def main() -> None:
             st.session_state.comparison_configs[selected_existing] = updated_config
             if previous_config.get("aoi") != updated_config.get("aoi"):
                 _clear_layer_segment_state(selected_existing)
+                _start_edit_overlay(updated_config, selected_existing)
+                st.rerun()
             _start_edit_overlay(updated_config, selected_existing)
         else:
             new_config = asdict(config)
