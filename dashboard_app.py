@@ -793,9 +793,16 @@ def _builder_default(key: str, fallback):
     return st.session_state.builder_defaults.get(key, fallback)
 
 
+def _clear_builder_widget_state() -> None:
+    for key in BUILDER_WIDGET_KEYS:
+        if key in st.session_state:
+            del st.session_state[key]
+
+
 def _start_new_overlay(bundle) -> None:
     st.session_state.builder_mode = "new"
     st.session_state.builder_target_index = None
+    _clear_builder_widget_state()
     _load_builder_values(_default_config_dict(bundle))
 
 
@@ -1546,8 +1553,8 @@ def main() -> None:
     bundle = _load_dashboard_data_cached(str(data_dir))
     year_range, config, selected_existing = _build_sidebar(bundle)
 
-    if config and not st.session_state.default_overlay_seeded and not st.session_state.comparison_configs:
-        seeded_config = asdict(config)
+    if not st.session_state.default_overlay_seeded and not st.session_state.comparison_configs:
+        seeded_config = _default_config_dict(bundle)
         st.session_state.comparison_configs.append(seeded_config)
         st.session_state.default_overlay_seeded = True
         _start_edit_overlay(seeded_config, 0)
