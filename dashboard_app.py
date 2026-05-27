@@ -1074,14 +1074,24 @@ def _render_config_table(
     for idx, config_dict in enumerate(st.session_state.comparison_configs):
         config = ComparisonConfig(**config_dict)
         selected_color_offsets = selected_color_offsets_by_layer.get(idx, {})
-        columns = st.columns([4.98, 0.55, 0.7])
+        columns = st.columns([4.43, 0.55, 0.55, 0.7])
         display_config = asdict(_config_with_scope(config, "overall"))
         label = _config_display_label(display_config, idx, bundle).split(". ", 1)[1]
         columns[0].markdown(f"`{idx + 1}` {label}")
-        if columns[1].button("Edit", key=f"edit_{idx}"):
+        csv_bytes = _prepare_layer_data_export(bundle, config, idx, year_range)
+        columns[1].download_button(
+            "CSV",
+            data=csv_bytes,
+            file_name=f"dashboard_layer_{idx + 1}.csv",
+            mime="text/csv",
+            key=f"csv_{idx}",
+            width="content",
+            disabled=not bool(csv_bytes),
+        )
+        if columns[2].button("Edit", key=f"edit_{idx}"):
             _start_edit_overlay(config_dict, idx)
             st.rerun()
-        if columns[2].button("Remove", key=f"remove_{idx}"):
+        if columns[3].button("Remove", key=f"remove_{idx}"):
             st.session_state.comparison_configs.pop(idx)
             if st.session_state.comparison_configs:
                 next_index = min(idx, len(st.session_state.comparison_configs) - 1)
@@ -1108,6 +1118,96 @@ def _build_export_subset(bundle, configs: list[ComparisonConfig], year_range: tu
     if not subsets:
         return pd.DataFrame()
     return pd.concat(subsets, ignore_index=True)
+
+
+def _export_frame_with_label(frame: pd.DataFrame, label: str, order: int) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    exported = frame.copy()
+    exported.insert(0, "comparison_label", label)
+    exported.insert(1, "comparison_order", order)
+    return exported
+
+
+def _build_layer_export_subset(
+    bundle,
+    config: ComparisonConfig,
+    layer_idx: int,
+    year_range: tuple[int, int],
+) -> pd.DataFrame:
+    subsets = []
+    export_order = 1
+
+    if st.session_state.get(_layer_combined_checkbox_key(layer_idx), True):
+        overall_config = _config_with_scope(config, "overall")
+        frame = bundle.frame_for_config(overall_config)
+        filtered = filter_frame(frame, filters=filters_for_config(overall_config), year_range=year_range)
+        label = overall_config.label or _config_display_label(asdict(overall_config), bundle=bundle)
+        subsets.append(_export_frame_with_label(filtered, label, export_order))
+        export_order += 1
+
+    broad_config = _config_with_scope(config, "ecozone")
+    broad_entries = _segment_legend_entries(bundle, broad_config, year_range)
+    selected_broad_codes = [
+        code
+        for code, _ in broad_entries
+        if st.session_state.get(_broad_ecozone_checkbox_key(layer_idx, code), False)
+    ]
+    if selected_broad_codes:
+        frame = bundle.frame_for_config(broad_config)
+        filtered = filter_frame(frame, filters=filters_for_config(broad_config), year_range=year_range)
+        filtered = filtered[filtered["ecozone_code"].isin(selected_broad_codes)]
+        label = broad_config.label or _config_display_label(asdict(broad_config), bundle=bundle)
+        subsets.append(_export_frame_with_label(filtered, label, export_order))
+        export_order += 1
+
+    forest_config = _config_with_scope(config, "forest_community")
+    forest_entries = _segment_legend_entries(bundle, forest_config, year_range)
+    grouped_entries = _forest_community_grouped_legend_entries(forest_entries, bundle, forest_config)
+    selected_community_codes = [
+        code
+        for code, _ in forest_entries
+        if st.session_state.get(_segment_checkbox_key(layer_idx, code), False)
+    ]
+    if selected_community_codes:
+        frame = bundle.frame_for_config(forest_config)
+        filtered = filter_frame(frame, filters=filters_for_config(forest_config), year_range=year_range)
+        filtered = filtered[filtered["forest_community_code"].isin(selected_community_codes)]
+        label = forest_config.label or _config_display_label(asdict(forest_config), bundle=bundle)
+        subsets.append(_export_frame_with_label(filtered, label, export_order))
+        export_order += 1
+
+    for group_key, group_label, group_entries in grouped_entries:
+        if len(group_entries) <= 1:
+            continue
+        if not st.session_state.get(_segment_group_combined_checkbox_key(layer_idx, group_key), False):
+            continue
+        try:
+            group_code = int(group_key)
+        except ValueError:
+            continue
+        group_frame = bundle.frame_for_forest_community_group(forest_config, group_code)
+        filtered = filter_frame(group_frame, filters={}, year_range=year_range).copy()
+        filtered["forest_community_label"] = f"{group_label} Combined"
+        filtered["forest_community_code"] = group_code
+        label = f"{forest_config.label or _config_display_label(asdict(forest_config), bundle=bundle)} / {group_label} Combined"
+        subsets.append(_export_frame_with_label(filtered, label, export_order))
+        export_order += 1
+
+    nonempty_subsets = [subset for subset in subsets if not subset.empty]
+    if not nonempty_subsets:
+        return pd.DataFrame()
+    return pd.concat(nonempty_subsets, ignore_index=True)
+
+
+def _prepare_layer_data_export(
+    bundle,
+    config: ComparisonConfig,
+    layer_idx: int,
+    year_range: tuple[int, int],
+) -> bytes:
+    export_frame = _build_layer_export_subset(bundle, config, layer_idx, year_range)
+    return export_frame.to_csv(index=False).encode("utf-8") if not export_frame.empty else b""
 
 
 def _export_signature(configs: list[ComparisonConfig], year_range: tuple[int, int]) -> str:
@@ -1363,47 +1463,6 @@ def _prepare_plot_export(figure, metadata_lines: list[str] | None = None) -> tup
     return png_bytes, None
 
 
-def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range: tuple[int, int], figure) -> None:
-    st.subheader("Exports")
-    signature = _export_signature(configs, year_range)
-    prepared = dict(st.session_state.prepared_exports.get(signature, {}))
-    metadata_lines = _export_metadata_lines(bundle, configs, year_range)
-
-    if "csv" not in prepared:
-        prepared["csv"] = _prepare_data_export(bundle, configs, year_range)
-    if "png" not in prepared and "png_error" not in prepared:
-        with st.spinner("Preparing PNG export..."):
-            png_bytes, png_error = _prepare_plot_export(figure, metadata_lines)
-        prepared["png"] = png_bytes
-        if png_error:
-            prepared["png_error"] = png_error
-    st.session_state.prepared_exports[signature] = prepared
-
-    col1, col2, _ = st.columns([1, 1, 8])
-    csv_bytes = prepared.get("csv")
-    png_bytes = prepared.get("png")
-    png_error = prepared.get("png_error")
-
-    col1.download_button(
-        "CSV",
-        data=csv_bytes,
-        file_name="dashboard_subset.csv",
-        mime="text/csv",
-        width="content",
-    )
-    if png_bytes is not None:
-        col2.download_button(
-            "PNG",
-            data=png_bytes,
-            file_name="dashboard_plot.png",
-            mime="image/png",
-            width="content",
-        )
-    elif png_error:
-        col2.button("PNG", width="content", disabled=True)
-        col2.caption(png_error.splitlines()[0])
-
-
 def main() -> None:
     st.set_page_config(page_title="Appalachian Ecozone–Vegetation Dashboard", layout="wide")
     _inject_ui_css()
@@ -1461,7 +1520,6 @@ def main() -> None:
         st.info(message)
 
     _render_config_table(bundle, year_range, selected_color_offsets_by_layer)
-    _render_export_controls(bundle, plot_configs, year_range, figure)
 
 
 if __name__ == "__main__":
