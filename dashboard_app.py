@@ -309,6 +309,29 @@ def _segment_all_checkbox_key(layer_idx: int) -> str:
     return f"layer_{layer_idx}_segments_all_visible"
 
 
+def _render_indented_checkbox(
+    label: str,
+    *,
+    key: str,
+    level: int,
+    disabled: bool = False,
+    value: bool | None = None,
+    on_change=None,
+    args: tuple = (),
+) -> None:
+    indent = 0.18 + (0.32 * level)
+    _, checkbox_col, _ = st.columns([indent, 4.5, 1.0])
+    kwargs = {
+        "key": key,
+        "disabled": disabled,
+        "on_change": on_change,
+        "args": args,
+    }
+    if value is not None:
+        kwargs["value"] = value
+    checkbox_col.checkbox(label, **kwargs)
+
+
 def _set_all_segment_checkboxes(all_key: str, child_keys: list[str]) -> None:
     value = bool(st.session_state.get(all_key, True))
     for child_key in child_keys:
@@ -675,15 +698,13 @@ def _render_segment_legend(
     all_key = _segment_all_checkbox_key(layer_idx)
     all_selected = all(st.session_state.get(child_key, True) for child_key in child_keys)
     st.session_state[all_key] = all_selected
-    _, all_checkbox_col, _, all_label_col, _, _ = st.columns([0.6, 0.35, 0.3, 3.35, 0.8, 1])
-    all_checkbox_col.checkbox(
-        f"Toggle all segments for layer {layer_idx + 1}",
+    _render_indented_checkbox(
+        "Toggle All",
         key=all_key,
-        label_visibility="collapsed",
+        level=1,
         on_change=_set_all_segment_checkboxes,
         args=(all_key, child_keys),
     )
-    all_label_col.markdown("<span style='font-size: 0.9rem;'>All on/off</span>", unsafe_allow_html=True)
 
     if getattr(config, "analysis_scope", "overall") == "forest_community":
         grouped_entries = _forest_community_grouped_legend_entries(entries, bundle, config)
@@ -691,61 +712,29 @@ def _render_segment_legend(
             group_child_keys = [_segment_checkbox_key(layer_idx, code) for code, _ in group_entries]
             checkbox_key = _segment_group_checkbox_key(layer_idx, group_key)
             st.session_state[checkbox_key] = all(st.session_state.get(child_key, True) for child_key in group_child_keys)
-            spacer, checkbox_col, _, label_col, _, _ = st.columns([0.25, 0.35, 0.3, 3.7, 0.8, 1])
-            spacer.empty()
-            checkbox_col.checkbox(
-                f"Toggle {group_label} for layer {layer_idx + 1}",
+            _render_indented_checkbox(
+                group_label,
                 key=checkbox_key,
-                label_visibility="collapsed",
+                level=1,
                 on_change=_set_all_segment_checkboxes,
                 args=(checkbox_key, group_child_keys),
             )
-            label_col.markdown(f"<span style='font-size: 0.9rem;'>{group_label}</span>", unsafe_allow_html=True)
             for code, entry in group_entries:
                 checkbox_key = _segment_checkbox_key(layer_idx, code)
-                is_selected = st.session_state.get(checkbox_key, True)
-                color_offset = selected_color_offsets.get(code, 0)
-                color = _segment_legend_color(config, code, palette, color_offset)
-                if not is_selected:
-                    color = "#c9c9c9"
-                spacer, checkbox_col, swatch, label_col, _, _ = st.columns([0.95, 0.35, 0.3, 3.0, 0.8, 1])
-                spacer.empty()
-                checkbox_col.checkbox(
-                    f"Show {entry} for layer {layer_idx + 1}",
+                _render_indented_checkbox(
+                    entry,
                     key=checkbox_key,
-                    label_visibility="collapsed",
+                    level=2,
                 )
-                swatch.markdown(
-                    f"""
-                    <div style="width: 0.65rem; height: 0.65rem; background:{color}; border-radius: 2px; margin-top: 0.2rem;"></div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-                label_col.markdown(f"<span style='font-size: 0.9rem;'>{entry}</span>", unsafe_allow_html=True)
         return
 
     for offset, (code, entry) in enumerate(entries):
         checkbox_key = _segment_checkbox_key(layer_idx, code)
-        is_selected = st.session_state.get(checkbox_key, True)
-        color_offset = selected_color_offsets.get(code, offset)
-        palette_idx = color_offset if getattr(config, "analysis_scope", "overall") == "forest_community" else start_color_idx + color_offset
-        color = _segment_legend_color(config, code, palette, palette_idx)
-        if not is_selected:
-            color = "#c9c9c9"
-        spacer, checkbox_col, swatch, label_col, _, _ = st.columns([0.6, 0.35, 0.3, 3.35, 0.8, 1])
-        spacer.empty()
-        checkbox_col.checkbox(
-            f"Show {entry} for layer {layer_idx + 1}",
+        _render_indented_checkbox(
+            entry,
             key=checkbox_key,
-            label_visibility="collapsed",
+            level=1,
         )
-        swatch.markdown(
-            f"""
-            <div style="width: 0.65rem; height: 0.65rem; background:{color}; border-radius: 2px; margin-top: 0.2rem;"></div>
-            """,
-            unsafe_allow_html=True,
-        )
-        label_col.markdown(f"<span style='font-size: 0.9rem;'>{entry}</span>", unsafe_allow_html=True)
 
 
 def _render_layer_segmentation_controls(bundle, config_dict: dict, layer_idx: int) -> None:
@@ -755,19 +744,20 @@ def _render_layer_segmentation_controls(bundle, config_dict: dict, layer_idx: in
     can_select_forest_communities = "forest_community" in available_scopes
     broad_key = _layer_segmentation_checkbox_key(layer_idx, "ecozone", current_scope)
     forest_key = _layer_segmentation_checkbox_key(layer_idx, "forest_community", current_scope)
-    _, broad_col, forest_col, _ = st.columns([0.6, 1.8, 2.4, 1.0])
-    broad_col.checkbox(
+    _render_indented_checkbox(
         "Select broad ecozone",
-        value=current_scope == "ecozone",
         key=broad_key,
+        level=1,
+        value=current_scope == "ecozone",
         disabled=current_scope == "forest_community" or not can_select_broad_ecozone,
         on_change=_set_layer_segmentation,
         args=(layer_idx, "ecozone", broad_key),
     )
-    forest_col.checkbox(
+    _render_indented_checkbox(
         "Select forest communities",
-        value=current_scope == "forest_community",
         key=forest_key,
+        level=1,
+        value=current_scope == "forest_community",
         disabled=current_scope == "ecozone" or not can_select_forest_communities,
         on_change=_set_layer_segmentation,
         args=(layer_idx, "forest_community", forest_key),
@@ -791,7 +781,7 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
         ]
         selected_color_offsets = {code: offset for offset, code in enumerate(selected_codes)}
         is_all_segment = _is_all_segment_config(config_dict)
-        columns = st.columns([0.6, 4.0, 0.8, 1])
+        columns = st.columns([0.18, 4.8, 0.55, 0.7])
         label = _config_display_label(config_dict, idx, bundle).split(". ", 1)[1]
         color = "#888888" if is_all_segment and segment_entries else palette[trace_color_idx % len(palette)]
         columns[0].markdown(
