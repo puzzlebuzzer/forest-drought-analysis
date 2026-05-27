@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import copy
-from io import BytesIO
 from dataclasses import asdict
+from datetime import datetime
+from io import BytesIO
 import hashlib
 import json
 from pathlib import Path
+import re
 import textwrap
 
 import pandas as pd
@@ -256,6 +258,15 @@ def _config_display_label(config_dict: dict, idx: int | None = None, bundle=None
         parts
     )
     return f"{idx + 1}. {label}" if idx is not None else label
+
+
+def _download_filename_stem(label: str) -> str:
+    stem = re.sub(r"[^A-Za-z0-9]+", "_", label).strip("_").lower()
+    return stem or "dashboard_layer"
+
+
+def _timestamp_for_download() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 def _is_all_segment_config(config_dict: dict) -> bool:
@@ -1105,10 +1116,11 @@ def _render_config_table(
         label = _config_display_label(display_config, idx, bundle).split(". ", 1)[1]
         columns[0].markdown(f"`{idx + 1}` {label}")
         csv_bytes = _prepare_layer_data_export(bundle, config, idx, year_range)
+        csv_filename = f"{_download_filename_stem(label)}_{_timestamp_for_download()}.csv"
         columns[1].download_button(
             "CSV",
             data=csv_bytes,
-            file_name=f"dashboard_layer_{idx + 1}.csv",
+            file_name=csv_filename,
             mime="text/csv",
             key=f"csv_{idx}",
             width="content",
