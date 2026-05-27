@@ -310,6 +310,10 @@ def _layer_checklist_expanded_key(layer_idx: int) -> str:
     return f"layer_{layer_idx}_checklist_expanded"
 
 
+def _layer_visible_key(layer_idx: int) -> str:
+    return f"layer_{layer_idx}_visible"
+
+
 def _segment_all_checkbox_key(layer_idx: int) -> str:
     return f"layer_{layer_idx}_segments_all_visible"
 
@@ -388,6 +392,18 @@ def _set_layer_segmentation(layer_idx: int, selected_scope: str, checkbox_key: s
     st.session_state.comparison_configs[layer_idx] = config_dict
     if st.session_state.get("builder_target_index") == layer_idx:
         _load_builder_values(config_dict)
+
+
+def _remove_layer(layer_idx: int) -> None:
+    if not (0 <= layer_idx < len(st.session_state.comparison_configs)):
+        return
+    st.session_state.comparison_configs.pop(layer_idx)
+    if st.session_state.comparison_configs:
+        next_index = min(layer_idx, len(st.session_state.comparison_configs) - 1)
+        _start_edit_overlay(st.session_state.comparison_configs[next_index], next_index)
+    else:
+        st.session_state.builder_target_index = None
+        st.session_state.builder_mode = "new"
 
 
 def _forest_community_grouped_legend_entries(
@@ -830,14 +846,15 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
         ]
         selected_color_offsets = {code: offset for offset, code in enumerate(selected_codes)}
         is_all_segment = _is_all_segment_config(config_dict)
-        columns = st.columns([0.18, 4.45, 0.28, 0.55, 0.7])
+        columns = st.columns([0.28, 4.45, 0.28, 0.55])
         label = _config_display_label(config_dict, idx, bundle).split(". ", 1)[1]
-        color = "#888888" if is_all_segment and segment_entries else palette[trace_color_idx % len(palette)]
-        columns[0].markdown(
-            f"""
-            <div style="width: 0.9rem; height: 0.9rem; background:{color}; border-radius: 2px; margin-top: 0.2rem;"></div>
-            """,
-            unsafe_allow_html=True,
+        visible_key = _layer_visible_key(idx)
+        if visible_key not in st.session_state:
+            st.session_state[visible_key] = True
+        columns[0].checkbox(
+            f"Show layer {idx + 1}",
+            key=visible_key,
+            label_visibility="collapsed",
         )
         columns[1].markdown(f"`{idx + 1}` {label}")
         checklist_key = _layer_checklist_expanded_key(idx)
@@ -845,18 +862,13 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
         if columns[2].button("▼" if checklist_expanded else "▶", key=f"toggle_checklist_{idx}", help="Show or hide layer checklist"):
             st.session_state[checklist_key] = not checklist_expanded
             checklist_expanded = not checklist_expanded
-        if columns[3].button("Edit", key=f"edit_{idx}"):
-            _start_edit_overlay(config_dict, idx)
-            st.rerun()
-        if columns[4].button("Remove", key=f"remove_{idx}"):
-            st.session_state.comparison_configs.pop(idx)
-            if st.session_state.comparison_configs:
-                next_index = min(idx, len(st.session_state.comparison_configs) - 1)
-                _start_edit_overlay(st.session_state.comparison_configs[next_index], next_index)
-            else:
-                st.session_state.builder_target_index = None
-                st.session_state.builder_mode = "new"
-            st.rerun()
+        with columns[3].popover("⋯", help="Layer actions"):
+            if st.button("Edit", key=f"edit_{idx}", width="stretch"):
+                _start_edit_overlay(config_dict, idx)
+                st.rerun()
+            if st.button("Remove", key=f"remove_{idx}", width="stretch"):
+                _remove_layer(idx)
+                st.rerun()
         if checklist_expanded:
             _render_layer_segmentation_controls(bundle, config_dict, idx)
             if is_all_segment:
@@ -1204,7 +1216,23 @@ def main() -> None:
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     visible_segments_by_layer = _visible_segments_by_layer(bundle, config_objects, year_range)
-    figure, messages = build_timeseries_figure(bundle, config_objects, year_range, visible_segments_by_layer)
+    disabled_layer_indices = {
+        idx
+        for idx in range(len(config_objects))
+        if not st.session_state.get(_layer_visible_key(idx), True)
+    }
+    enabled_config_objects = [
+        config
+        for idx, config in enumerate(config_objects)
+        if idx not in disabled_layer_indices
+    ]
+    figure, messages = build_timeseries_figure(
+        bundle,
+        config_objects,
+        year_range,
+        visible_segments_by_layer,
+        disabled_layer_indices,
+    )
     if figure.data:
         st.plotly_chart(figure, width="stretch")
     else:
@@ -1213,7 +1241,7 @@ def main() -> None:
         st.info(message)
 
     _render_config_table(bundle, year_range)
-    _render_export_controls(bundle, config_objects, year_range, figure)
+    _render_export_controls(bundle, enabled_config_objects, year_range, figure)
 
 
 if __name__ == "__main__":

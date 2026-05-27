@@ -378,12 +378,16 @@ def build_timeseries_figure(
     configs: list[ComparisonConfig],
     year_range: tuple[int, int],
     visible_segments_by_layer: dict[int, set[int]] | None = None,
+    disabled_layer_indices: set[int] | None = None,
 ) -> tuple[go.Figure, list[str]]:
     fig = go.Figure()
     messages: list[str] = []
     visible_segments_by_layer = visible_segments_by_layer or {}
+    disabled_layer_indices = disabled_layer_indices or set()
 
     for layer_idx, config in enumerate(configs):
+        if layer_idx in disabled_layer_indices:
+            continue
         frame = bundle.frame_for_config(config)
         filtered = filter_frame(
             frame,
@@ -445,7 +449,8 @@ def build_timeseries_figure(
     y_axis_range = _visible_y_axis_range(fig)
     if y_axis_range is not None:
         fig.update_yaxes(range=y_axis_range)
-    _add_prism_year_stripes(fig, configs, year_range)
+    enabled_configs = [config for layer_idx, config in enumerate(configs) if layer_idx not in disabled_layer_indices]
+    _add_prism_year_stripes(fig, enabled_configs, year_range)
     return fig, messages
 
 
