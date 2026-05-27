@@ -33,6 +33,8 @@ from src.table_factory import (
 
 FOREST_COMMUNITY_SCENE_STEM = "scene_summary_forest_community"
 FOREST_COMMUNITY_TEMPORAL_STEM = "temporal_summary_forest_community"
+FOREST_ECOZONE_GROUP_SCENE_STEM = "scene_summary_forest_ecozone_group"
+FOREST_ECOZONE_GROUP_TEMPORAL_STEM = "temporal_summary_forest_ecozone_group"
 FOREST_COMMUNITY_DICTIONARY_NAME = "data_dictionary_forest_community.md"
 MIN_PIXELS = 100
 
@@ -56,6 +58,37 @@ def _community_catalog(sensor: str, aoi: str) -> dict[int, dict]:
         for code, metadata in catalog.items()
         if bool(metadata.get("include", True))
     }
+
+
+@lru_cache(maxsize=8)
+def _ecozone_group_catalog(sensor: str, aoi: str) -> dict[int, dict]:
+    groups: dict[int, dict] = {}
+    for metadata in _community_catalog(sensor, aoi).values():
+        group_code = metadata.get("ecozone_group_code")
+        if group_code is None:
+            continue
+        code = int(group_code)
+        groups.setdefault(
+            code,
+            {
+                "ecozone_group_code": code,
+                "ecozone_group_label": metadata.get("ecozone_group_label") or f"Ecozone group {code}",
+                "ecozone_group_raw": metadata.get("ecozone_group_raw") or metadata.get("ecozone_group_label"),
+            },
+        )
+    return groups
+
+
+@lru_cache(maxsize=8)
+def _ecozone_group_array(sensor: str, aoi: str) -> np.ndarray:
+    community_arr = _load_community_array(sensor, aoi)
+    group_arr = np.zeros(community_arr.shape, dtype=np.int16)
+    for community_code, metadata in _community_catalog(sensor, aoi).items():
+        group_code = metadata.get("ecozone_group_code")
+        if group_code is None:
+            continue
+        group_arr[community_arr == int(community_code)] = int(group_code)
+    return group_arr
 
 
 def summarize_scene_forest_community(scene_row: pd.Series) -> list[dict]:
@@ -170,6 +203,106 @@ def build_scene_summary_forest_community(scene_catalog: pd.DataFrame) -> pd.Data
     ).reset_index(drop=True)
 
 
+def summarize_scene_ecozone_group(scene_row: pd.Series) -> list[dict]:
+    sensor = str(scene_row["sensor"])
+    aoi = str(scene_row["aoi"])
+    group_arr = _ecozone_group_array(sensor, aoi)
+    catalog = _ecozone_group_catalog(sensor, aoi)
+    mask_meta = PIXEL_MASKS[sensor]
+
+    with rasterio.open(Path(scene_row["filepath"])) as src:
+        data = np.asarray(src.read(1, masked=True).filled(np.nan), dtype=np.float32)
+        pixel_count = src.height * src.width
+
+    finite_mask = np.isfinite(data)
+    group_mask = group_arr > 0
+    combined_mask = finite_mask & group_mask
+    if not combined_mask.any():
+        return []
+
+    values = data[combined_mask]
+    group_codes = group_arr[combined_mask].astype(np.int16, copy=False)
+    present_codes = np.unique(group_codes)
+
+    rows: list[dict] = []
+    timestamp = pd.Timestamp(scene_row["date"])
+    for group_code in present_codes:
+        code = int(group_code)
+        metadata = catalog.get(code)
+        if metadata is None:
+            continue
+
+        code_mask = group_codes == code
+        valid_pixels = int(code_mask.sum())
+        if valid_pixels < MIN_PIXELS:
+            continue
+
+        pixels = values[code_mask]
+        valid_pixel_fraction = float(valid_pixels) / float(pixel_count)
+        for percentile in SPATIAL_PERCENTILES:
+            rows.append(
+                {
+                    "analysis_scope": "forest_ecozone_group",
+                    "sensor": sensor,
+                    "aoi": aoi,
+                    "index": str(scene_row["index"]),
+                    "ecozone_code": pd.NA,
+                    "ecozone_label": pd.NA,
+                    "forest_community_code": pd.NA,
+                    "forest_community_display_code": pd.NA,
+                    "forest_community_label": pd.NA,
+                    "forest_community_source_dataset": pd.NA,
+                    "forest_community_source_value": pd.NA,
+                    "forest_community_source_key": pd.NA,
+                    "ecozone_group_code": code,
+                    "ecozone_group_label": metadata["ecozone_group_label"],
+                    "ecozone_group_raw": metadata.get("ecozone_group_raw") or pd.NA,
+                    "date": timestamp.normalize(),
+                    "year": int(scene_row["year"]),
+                    "doy": int(scene_row["doy"]),
+                    "growing_season_day": _growing_season_day(timestamp),
+                    "season_filter": "all",
+                    "temporal_agg": "scene",
+                    "temporal_percentile": "none",
+                    "spatial_percentile": PERCENTILE_COLUMNS[percentile],
+                    "cloud_threshold": pd.NA,
+                    "cloud_percent": scene_row["cloud_percent"],
+                    "pixel_mask_id": mask_meta["pixel_mask_id"],
+                    "pixel_mask_description": mask_meta["pixel_mask_description"],
+                    "pixel_mask_version": mask_meta["pixel_mask_version"],
+                    "n_pixels": valid_pixels,
+                    "valid_pixel_fraction": valid_pixel_fraction,
+                    "n_scenes": 1,
+                    "value": float(np.percentile(pixels, percentile)),
+                    "source_file_or_composite_id": str(scene_row["source_file_or_composite_id"]),
+                }
+            )
+    return rows
+
+
+def build_scene_summary_ecozone_group(scene_catalog: pd.DataFrame) -> pd.DataFrame:
+    records: list[dict] = []
+    total_scenes = len(scene_catalog)
+    for scene_idx, row in enumerate(scene_catalog.itertuples(index=False), start=1):
+        if scene_idx == 1 or scene_idx % 25 == 0 or scene_idx == total_scenes:
+            print(f"  Forest ecozone-group scene summaries: {scene_idx}/{total_scenes}", flush=True)
+        row_series = pd.Series(row._asdict())
+        records.extend(summarize_scene_ecozone_group(row_series))
+
+    if not records:
+        return pd.DataFrame()
+    return pd.DataFrame.from_records(records).sort_values(
+        [
+            "sensor",
+            "aoi",
+            "index",
+            "ecozone_group_code",
+            "date",
+            "spatial_percentile",
+        ]
+    ).reset_index(drop=True)
+
+
 def _time_bin_columns(frame: pd.DataFrame, temporal_agg: str) -> pd.DataFrame:
     expanded = frame.copy()
     if temporal_agg == "half_month":
@@ -198,6 +331,7 @@ def iter_temporal_summary_forest_community_chunks(
     scene_summary: pd.DataFrame,
     *,
     include_scene_id_list: bool = False,
+    analysis_scope: str = "forest_community",
 ) -> Iterator[pd.DataFrame]:
     total_start = time.perf_counter()
     quantile_values = [percentile / 100.0 for percentile in TEMPORAL_PERCENTILES]
@@ -282,7 +416,7 @@ def iter_temporal_summary_forest_community_chunks(
                 quantiles["temporal_percentile"] = quantiles[quantile_column].map(quantile_label_map)
                 quantiles = quantiles.drop(columns=[quantile_column])
                 chunk = quantiles.merge(base, on=group_columns, how="left")
-                chunk["analysis_scope"] = "forest_community"
+                chunk["analysis_scope"] = analysis_scope
                 chunk["date"] = chunk["time_bin_start"]
                 chunk["doy"] = pd.to_datetime(chunk["time_bin_start"]).dt.dayofyear
                 chunk["growing_season_day"] = (
@@ -297,7 +431,8 @@ def iter_temporal_summary_forest_community_chunks(
                 chunk["time_bin_end"] = chunk["time_bin_end"]
                 chunk["n_pixels"] = chunk["n_pixels"].round().astype("int64")
                 chunk["n_scenes"] = chunk["n_scenes"].astype("int64")
-                chunk["forest_community_code"] = chunk["forest_community_code"].astype("int64")
+                if chunk["forest_community_code"].notna().any():
+                    chunk["forest_community_code"] = chunk["forest_community_code"].astype("int64")
                 chunk = chunk[
                     [
                         "analysis_scope",
@@ -348,6 +483,18 @@ def iter_temporal_summary_forest_community_chunks(
     print(f"  Forest-community temporal summary chunks elapsed={(time.perf_counter() - total_start)/60:.1f}m", flush=True)
 
 
+def iter_temporal_summary_ecozone_group_chunks(
+    scene_summary: pd.DataFrame,
+    *,
+    include_scene_id_list: bool = False,
+) -> Iterator[pd.DataFrame]:
+    yield from iter_temporal_summary_forest_community_chunks(
+        scene_summary,
+        include_scene_id_list=include_scene_id_list,
+        analysis_scope="forest_ecozone_group",
+    )
+
+
 def build_temporal_summary_forest_community(
     scene_summary: pd.DataFrame,
     *,
@@ -384,6 +531,42 @@ def build_temporal_summary_forest_community(
     ).reset_index(drop=True)
 
 
+def build_temporal_summary_ecozone_group(
+    scene_summary: pd.DataFrame,
+    *,
+    include_scene_id_list: bool = False,
+) -> pd.DataFrame:
+    frame_chunks = list(
+        iter_temporal_summary_ecozone_group_chunks(
+            scene_summary,
+            include_scene_id_list=include_scene_id_list,
+        )
+    )
+    if not frame_chunks:
+        return pd.DataFrame()
+    frame = pd.concat(frame_chunks, ignore_index=True)
+    for column in ("date", "time_bin_start", "time_bin_end"):
+        if column in frame.columns:
+            frame[column] = pd.to_datetime(frame[column], utc=True, errors="coerce").dt.tz_localize(None)
+    print(
+        f"  Forest ecozone-group temporal summary rows={len(frame)}",
+        flush=True,
+    )
+    return frame.sort_values(
+        [
+            "sensor",
+            "aoi",
+            "index",
+            "ecozone_group_code",
+            "temporal_agg",
+            "time_bin_start",
+            "spatial_percentile",
+            "temporal_percentile",
+            "cloud_threshold",
+        ]
+    ).reset_index(drop=True)
+
+
 def build_forest_community_data_dictionary_markdown(output_dir: Path) -> str:
     return f"""# Dashboard Forest Community Data Dictionary
 
@@ -391,6 +574,8 @@ Generated table products in `{output_dir}`:
 
 - `{FOREST_COMMUNITY_SCENE_STEM}.parquet`
 - `{FOREST_COMMUNITY_TEMPORAL_STEM}.parquet`
+- `{FOREST_ECOZONE_GROUP_SCENE_STEM}.parquet`
+- `{FOREST_ECOZONE_GROUP_TEMPORAL_STEM}.parquet`
 
 Optional CSVs may also be present when requested from the builder.
 
@@ -398,6 +583,8 @@ Optional CSVs may also be present when requested from the builder.
 
 - `scene_summary_forest_community`: one row per scene x AOI x sensor x index x forest community x spatial percentile.
 - `temporal_summary_forest_community`: one row per forest community x temporal bin x cloud threshold x spatial percentile x temporal percentile.
+- `scene_summary_forest_ecozone_group`: one row per scene x AOI x sensor x index x forest-community ecozone group x spatial percentile.
+- `temporal_summary_forest_ecozone_group`: one row per forest-community ecozone group x temporal bin x cloud threshold x spatial percentile x temporal percentile.
 
 ## Added forest-community columns
 
@@ -421,6 +608,7 @@ Optional CSVs may also be present when requested from the builder.
 - The builder looks first for `forest_community.tif` in each AOI forest-type trait directory and falls back to the existing configured species/forest-type raster.
 - Landsat summaries reproject the same categorical raster to the Landsat canonical grid with nearest-neighbor resampling.
 - Rows are omitted where a community contributes fewer than `{MIN_PIXELS}` valid pixels for a scene.
+- Forest ecozone-group rows are recomputed from the combined pixel population for every included forest community in that group. They are not averages of forest-community summary rows.
 - Temporal tables summarize provenance as a scene count by default to avoid very large repeated scene-id strings across the 24-community output.
 """
 
