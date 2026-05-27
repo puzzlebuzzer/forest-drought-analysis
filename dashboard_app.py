@@ -350,7 +350,10 @@ def _render_indented_checkbox(
     args: tuple = (),
 ) -> None:
     indent = max(0.04, 0.18 + (0.32 * level) - 0.25)
-    _, checkbox_col, _ = st.columns([indent, 4.5, 1.0])
+    swatch_start = 1.58
+    checkbox_width = max(0.8, swatch_start - indent)
+    trailing_width = max(1.0, 5.5 - checkbox_width - 0.22)
+    _, checkbox_col, _, _ = st.columns([indent, checkbox_width, 0.22, trailing_width])
     kwargs = {
         "key": key,
         "disabled": disabled,
@@ -374,7 +377,7 @@ def _render_indented_segment_checkbox(
     args: tuple = (),
 ) -> None:
     indent = max(0.04, 0.18 + (0.32 * level) - 0.25)
-    swatch_start = 1.80
+    swatch_start = 1.58
     checkbox_width = max(0.8, swatch_start - indent)
     trailing_width = max(1.0, 5.5 - checkbox_width - 0.22)
     _, checkbox_col, swatch_col, _ = st.columns([indent, checkbox_width, 0.22, trailing_width])
