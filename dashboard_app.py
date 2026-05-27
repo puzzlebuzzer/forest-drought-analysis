@@ -332,6 +332,37 @@ def _render_indented_checkbox(
     checkbox_col.checkbox(label, **kwargs)
 
 
+def _render_indented_segment_checkbox(
+    label: str,
+    *,
+    key: str,
+    level: int,
+    color: str | None = None,
+    disabled: bool = False,
+    value: bool | None = None,
+    on_change=None,
+    args: tuple = (),
+) -> None:
+    indent = 0.18 + (0.32 * level)
+    _, checkbox_col, swatch_col, _ = st.columns([indent, 2.4, 0.28, 2.6])
+    kwargs = {
+        "key": key,
+        "disabled": disabled,
+        "on_change": on_change,
+        "args": args,
+    }
+    if value is not None:
+        kwargs["value"] = value
+    checkbox_col.checkbox(label, **kwargs)
+    if color:
+        swatch_col.markdown(
+            f"""
+            <div style="width: 0.65rem; height: 0.65rem; background:{color}; border-radius: 2px; margin-top: 0.45rem;"></div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
 def _set_all_segment_checkboxes(all_key: str, child_keys: list[str]) -> None:
     value = bool(st.session_state.get(all_key, True))
     for child_key in child_keys:
@@ -715,25 +746,38 @@ def _render_segment_legend(
             _render_indented_checkbox(
                 group_label,
                 key=checkbox_key,
-                level=1,
+                level=2,
                 on_change=_set_all_segment_checkboxes,
                 args=(checkbox_key, group_child_keys),
             )
             for code, entry in group_entries:
                 checkbox_key = _segment_checkbox_key(layer_idx, code)
-                _render_indented_checkbox(
+                is_selected = st.session_state.get(checkbox_key, True)
+                color_offset = selected_color_offsets.get(code, 0)
+                color = _segment_legend_color(config, code, palette, color_offset)
+                if not is_selected:
+                    color = "#c9c9c9"
+                _render_indented_segment_checkbox(
                     entry,
                     key=checkbox_key,
-                    level=2,
+                    level=3,
+                    color=color,
                 )
         return
 
     for offset, (code, entry) in enumerate(entries):
         checkbox_key = _segment_checkbox_key(layer_idx, code)
-        _render_indented_checkbox(
+        is_selected = st.session_state.get(checkbox_key, True)
+        color_offset = selected_color_offsets.get(code, offset)
+        palette_idx = color_offset if getattr(config, "analysis_scope", "overall") == "forest_community" else start_color_idx + color_offset
+        color = _segment_legend_color(config, code, palette, palette_idx)
+        if not is_selected:
+            color = "#c9c9c9"
+        _render_indented_segment_checkbox(
             entry,
             key=checkbox_key,
-            level=1,
+            level=2,
+            color=color,
         )
 
 
