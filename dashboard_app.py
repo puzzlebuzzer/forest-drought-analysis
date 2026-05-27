@@ -314,6 +314,10 @@ def _segment_all_checkbox_key(layer_idx: int) -> str:
     return f"layer_{layer_idx}_segments_all_visible"
 
 
+def _layer_nested_visible_key(layer_idx: int) -> str:
+    return f"layer_{layer_idx}_nested_visible"
+
+
 def _clear_layer_segment_state(layer_idx: int) -> None:
     prefixes = (
         f"layer_{layer_idx}_segment_",
@@ -905,7 +909,17 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
             """,
             unsafe_allow_html=True,
         )
-        columns[1].markdown(f"`{idx + 1}` {label}")
+        nested_key = _layer_nested_visible_key(idx)
+        if nested_key not in st.session_state:
+            st.session_state[nested_key] = True
+        if columns[1].button(
+            f"{idx + 1} {label}",
+            key=f"toggle_layer_nested_{idx}",
+            help="Show or hide layer checklist",
+            width="stretch",
+        ):
+            st.session_state[nested_key] = not st.session_state.get(nested_key, True)
+            st.rerun()
         if columns[2].button("Edit", key=f"edit_{idx}"):
             _start_edit_overlay(config_dict, idx)
             st.rerun()
@@ -918,9 +932,10 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
                 st.session_state.builder_target_index = None
                 st.session_state.builder_mode = "new"
             st.rerun()
-        _render_layer_segmentation_controls(bundle, config_dict, idx)
-        if is_all_segment:
-            _render_segment_legend(segment_entries, config, bundle, palette, trace_color_idx, idx, selected_color_offsets)
+        if st.session_state.get(nested_key, True):
+            _render_layer_segmentation_controls(bundle, config_dict, idx)
+            if is_all_segment:
+                _render_segment_legend(segment_entries, config, bundle, palette, trace_color_idx, idx, selected_color_offsets)
         trace_color_idx += max(1, len(segment_entries) if is_all_segment else 1)
 
 
