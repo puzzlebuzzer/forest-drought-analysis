@@ -105,9 +105,6 @@ def _inject_ui_css() -> None:
             color: #111111 !important;
             fill: #111111 !important;
         }
-        div[data-testid="stHorizontalBlock"] > div:first-child div[data-testid="stCheckbox"] {
-            margin-top: 0.35rem;
-        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -849,7 +846,7 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
         ]
         selected_color_offsets = {code: offset for offset, code in enumerate(selected_codes)}
         is_all_segment = _is_all_segment_config(config_dict)
-        columns = st.columns([0.28, 5.0, 0.55])
+        columns = st.columns([0.28, 4.45, 0.28, 0.55])
         label = _config_display_label(config_dict, idx, bundle).split(". ", 1)[1]
         visible_key = _layer_visible_key(idx)
         if visible_key not in st.session_state:
@@ -859,14 +856,13 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
             key=visible_key,
             label_visibility="collapsed",
         )
+        columns[1].markdown(f"`{idx + 1}` {label}")
         checklist_key = _layer_checklist_expanded_key(idx)
         checklist_expanded = bool(st.session_state.get(checklist_key, False))
-        label_col, triangle_col = columns[1].columns([0.92, 0.08])
-        label_col.markdown(f"`{idx + 1}` {label}")
-        if triangle_col.button("▶" if checklist_expanded else "▼", key=f"toggle_checklist_{idx}", help="Show or hide layer checklist"):
+        if columns[2].button("▼" if checklist_expanded else "▶", key=f"toggle_checklist_{idx}", help="Show or hide layer checklist"):
             st.session_state[checklist_key] = not checklist_expanded
             checklist_expanded = not checklist_expanded
-        with columns[2].popover("⋯", help="Layer actions"):
+        with columns[3].popover("⋯", help="Layer actions"):
             if st.button("Edit", key=f"edit_{idx}", width="stretch"):
                 _start_edit_overlay(config_dict, idx)
                 st.rerun()
