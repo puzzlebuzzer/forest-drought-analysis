@@ -306,10 +306,6 @@ def _layer_segmentation_checkbox_key(layer_idx: int, selected_scope: str, curren
     return f"layer_{layer_idx}_select_{selected_scope}_{current_scope}"
 
 
-def _layer_checklist_expanded_key(layer_idx: int) -> str:
-    return f"layer_{layer_idx}_checklist_expanded"
-
-
 def _segment_all_checkbox_key(layer_idx: int) -> str:
     return f"layer_{layer_idx}_segments_all_visible"
 
@@ -830,7 +826,7 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
         ]
         selected_color_offsets = {code: offset for offset, code in enumerate(selected_codes)}
         is_all_segment = _is_all_segment_config(config_dict)
-        columns = st.columns([0.18, 4.45, 0.28, 0.55, 0.7])
+        columns = st.columns([0.18, 4.8, 0.55, 0.7])
         label = _config_display_label(config_dict, idx, bundle).split(". ", 1)[1]
         color = "#888888" if is_all_segment and segment_entries else palette[trace_color_idx % len(palette)]
         columns[0].markdown(
@@ -840,15 +836,10 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
             unsafe_allow_html=True,
         )
         columns[1].markdown(f"`{idx + 1}` {label}")
-        checklist_key = _layer_checklist_expanded_key(idx)
-        checklist_expanded = bool(st.session_state.get(checklist_key, False))
-        if columns[2].button("▼" if checklist_expanded else "▶", key=f"toggle_checklist_{idx}", help="Show or hide layer checklist"):
-            st.session_state[checklist_key] = not checklist_expanded
-            checklist_expanded = not checklist_expanded
-        if columns[3].button("Edit", key=f"edit_{idx}"):
+        if columns[2].button("Edit", key=f"edit_{idx}"):
             _start_edit_overlay(config_dict, idx)
             st.rerun()
-        if columns[4].button("Remove", key=f"remove_{idx}"):
+        if columns[3].button("Remove", key=f"remove_{idx}"):
             st.session_state.comparison_configs.pop(idx)
             if st.session_state.comparison_configs:
                 next_index = min(idx, len(st.session_state.comparison_configs) - 1)
@@ -857,10 +848,9 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
                 st.session_state.builder_target_index = None
                 st.session_state.builder_mode = "new"
             st.rerun()
-        if checklist_expanded:
-            _render_layer_segmentation_controls(bundle, config_dict, idx)
-            if is_all_segment:
-                _render_segment_legend(segment_entries, config, bundle, palette, trace_color_idx, idx, selected_color_offsets)
+        _render_layer_segmentation_controls(bundle, config_dict, idx)
+        if is_all_segment:
+            _render_segment_legend(segment_entries, config, bundle, palette, trace_color_idx, idx, selected_color_offsets)
         trace_color_idx += max(1, len(segment_entries) if is_all_segment else 1)
 
 
