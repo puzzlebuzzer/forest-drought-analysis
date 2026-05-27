@@ -2,7 +2,7 @@
 """
 ecozone_moisture_stress.py
 --------------------------
-Analysis 8 — TNC Appalachian Terrain–Vegetation Roadmap
+Analysis 8 — TNC Appalachian Ecozone–Vegetation Roadmap
 
 Phenological moisture amplitude: growing-season p95 NDMI minus dormant-season
 p95 NDMI, by ecozone.  (Axis G2 — phenological amplitude transformation)

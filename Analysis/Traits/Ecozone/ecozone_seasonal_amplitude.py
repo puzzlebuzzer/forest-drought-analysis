@@ -2,7 +2,7 @@
 """
 ecozone_seasonal_amplitude.py
 ------------------------------
-Analysis 9 — TNC Appalachian Terrain–Vegetation Roadmap
+Analysis 9 — TNC Appalachian Ecozone–Vegetation Roadmap
 
 Annual seasonal amplitude: summer peak minus winter baseline, per ecozone,
 per year (2017–present).  Computed from the monthly max composites, so

@@ -2,7 +2,7 @@
 """
 ecozone_peak_productivity_landsat.py
 ------------------------------------
-Landsat C2 parallel of Analyses 1, 2, and 3 — TNC Appalachian Terrain–Vegetation Roadmap
+Landsat C2 parallel of Analyses 1, 2, and 3 — TNC Appalachian Ecozone–Vegetation Roadmap
 
 Analysis 1 — Peak vegetation productivity: p95/p99/p100 NDVI by ecozone
 Analysis 2 — Peak canopy moisture:         p95/p99/p100 NDMI by ecozone

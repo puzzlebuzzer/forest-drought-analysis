@@ -1089,7 +1089,7 @@ def _prepare_plot_export_pillow(figure, metadata_lines: list[str] | None = None,
         if len(points) > 1:
             draw.line(points, fill=color, width=2)
 
-    title = "Terrain-Vegetation Time Series"
+    title = "Ecozone-Vegetation Time Series"
     try:
         title_value = figure.layout.title.text
         if title_value:
@@ -1164,11 +1164,11 @@ def _render_export_controls(bundle, configs: list[ComparisonConfig], year_range:
 
 
 def main() -> None:
-    st.set_page_config(page_title="Appalachian Terrain–Vegetation Dashboard", layout="wide")
+    st.set_page_config(page_title="Appalachian Ecozone–Vegetation Dashboard", layout="wide")
     _inject_ui_css()
     _init_state()
 
-    st.title("Appalachian Terrain–Vegetation Analysis Dashboard")
+    st.title("Appalachian Ecozone–Vegetation Analysis Dashboard")
 
     data_dir = _render_data_dir_control()
     bundle = _load_dashboard_data_cached(str(data_dir))

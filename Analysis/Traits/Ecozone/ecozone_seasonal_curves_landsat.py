@@ -2,7 +2,7 @@
 """
 ecozone_seasonal_curves_landsat.py
 -----------------------------------
-Landsat C2 parallel of Analysis 4 — TNC Appalachian Terrain–Vegetation Roadmap
+Landsat C2 parallel of Analysis 4 — TNC Appalachian Ecozone–Vegetation Roadmap
 
 Seasonal peak timing: monthly p95 and p100 NDVI, NDMI, and EVI by ecozone.
 

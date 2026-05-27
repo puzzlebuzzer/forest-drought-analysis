@@ -435,7 +435,7 @@ def build_timeseries_figure(
 
     fig.update_layout(
         template="plotly_white",
-        title="Terrain–Vegetation Time Series",
+        title="Ecozone–Vegetation Time Series",
         xaxis_title="Date",
         yaxis_title="Summary value",
         hovermode="x unified",

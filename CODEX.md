@@ -1,4 +1,4 @@
-# TNC Appalachian Terrain–Vegetation Project — Codex/AI Context
+# TNC Appalachian Ecozone–Vegetation Project — Codex/AI Context
 
 This file is read at the start of every session. It captures decisions, conventions, and hard-won fixes so they don't have to be re-explained after context resets.
 

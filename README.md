@@ -1,4 +1,4 @@
-# Appalachian Terrain–Vegetation Analysis
+# Appalachian Ecozone–Vegetation Analysis
 
 This project analyzes vegetation patterns across terrain aspects using Sentinel-2 vegetation indices and forest composition data.
 

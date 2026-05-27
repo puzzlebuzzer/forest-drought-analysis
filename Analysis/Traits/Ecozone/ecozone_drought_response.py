@@ -2,7 +2,7 @@
 """
 ecozone_drought_response.py
 ---------------------------
-Analyses 5, 6, and 7 — TNC Appalachian Terrain–Vegetation Roadmap
+Analyses 5, 6, and 7 — TNC Appalachian Ecozone–Vegetation Roadmap
 
 Analysis 5 — Wet vs. dry year peak NDVI by ecozone
 Analysis 6 — Wet vs. dry year peak NDMI by ecozone

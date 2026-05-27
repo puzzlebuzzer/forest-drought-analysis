@@ -2,7 +2,7 @@
 """
 ecozone_seasonal_curves.py
 --------------------------
-Analysis 4 — TNC Appalachian Terrain–Vegetation Roadmap
+Analysis 4 — TNC Appalachian Ecozone–Vegetation Roadmap
 
 Seasonal peak timing: monthly p95 and p100 NDVI, NDMI, and EVI by ecozone.
 
