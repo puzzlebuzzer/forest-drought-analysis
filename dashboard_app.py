@@ -738,9 +738,8 @@ def _apply_pending_builder_values() -> None:
     if not pending_values:
         return
     st.session_state.builder_defaults = dict(pending_values)
-    for key in pending_values:
-        if key in st.session_state:
-            del st.session_state[key]
+    for key, value in pending_values.items():
+        st.session_state[key] = value
     st.session_state.builder_pending_values = None
 
 
