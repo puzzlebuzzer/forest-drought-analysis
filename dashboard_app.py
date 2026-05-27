@@ -1495,6 +1495,7 @@ def main() -> None:
             new_config = asdict(config)
             st.session_state.comparison_configs.append(new_config)
             _start_edit_overlay(new_config, len(st.session_state.comparison_configs) - 1)
+            st.rerun()
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     selected_color_offsets_by_layer = _selected_color_offsets_by_layer(bundle, config_objects, year_range)
