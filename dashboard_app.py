@@ -859,7 +859,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, in
     _apply_pending_builder_values()
     target_index = st.session_state.builder_target_index
     if target_index is not None and 0 <= target_index < len(st.session_state.comparison_configs):
-        st.sidebar.markdown(f"Layer {target_index + 1}")
+        st.sidebar.markdown(f"### **Layer {target_index + 1}**")
     aoi = _safe_selectbox(
         "AOI",
         aois,
