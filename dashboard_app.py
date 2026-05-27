@@ -350,7 +350,7 @@ def _render_indented_checkbox(
     args: tuple = (),
 ) -> None:
     indent = max(0.04, 0.18 + (0.32 * level) - 0.25)
-    swatch_start = 1.42
+    swatch_start = 1.50
     total_width = 5.75
     checkbox_width = max(0.35, swatch_start - indent)
     trailing_width = max(1.0, total_width - indent - checkbox_width - 0.22)
@@ -378,7 +378,7 @@ def _render_indented_segment_checkbox(
     args: tuple = (),
 ) -> None:
     indent = max(0.04, 0.18 + (0.32 * level) - 0.25)
-    swatch_start = 1.42
+    swatch_start = 1.50
     total_width = 5.75
     checkbox_width = max(0.35, swatch_start - indent)
     trailing_width = max(1.0, total_width - indent - checkbox_width - 0.22)
