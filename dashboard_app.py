@@ -40,11 +40,13 @@ DEFAULT_EXCLUDE_BELOW_STDDEV = 2
 ECOZONE_ALL_OPTION = "all"
 ANALYSIS_SCOPE_LABELS = {
     "overall": "Overall",
-    "ecozone": "Ecozone",
-    "forest_community": "Forest community",
+    "ecozone": "Broad ecozone",
+    "forest_community": "Forest communities",
 }
 BUILDER_WIDGET_KEYS = [
     "builder_analysis_scope",
+    "builder_select_broad_ecozone",
+    "builder_select_forest_communities",
     "builder_sensor",
     "builder_aoi",
     "builder_index",
@@ -295,6 +297,10 @@ def _segment_checkbox_key(layer_idx: int, segment_code: int) -> str:
     return f"layer_{layer_idx}_segment_{segment_code}_visible"
 
 
+def _segment_group_checkbox_key(layer_idx: int, group_key: str) -> str:
+    return f"layer_{layer_idx}_segment_group_{group_key}_visible"
+
+
 def _segment_all_checkbox_key(layer_idx: int) -> str:
     return f"layer_{layer_idx}_segments_all_visible"
 
@@ -303,6 +309,68 @@ def _set_all_segment_checkboxes(all_key: str, child_keys: list[str]) -> None:
     value = bool(st.session_state.get(all_key, True))
     for child_key in child_keys:
         st.session_state[child_key] = value
+
+
+def _forest_community_grouped_legend_entries(
+    entries: list[tuple[int, str]],
+    bundle,
+    config: ComparisonConfig,
+) -> list[tuple[str, str, list[tuple[int, str]]]]:
+    if not entries:
+        return []
+    entry_by_code = {int(code): label for code, label in entries}
+    metadata: dict[int, tuple[float | None, str]] = {}
+    source_frames = [
+        bundle.scene_summary_forest_community_manifest,
+        bundle.temporal_summary_forest_community_manifest,
+        bundle.scene_summary,
+        bundle.temporal_summary,
+    ]
+    for frame in source_frames:
+        required = {"forest_community_code", "ecozone_group_label"}
+        if frame.empty or not required.issubset(frame.columns):
+            continue
+        candidates = frame
+        if "aoi" in candidates.columns:
+            candidates = candidates[candidates["aoi"] == config.aoi]
+        if "sensor" in candidates.columns:
+            candidates = candidates[candidates["sensor"] == config.sensor]
+        if "index" in candidates.columns:
+            candidates = candidates[candidates["index"] == config.index]
+        if candidates.empty:
+            continue
+        for code in entry_by_code:
+            if code in metadata:
+                continue
+            code_matches = candidates[pd.to_numeric(candidates["forest_community_code"], errors="coerce") == code]
+            if code_matches.empty:
+                continue
+            group_code = None
+            if "ecozone_group_code" in code_matches.columns:
+                group_codes = pd.to_numeric(code_matches["ecozone_group_code"], errors="coerce").dropna()
+                if not group_codes.empty:
+                    group_code = float(group_codes.iloc[0])
+            labels = code_matches["ecozone_group_label"].dropna().astype(str)
+            labels = labels[labels != ""]
+            metadata[code] = (group_code, labels.iloc[0] if not labels.empty else "Unlabeled group")
+        if len(metadata) == len(entry_by_code):
+            break
+
+    grouped: dict[str, dict] = {}
+    for code, label in entries:
+        group_code, group_label = metadata.get(int(code), (None, "Unlabeled group"))
+        group_key = str(int(group_code)) if group_code is not None else "unlabeled"
+        group = grouped.setdefault(
+            group_key,
+            {
+                "sort": group_code if group_code is not None else 9999,
+                "label": group_label,
+                "entries": [],
+            },
+        )
+        group["entries"].append((int(code), label))
+    ordered_groups = sorted(grouped.items(), key=lambda item: (item[1]["sort"], item[1]["label"]))
+    return [(group_key, group["label"], group["entries"]) for group_key, group in ordered_groups]
 
 
 def _visible_segments_by_layer(
@@ -357,8 +425,11 @@ def _default_config_dict(bundle) -> dict:
 
 
 def _load_builder_values(config_dict: dict) -> None:
+    analysis_scope = config_dict.get("analysis_scope", "overall")
     st.session_state.builder_pending_values = {
-        "builder_analysis_scope": config_dict.get("analysis_scope", "overall"),
+        "builder_analysis_scope": analysis_scope,
+        "builder_select_broad_ecozone": analysis_scope == "ecozone",
+        "builder_select_forest_communities": analysis_scope == "forest_community",
         "builder_sensor": config_dict.get("sensor"),
         "builder_aoi": config_dict.get("aoi"),
         "builder_index": config_dict.get("index"),
@@ -408,6 +479,36 @@ def _start_edit_overlay(config_dict: dict, index: int) -> None:
     _load_builder_values(config_dict)
 
 
+def _ensure_builder_segmentation_state() -> None:
+    analysis_scope = st.session_state.get(
+        "builder_analysis_scope",
+        _builder_default("builder_analysis_scope", "overall"),
+    )
+    if "builder_select_broad_ecozone" not in st.session_state:
+        st.session_state.builder_select_broad_ecozone = analysis_scope == "ecozone"
+    if "builder_select_forest_communities" not in st.session_state:
+        st.session_state.builder_select_forest_communities = analysis_scope == "forest_community"
+    if analysis_scope == "ecozone":
+        st.session_state.builder_select_broad_ecozone = True
+        st.session_state.builder_select_forest_communities = False
+    elif analysis_scope == "forest_community":
+        st.session_state.builder_select_broad_ecozone = False
+        st.session_state.builder_select_forest_communities = True
+    else:
+        st.session_state.builder_select_broad_ecozone = False
+        st.session_state.builder_select_forest_communities = False
+
+
+def _set_builder_segmentation(selected_scope: str, selected_key: str, other_key: str) -> None:
+    if st.session_state.get(selected_key, False):
+        st.session_state.builder_analysis_scope = selected_scope
+        st.session_state[other_key] = False
+    elif st.session_state.get("builder_analysis_scope") == selected_scope:
+        st.session_state.builder_analysis_scope = "overall"
+    st.session_state.builder_ecozone_code = ECOZONE_ALL_OPTION
+    st.session_state.builder_forest_community_code = ECOZONE_ALL_OPTION
+
+
 def _ensure_builder_state(bundle) -> None:
     if st.session_state.builder_mode == "new":
         if not st.session_state.builder_defaults and not st.session_state.builder_pending_values:
@@ -453,9 +554,6 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
     sensors = bundle.available_values("sensor")
     aois = bundle.available_values("aoi")
     indices = bundle.available_values("index")
-    analysis_scopes = bundle.available_values("analysis_scope")
-    ecozone_codes = [ECOZONE_ALL_OPTION, *bundle.available_values("ecozone_code")]
-    forest_community_codes = [ECOZONE_ALL_OPTION, *bundle.available_values("forest_community_code")]
     spatial_percentiles = bundle.available_values("spatial_percentile")
     temporal_aggs = bundle.available_values("temporal_agg")
     cloud_thresholds = bundle.available_values("cloud_threshold")
@@ -463,15 +561,27 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
 
     _ensure_builder_state(bundle)
     _apply_pending_builder_values()
+    _ensure_builder_segmentation_state()
+    available_scopes = bundle.available_values("analysis_scope")
+    can_select_broad_ecozone = "ecozone" in available_scopes
+    can_select_forest_communities = "forest_community" in available_scopes
+    segmentation_scope = st.session_state.get("builder_analysis_scope", "overall")
+    st.sidebar.checkbox(
+        "Select broad ecozone",
+        key="builder_select_broad_ecozone",
+        disabled=segmentation_scope == "forest_community" or not can_select_broad_ecozone,
+        on_change=_set_builder_segmentation,
+        args=("ecozone", "builder_select_broad_ecozone", "builder_select_forest_communities"),
+    )
+    st.sidebar.checkbox(
+        "Select forest communities",
+        key="builder_select_forest_communities",
+        disabled=segmentation_scope == "ecozone" or not can_select_forest_communities,
+        on_change=_set_builder_segmentation,
+        args=("forest_community", "builder_select_forest_communities", "builder_select_broad_ecozone"),
+    )
+    analysis_scope = st.session_state.get("builder_analysis_scope", "overall")
     with st.sidebar.form("comparison_builder_form", enter_to_submit=False):
-        analysis_scope = _safe_selectbox(
-            "Scope",
-            analysis_scopes,
-            _builder_default("builder_analysis_scope", "overall"),
-            scope=st,
-            key="builder_analysis_scope",
-            format_func=lambda value: ANALYSIS_SCOPE_LABELS.get(value, value),
-        )
         aoi = _safe_selectbox(
             "AOI",
             aois,
@@ -489,29 +599,6 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             format_func=lambda value: SENSOR_LABELS.get(value, value),
         )
         index_name = _safe_selectbox("Index", indices, _builder_default("builder_index", "ndvi"), scope=st, key="builder_index")
-        ecozone_code = None
-        forest_community_code = None
-        if analysis_scope == "ecozone":
-            ecozone_code = _safe_selectbox(
-                "Ecozone",
-                ecozone_codes,
-                _builder_default("builder_ecozone_code", ECOZONE_ALL_OPTION),
-                scope=st,
-                key="builder_ecozone_code",
-                format_func=_ecozone_option_label,
-            )
-        elif analysis_scope == "forest_community":
-            forest_community_code = _safe_selectbox(
-                "Forest community",
-                forest_community_codes,
-                _builder_default(
-                    "builder_forest_community_code",
-                    ECOZONE_ALL_OPTION,
-                ),
-                scope=st,
-                key="builder_forest_community_code",
-                format_func=lambda value: _forest_community_option_label(value, bundle),
-            )
         cloud_threshold = _safe_plain_selectbox(
             "Cloud threshold",
             cloud_thresholds,
@@ -573,10 +660,6 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
 
     if not all([analysis_scope, sensor, aoi, index_name, spatial_percentile, temporal_agg, temporal_percentile, season_filter]):
         return selected_year_range, None, None, st.session_state.builder_target_index
-    if analysis_scope == "ecozone" and ecozone_code is None:
-        return selected_year_range, None, None, st.session_state.builder_target_index
-    if analysis_scope == "forest_community" and forest_community_code is None:
-        return selected_year_range, None, None, st.session_state.builder_target_index
 
     config = ComparisonConfig(
         label=label.strip(),
@@ -584,16 +667,8 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
         sensor=sensor,
         aoi=aoi,
         index=index_name,
-        ecozone_code=(
-            int(ecozone_code)
-            if analysis_scope == "ecozone" and ecozone_code != ECOZONE_ALL_OPTION
-            else None
-        ),
-        forest_community_code=(
-            int(forest_community_code)
-            if analysis_scope == "forest_community" and forest_community_code != ECOZONE_ALL_OPTION
-            else None
-        ),
+        ecozone_code=None,
+        forest_community_code=None,
         spatial_percentile=spatial_percentile,
         temporal_agg=temporal_agg,
         temporal_percentile=temporal_percentile,
@@ -617,6 +692,7 @@ def _segment_legend_color(config: ComparisonConfig, code: int, palette: list[str
 def _render_segment_legend(
     entries: list[tuple[int, str]],
     config: ComparisonConfig,
+    bundle,
     palette: list[str],
     start_color_idx: int,
     layer_idx: int,
@@ -637,6 +713,46 @@ def _render_segment_legend(
         args=(all_key, child_keys),
     )
     all_label_col.markdown("<span style='font-size: 0.9rem;'>All on/off</span>", unsafe_allow_html=True)
+
+    if getattr(config, "analysis_scope", "overall") == "forest_community":
+        grouped_entries = _forest_community_grouped_legend_entries(entries, bundle, config)
+        for group_key, group_label, group_entries in grouped_entries:
+            group_child_keys = [_segment_checkbox_key(layer_idx, code) for code, _ in group_entries]
+            checkbox_key = _segment_group_checkbox_key(layer_idx, group_key)
+            st.session_state[checkbox_key] = all(st.session_state.get(child_key, True) for child_key in group_child_keys)
+            spacer, checkbox_col, _, label_col, _, _ = st.columns([0.25, 0.35, 0.3, 3.7, 0.8, 1])
+            spacer.empty()
+            checkbox_col.checkbox(
+                f"Toggle {group_label} for layer {layer_idx + 1}",
+                key=checkbox_key,
+                label_visibility="collapsed",
+                on_change=_set_all_segment_checkboxes,
+                args=(checkbox_key, group_child_keys),
+            )
+            label_col.markdown(f"<span style='font-size: 0.9rem;'>{group_label}</span>", unsafe_allow_html=True)
+            for code, entry in group_entries:
+                checkbox_key = _segment_checkbox_key(layer_idx, code)
+                is_selected = st.session_state.get(checkbox_key, True)
+                color_offset = selected_color_offsets.get(code, 0)
+                color = _segment_legend_color(config, code, palette, color_offset)
+                if not is_selected:
+                    color = "#c9c9c9"
+                spacer, checkbox_col, swatch, label_col, _, _ = st.columns([0.95, 0.35, 0.3, 3.0, 0.8, 1])
+                spacer.empty()
+                checkbox_col.checkbox(
+                    f"Show {entry} for layer {layer_idx + 1}",
+                    key=checkbox_key,
+                    label_visibility="collapsed",
+                )
+                swatch.markdown(
+                    f"""
+                    <div style="width: 0.65rem; height: 0.65rem; background:{color}; border-radius: 2px; margin-top: 0.2rem;"></div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                label_col.markdown(f"<span style='font-size: 0.9rem;'>{entry}</span>", unsafe_allow_html=True)
+        return
+
     for offset, (code, entry) in enumerate(entries):
         checkbox_key = _segment_checkbox_key(layer_idx, code)
         is_selected = st.session_state.get(checkbox_key, True)
@@ -701,7 +817,7 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
                 st.session_state.builder_mode = "new"
             st.rerun()
         if is_all_segment:
-            _render_segment_legend(segment_entries, config, palette, trace_color_idx, idx, selected_color_offsets)
+            _render_segment_legend(segment_entries, config, bundle, palette, trace_color_idx, idx, selected_color_offsets)
         trace_color_idx += max(1, len(segment_entries) if is_all_segment else 1)
 
 
