@@ -1073,23 +1073,15 @@ def _render_config_table(
     trace_color_idx = 0
     for idx, config_dict in enumerate(st.session_state.comparison_configs):
         config = ComparisonConfig(**config_dict)
-        segment_entries = _segment_legend_entries(bundle, _config_with_scope(config, "forest_community"), year_range)
         selected_color_offsets = selected_color_offsets_by_layer.get(idx, {})
-        columns = st.columns([0.18, 4.8, 0.55, 0.7])
+        columns = st.columns([4.98, 0.55, 0.7])
         display_config = asdict(_config_with_scope(config, "overall"))
         label = _config_display_label(display_config, idx, bundle).split(". ", 1)[1]
-        color = "#888888" if segment_entries else palette[trace_color_idx % len(palette)]
-        columns[0].markdown(
-            f"""
-            <div style="width: 0.9rem; height: 0.9rem; background:{color}; border-radius: 2px; margin-top: 0.2rem;"></div>
-            """,
-            unsafe_allow_html=True,
-        )
-        columns[1].markdown(f"`{idx + 1}` {label}")
-        if columns[2].button("Edit", key=f"edit_{idx}"):
+        columns[0].markdown(f"`{idx + 1}` {label}")
+        if columns[1].button("Edit", key=f"edit_{idx}"):
             _start_edit_overlay(config_dict, idx)
             st.rerun()
-        if columns[3].button("Remove", key=f"remove_{idx}"):
+        if columns[2].button("Remove", key=f"remove_{idx}"):
             st.session_state.comparison_configs.pop(idx)
             if st.session_state.comparison_configs:
                 next_index = min(idx, len(st.session_state.comparison_configs) - 1)
@@ -1099,6 +1091,7 @@ def _render_config_table(
                 st.session_state.builder_mode = "new"
             st.rerun()
         _render_segment_legend(config, bundle, palette, trace_color_idx, idx, selected_color_offsets, year_range)
+        segment_entries = _segment_legend_entries(bundle, _config_with_scope(config, "forest_community"), year_range)
         trace_color_idx += max(1, len(segment_entries))
 
 
