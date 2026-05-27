@@ -956,16 +956,6 @@ def _render_segment_legend(
     for child_key in child_keys:
         if child_key not in st.session_state:
             st.session_state[child_key] = child_key == combined_key
-    all_key = _segment_all_checkbox_key(layer_idx)
-    all_selected = all(st.session_state.get(child_key, child_key == combined_key) for child_key in child_keys)
-    st.session_state[all_key] = all_selected
-    _render_indented_checkbox(
-        "Toggle All",
-        key=all_key,
-        level=1,
-        on_change=_set_all_segment_checkboxes,
-        args=(all_key, child_keys),
-    )
 
     overall_color_offset = selected_color_offsets.get(_overall_combined_segment_id(), start_color_idx)
     overall_color = palette[overall_color_offset % len(palette)]
