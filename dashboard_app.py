@@ -1093,9 +1093,8 @@ def _render_config_table(
     year_range: tuple[int, int],
     selected_color_offsets_by_layer: dict[int, dict[object, int]],
 ) -> None:
-    header_cols = st.columns([0.65, 0.08, 5.0])
-    header_cols[0].subheader("Layers")
-    if header_cols[1].button("+", key="add_layer_header", help="Add new layer"):
+    st.subheader("Layers")
+    if st.button("Add new", key="add_layer_header"):
         _append_default_layer(bundle)
         st.rerun()
     if not st.session_state.comparison_configs:
