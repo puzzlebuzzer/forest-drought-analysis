@@ -851,6 +851,9 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
     _ensure_builder_state(bundle)
     _apply_pending_builder_values()
     with st.sidebar.form("comparison_builder_form", enter_to_submit=False):
+        target_index = st.session_state.builder_target_index
+        if target_index is not None and 0 <= target_index < len(st.session_state.comparison_configs):
+            st.markdown(f"Editing layer `{target_index + 1}`")
         aoi = _safe_selectbox(
             "AOI",
             aois,
