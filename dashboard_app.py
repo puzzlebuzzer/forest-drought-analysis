@@ -118,7 +118,6 @@ def _inject_ui_css() -> None:
             background: transparent !important;
             border: 0 !important;
             color: inherit !important;
-            text-decoration: underline;
         }
         </style>
         """,
@@ -929,13 +928,14 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
             st.session_state[nested_key] = True
         with columns[1]:
             with st.container(key=f"layer_label_toggle_{idx}"):
+                nested_visible = st.session_state.get(nested_key, True)
+                collapse_icon = "▾" if nested_visible else "▸"
                 if st.button(
-                    f"{idx + 1} {label}",
+                    f"{idx + 1} {label} {collapse_icon}",
                     key=f"toggle_layer_nested_{idx}",
-                    help="Show or hide layer checklist",
                     width="stretch",
                 ):
-                    st.session_state[nested_key] = not st.session_state.get(nested_key, True)
+                    st.session_state[nested_key] = not nested_visible
                     st.rerun()
         if columns[2].button("Edit", key=f"edit_{idx}"):
             _start_edit_overlay(config_dict, idx)
