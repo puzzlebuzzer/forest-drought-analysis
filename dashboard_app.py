@@ -349,7 +349,7 @@ def _render_indented_checkbox(
     on_change=None,
     args: tuple = (),
 ) -> None:
-    indent = 0.18 + (0.32 * level)
+    indent = max(0.04, 0.18 + (0.32 * level) - 0.25)
     _, checkbox_col, _ = st.columns([indent, 4.5, 1.0])
     kwargs = {
         "key": key,
@@ -373,7 +373,7 @@ def _render_indented_segment_checkbox(
     on_change=None,
     args: tuple = (),
 ) -> None:
-    indent = 0.18 + (0.32 * level)
+    indent = max(0.04, 0.18 + (0.32 * level) - 0.25)
     _, checkbox_col, swatch_col, _ = st.columns([indent, 1.55, 0.22, 3.48])
     kwargs = {
         "key": key,
