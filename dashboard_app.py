@@ -509,8 +509,8 @@ def _visible_segments_by_layer(
         for code, _ in entries:
             key = _segment_checkbox_key(idx, code)
             if key not in st.session_state:
-                st.session_state[key] = True
-            if st.session_state.get(key, True):
+                st.session_state[key] = False
+            if st.session_state.get(key, False):
                 selected_codes.add(code)
         visible[idx] = selected_codes
     return visible
@@ -530,8 +530,8 @@ def _visible_broad_ecozones_by_layer(
         for code, _ in entries:
             key = _broad_ecozone_checkbox_key(idx, code)
             if key not in st.session_state:
-                st.session_state[key] = True
-            if st.session_state.get(key, True):
+                st.session_state[key] = False
+            if st.session_state.get(key, False):
                 selected_codes.add(code)
         visible[idx] = selected_codes
     return visible
@@ -569,8 +569,8 @@ def _combined_group_frames_by_layer(
                 continue
             combined_key = _segment_group_combined_checkbox_key(idx, group_key)
             if combined_key not in st.session_state:
-                st.session_state[combined_key] = True
-            if st.session_state.get(combined_key, True):
+                st.session_state[combined_key] = False
+            if st.session_state.get(combined_key, False):
                 try:
                     group_code = int(group_key)
                 except ValueError:
@@ -602,7 +602,7 @@ def _selected_color_offsets_by_layer(
 
         broad_entries = _segment_legend_entries(bundle, _config_with_scope(config, "ecozone"), year_range)
         for code, _ in broad_entries:
-            if st.session_state.get(_broad_ecozone_checkbox_key(idx, code), True):
+            if st.session_state.get(_broad_ecozone_checkbox_key(idx, code), False):
                 selected_segments.append(_broad_ecozone_segment_id(code))
 
         forest_config = _config_with_scope(config, "forest_community")
@@ -610,10 +610,10 @@ def _selected_color_offsets_by_layer(
         grouped_entries = _forest_community_grouped_legend_entries(segment_entries, bundle, forest_config)
         for group_key, _, group_entries in grouped_entries:
             combined_key = _segment_group_combined_checkbox_key(idx, group_key)
-            if len(group_entries) > 1 and st.session_state.get(combined_key, True):
+            if len(group_entries) > 1 and st.session_state.get(combined_key, False):
                 selected_segments.append(_combined_segment_id(group_key))
             for code, _ in group_entries:
-                if st.session_state.get(_segment_checkbox_key(idx, code), True):
+                if st.session_state.get(_segment_checkbox_key(idx, code), False):
                     selected_segments.append(code)
         selected_color_offsets_by_layer[idx] = {segment_id: offset for offset, segment_id in enumerate(selected_segments)}
     return selected_color_offsets_by_layer
@@ -955,9 +955,9 @@ def _render_segment_legend(
     child_keys = [combined_key, *broad_child_keys, *forest_child_keys, *group_combined_keys]
     for child_key in child_keys:
         if child_key not in st.session_state:
-            st.session_state[child_key] = True
+            st.session_state[child_key] = child_key == combined_key
     all_key = _segment_all_checkbox_key(layer_idx)
-    all_selected = all(st.session_state.get(child_key, True) for child_key in child_keys)
+    all_selected = all(st.session_state.get(child_key, child_key == combined_key) for child_key in child_keys)
     st.session_state[all_key] = all_selected
     _render_indented_checkbox(
         "Toggle All",
@@ -980,7 +980,7 @@ def _render_segment_legend(
 
     if broad_entries:
         broad_group_key = _broad_ecozone_group_checkbox_key(layer_idx)
-        st.session_state[broad_group_key] = all(st.session_state.get(child_key, True) for child_key in broad_child_keys)
+        st.session_state[broad_group_key] = all(st.session_state.get(child_key, False) for child_key in broad_child_keys)
         _render_indented_checkbox(
             "Broad ecozones",
             key=broad_group_key,
@@ -990,7 +990,7 @@ def _render_segment_legend(
         )
         for code, entry in broad_entries:
             checkbox_key = _broad_ecozone_checkbox_key(layer_idx, code)
-            is_selected = st.session_state.get(checkbox_key, True)
+            is_selected = st.session_state.get(checkbox_key, False)
             color = ECOZONE_TRACE_COLORS.get(int(code), palette[start_color_idx % len(palette)])
             if not is_selected:
                 color = "#c9c9c9"
@@ -1007,7 +1007,7 @@ def _render_segment_legend(
         if len(group_entries) > 1:
             group_child_keys = [group_combined_key, *group_child_keys]
         checkbox_key = _segment_group_checkbox_key(layer_idx, group_key)
-        st.session_state[checkbox_key] = all(st.session_state.get(child_key, True) for child_key in group_child_keys)
+        st.session_state[checkbox_key] = all(st.session_state.get(child_key, False) for child_key in group_child_keys)
         _render_indented_checkbox(
             group_label,
             key=checkbox_key,
@@ -1016,7 +1016,7 @@ def _render_segment_legend(
             args=(checkbox_key, group_child_keys),
         )
         if len(group_entries) > 1:
-            is_combined_selected = st.session_state.get(group_combined_key, True)
+            is_combined_selected = st.session_state.get(group_combined_key, False)
             combined_segment_id = _combined_segment_id(group_key)
             color_offset = selected_color_offsets.get(combined_segment_id, 0)
             color = palette[color_offset % len(palette)]
@@ -1030,7 +1030,7 @@ def _render_segment_legend(
             )
         for code, entry in group_entries:
             checkbox_key = _segment_checkbox_key(layer_idx, code)
-            is_selected = st.session_state.get(checkbox_key, True)
+            is_selected = st.session_state.get(checkbox_key, False)
             color_offset = selected_color_offsets.get(code, 0)
             color = palette[color_offset % len(palette)]
             if not is_selected:
