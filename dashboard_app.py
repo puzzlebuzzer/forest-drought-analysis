@@ -836,10 +836,6 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, st
             value=(year_min, year_max),
         )
 
-    if st.sidebar.button("Add new layer"):
-        _append_default_layer(bundle)
-        st.rerun()
-
     sensors = bundle.available_values("sensor")
     aois = bundle.available_values("aoi")
     indices = bundle.available_values("index")
@@ -1097,10 +1093,14 @@ def _render_config_table(
     year_range: tuple[int, int],
     selected_color_offsets_by_layer: dict[int, dict[object, int]],
 ) -> None:
+    header_cols = st.columns([0.65, 0.08, 5.0])
+    header_cols[0].subheader("Layers")
+    if header_cols[1].button("+", key="add_layer_header", help="Add new layer"):
+        _append_default_layer(bundle)
+        st.rerun()
     if not st.session_state.comparison_configs:
         st.info("Add at least one comparison configuration to draw a comparison plot.")
         return
-    st.subheader("Layers")
     palette = pc.qualitative.Plotly
     trace_color_idx = 0
     for idx, config_dict in enumerate(st.session_state.comparison_configs):
