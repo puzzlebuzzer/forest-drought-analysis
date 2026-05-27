@@ -368,12 +368,14 @@ def build_timeseries_figure(
     visible_segments_by_layer: dict[int, set[int]] | None = None,
     combined_group_frames_by_layer: dict[int, list[pd.DataFrame | tuple[pd.DataFrame, str | None]]] | None = None,
     segment_color_offsets_by_layer: dict[int, dict[int, int]] | None = None,
+    config_color_overrides_by_layer: dict[int, str] | None = None,
 ) -> tuple[go.Figure, list[str]]:
     fig = go.Figure()
     messages: list[str] = []
     visible_segments_by_layer = visible_segments_by_layer or {}
     combined_group_frames_by_layer = combined_group_frames_by_layer or {}
     segment_color_offsets_by_layer = segment_color_offsets_by_layer or {}
+    config_color_overrides_by_layer = config_color_overrides_by_layer or {}
 
     for layer_idx, config in enumerate(configs):
         frame = bundle.frame_for_config(config)
@@ -389,13 +391,24 @@ def build_timeseries_figure(
         if getattr(config, "analysis_scope", "overall") == "ecozone" and _is_all_segment_value(config.ecozone_code):
             any_trace = False
             visible_codes = visible_segments_by_layer.get(layer_idx)
+            color_offsets = segment_color_offsets_by_layer.get(layer_idx, {})
             for ecozone_code, ecozone_frame in filtered.groupby("ecozone_code", dropna=True):
                 if visible_codes is not None and int(ecozone_code) not in visible_codes:
                     continue
                 ecozone_frame = _apply_stddev_filters(ecozone_frame, config)
                 if ecozone_frame.empty:
                     continue
-                _add_timeseries_trace(fig, config, ecozone_frame)
+                color_offset = color_offsets.get(int(ecozone_code))
+                _add_timeseries_trace(
+                    fig,
+                    config,
+                    ecozone_frame,
+                    color_override=(
+                        pc.qualitative.Plotly[color_offset % len(pc.qualitative.Plotly)]
+                        if color_offset is not None
+                        else None
+                    ),
+                )
                 any_trace = True
             if not any_trace:
                 messages.append(f"All rows for `{_series_label(config)}` were removed by the standard-deviation filters.")
@@ -430,7 +443,7 @@ def build_timeseries_figure(
             messages.append(f"All rows for `{_series_label(config)}` were removed by the standard-deviation filters.")
             continue
 
-        _add_timeseries_trace(fig, config, filtered)
+        _add_timeseries_trace(fig, config, filtered, color_override=config_color_overrides_by_layer.get(layer_idx))
 
     for layer_idx, group_frames in combined_group_frames_by_layer.items():
         if layer_idx >= len(configs):

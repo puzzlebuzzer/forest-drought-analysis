@@ -595,6 +595,7 @@ def _selected_color_offsets_by_layer(
     year_range: tuple[int, int],
 ) -> dict[int, dict[object, int]]:
     selected_color_offsets_by_layer: dict[int, dict[object, int]] = {}
+    next_color_offset = 0
     for idx, config in enumerate(configs):
         selected_segments: list[object] = []
         if st.session_state.get(_layer_combined_checkbox_key(idx), True):
@@ -615,7 +616,11 @@ def _selected_color_offsets_by_layer(
             for code, _ in group_entries:
                 if st.session_state.get(_segment_checkbox_key(idx, code), False):
                     selected_segments.append(code)
-        selected_color_offsets_by_layer[idx] = {segment_id: offset for offset, segment_id in enumerate(selected_segments)}
+        selected_color_offsets_by_layer[idx] = {
+            segment_id: next_color_offset + offset
+            for offset, segment_id in enumerate(selected_segments)
+        }
+        next_color_offset += len(selected_segments)
     return selected_color_offsets_by_layer
 
 
@@ -630,6 +635,7 @@ def _build_plot_layers(
     dict[int, set[int]],
     dict[int, list[tuple[pd.DataFrame, str | None]]],
     dict[int, dict[int, int]],
+    dict[int, str],
 ]:
     palette = palette or pc.qualitative.Plotly
     broad_visible_by_base = _visible_broad_ecozones_by_layer(bundle, configs, year_range)
@@ -646,16 +652,27 @@ def _build_plot_layers(
     visible_segments_by_plot: dict[int, set[int]] = {}
     combined_frames_by_plot: dict[int, list[tuple[pd.DataFrame, str | None]]] = {}
     segment_color_offsets_by_plot: dict[int, dict[int, int]] = {}
+    config_color_overrides_by_plot: dict[int, str] = {}
 
     for base_idx, config in enumerate(configs):
         if st.session_state.get(_layer_combined_checkbox_key(base_idx), True):
+            plot_idx = len(plot_configs)
             plot_configs.append(_config_with_scope(config, "overall"))
+            color_offset = selected_color_offsets_by_layer.get(base_idx, {}).get(_overall_combined_segment_id())
+            if color_offset is not None:
+                config_color_overrides_by_plot[plot_idx] = palette[color_offset % len(palette)]
 
         broad_visible = broad_visible_by_base.get(base_idx, set())
         if broad_visible:
             plot_idx = len(plot_configs)
             plot_configs.append(_config_with_scope(config, "ecozone"))
             visible_segments_by_plot[plot_idx] = broad_visible
+            base_offsets = selected_color_offsets_by_layer.get(base_idx, {})
+            segment_color_offsets_by_plot[plot_idx] = {
+                int(code): offset
+                for code in broad_visible
+                if (offset := base_offsets.get(_broad_ecozone_segment_id(code))) is not None
+            }
 
         forest_visible = forest_visible_by_base.get(base_idx, set())
         group_frames = combined_frames_by_base.get(base_idx, [])
@@ -672,7 +689,13 @@ def _build_plot_layers(
                 if isinstance(code, int)
             }
 
-    return plot_configs, visible_segments_by_plot, combined_frames_by_plot, segment_color_offsets_by_plot
+    return (
+        plot_configs,
+        visible_segments_by_plot,
+        combined_frames_by_plot,
+        segment_color_offsets_by_plot,
+        config_color_overrides_by_plot,
+    )
 
 
 def _render_data_dir_control() -> Path:
@@ -986,7 +1009,8 @@ def _render_segment_legend(
         for code, entry in broad_entries:
             checkbox_key = _broad_ecozone_checkbox_key(layer_idx, code)
             is_selected = st.session_state.get(checkbox_key, False)
-            color = ECOZONE_TRACE_COLORS.get(int(code), palette[start_color_idx % len(palette)])
+            color_offset = selected_color_offsets.get(_broad_ecozone_segment_id(code), start_color_idx)
+            color = palette[color_offset % len(palette)]
             if not is_selected:
                 color = "#c9c9c9"
             _render_indented_segment_checkbox(
@@ -1500,7 +1524,13 @@ def main() -> None:
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     selected_color_offsets_by_layer = _selected_color_offsets_by_layer(bundle, config_objects, year_range)
-    plot_configs, visible_segments_by_layer, combined_group_frames_by_layer, segment_color_offsets_by_layer = _build_plot_layers(
+    (
+        plot_configs,
+        visible_segments_by_layer,
+        combined_group_frames_by_layer,
+        segment_color_offsets_by_layer,
+        config_color_overrides_by_layer,
+    ) = _build_plot_layers(
         bundle,
         config_objects,
         year_range,
@@ -1513,6 +1543,7 @@ def main() -> None:
         visible_segments_by_layer,
         combined_group_frames_by_layer,
         segment_color_offsets_by_layer,
+        config_color_overrides_by_layer,
     )
     if figure.data:
         st.plotly_chart(figure, width="stretch")
