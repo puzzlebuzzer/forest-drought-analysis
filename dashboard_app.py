@@ -559,6 +559,7 @@ def _ensure_builder_state(bundle) -> None:
         if not st.session_state.builder_defaults and not st.session_state.builder_pending_values:
             _load_builder_values(_default_config_dict(bundle))
         return
+    valid_edit_target = False
     if st.session_state.builder_mode == "edit":
         target_index = st.session_state.builder_target_index
         if target_index is None or not (0 <= target_index < len(st.session_state.comparison_configs)):
@@ -568,9 +569,17 @@ def _ensure_builder_state(bundle) -> None:
             else:
                 _start_new_overlay(bundle)
                 return
+        valid_edit_target = True
+        if st.session_state.builder_defaults or st.session_state.builder_pending_values:
+            return
     if all(key in st.session_state for key in REQUIRED_BUILDER_WIDGET_KEYS):
         return
-    if st.session_state.comparison_configs:
+    if valid_edit_target:
+        _start_edit_overlay(
+            st.session_state.comparison_configs[st.session_state.builder_target_index],
+            st.session_state.builder_target_index,
+        )
+    elif st.session_state.comparison_configs:
         target_index = len(st.session_state.comparison_configs) - 1
         _start_edit_overlay(st.session_state.comparison_configs[target_index], target_index)
     else:
