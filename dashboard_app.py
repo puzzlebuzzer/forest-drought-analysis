@@ -105,6 +105,21 @@ def _inject_ui_css() -> None:
             color: #111111 !important;
             fill: #111111 !important;
         }
+        div[class*="st-key-layer_label_toggle_"] button {
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            color: inherit !important;
+            justify-content: flex-start !important;
+            padding: 0 !important;
+            text-align: left !important;
+        }
+        div[class*="st-key-layer_label_toggle_"] button:hover {
+            background: transparent !important;
+            border: 0 !important;
+            color: inherit !important;
+            text-decoration: underline;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -912,14 +927,16 @@ def _render_config_table(bundle, year_range: tuple[int, int]) -> None:
         nested_key = _layer_nested_visible_key(idx)
         if nested_key not in st.session_state:
             st.session_state[nested_key] = True
-        if columns[1].button(
-            f"{idx + 1} {label}",
-            key=f"toggle_layer_nested_{idx}",
-            help="Show or hide layer checklist",
-            width="stretch",
-        ):
-            st.session_state[nested_key] = not st.session_state.get(nested_key, True)
-            st.rerun()
+        with columns[1]:
+            with st.container(key=f"layer_label_toggle_{idx}"):
+                if st.button(
+                    f"{idx + 1} {label}",
+                    key=f"toggle_layer_nested_{idx}",
+                    help="Show or hide layer checklist",
+                    width="stretch",
+                ):
+                    st.session_state[nested_key] = not st.session_state.get(nested_key, True)
+                    st.rerun()
         if columns[2].button("Edit", key=f"edit_{idx}"):
             _start_edit_overlay(config_dict, idx)
             st.rerun()
