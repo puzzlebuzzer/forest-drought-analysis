@@ -395,7 +395,7 @@ def _render_indented_segment_checkbox(
     if color:
         swatch_col.markdown(
             f"""
-            <div style="height: 1rem; display: flex; align-items: flex-start; justify-content: flex-start; margin-top: 0.42rem;">
+            <div style="height: 1rem; display: flex; align-items: flex-end; justify-content: flex-start; margin-top: 0.42rem;">
                 <div style="width: 0.65rem; height: 0.65rem; background:{color}; border-radius: 2px;"></div>
             </div>
             """,
