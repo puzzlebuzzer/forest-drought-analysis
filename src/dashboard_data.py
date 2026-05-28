@@ -111,6 +111,7 @@ def _parquet_filter_value(column: str, value):
 
 PARTITION_COLUMNS = ["sensor", "aoi", "index", "ecozone_code", "forest_community_code", "ecozone_group_code", "temporal_agg"]
 HIVE_NULL_PARTITION = "__HIVE_DEFAULT_PARTITION__"
+NORTH_NBLUERIDGE_16A_LABEL = "Dry-mesic Oak - NBlueRidge 16a"
 
 
 def _hive_partition_value(column: str, raw_value) -> str | None:
@@ -118,6 +119,21 @@ def _hive_partition_value(column: str, raw_value) -> str | None:
     if value is None:
         return None
     return str(value)
+
+
+def _apply_forest_community_display_overrides(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    mask = (
+        frame["aoi"].eq("north")
+        & frame["forest_community_code"].eq(116)
+        & frame["forest_community_display_code"].astype(str).eq("16a")
+        & frame["forest_community_source_dataset"].astype(str).eq("NBlueRidge")
+        & frame["forest_community_source_value"].eq(16)
+    )
+    if mask.any():
+        frame.loc[mask, "forest_community_label"] = NORTH_NBLUERIDGE_16A_LABEL
+    return frame
 
 
 def _partition_dataset_paths(path: Path, filters: dict) -> list[Path]:
@@ -580,6 +596,7 @@ def normalize_summary_frame(frame: pd.DataFrame, dataset_name: str) -> pd.DataFr
             axis=1,
         )
     )
+    normalized = _apply_forest_community_display_overrides(normalized)
     normalized["ecozone_group_raw"] = normalized["ecozone_group_raw"].fillna(normalized["ecozone_group_label"])
     normalized["ecozone_group_label"] = normalized["ecozone_group_label"].fillna(normalized["ecozone_group_raw"])
 

@@ -83,6 +83,7 @@ class DashboardLoaderTests(unittest.TestCase):
         normalized = normalize_summary_frame(raw, "temporal_summary_forest_community")
         self.assertEqual(int(normalized.loc[0, "forest_community_code"]), 116)
         self.assertEqual(normalized.loc[0, "forest_community_display_code"], "16a")
+        self.assertEqual(normalized.loc[0, "forest_community_label"], "Dry-mesic Oak - NBlueRidge 16a")
         self.assertEqual(int(normalized.loc[0, "forest_community_source_value"]), 16)
         self.assertEqual(int(normalized.loc[0, "ecozone_group_code"]), 6)
         self.assertEqual(normalized.loc[0, "ecozone_group_raw"], "6-Dry-mesic oak")
