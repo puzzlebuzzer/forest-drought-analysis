@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 from dataclasses import asdict
 from datetime import datetime
+import html
 from io import BytesIO
 import hashlib
 import json
@@ -106,6 +107,30 @@ def _inject_ui_css() -> None:
         div[data-testid="stCheckbox"] svg {
             color: #111111 !important;
             fill: #111111 !important;
+        }
+        .plot-selection-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem 0.75rem;
+            align-items: center;
+            margin: -0.25rem 0 0.85rem 0;
+            padding: 0.45rem 0 0.1rem 0;
+            color: #f2f2f2;
+            font-size: 0.88rem;
+            line-height: 1.25;
+        }
+        .plot-selection-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            white-space: nowrap;
+        }
+        .plot-selection-legend-swatch {
+            display: inline-block;
+            width: 0.68rem;
+            height: 0.68rem;
+            border-radius: 2px;
+            flex: 0 0 auto;
         }
         </style>
         """,
@@ -1092,6 +1117,76 @@ def _render_segment_legend(
             )
 
 
+def _selected_plot_legend_entries(
+    bundle,
+    configs: list[ComparisonConfig],
+    year_range: tuple[int, int],
+    selected_color_offsets_by_layer: dict[int, dict[object, int]],
+    palette: list[str] | None = None,
+) -> list[tuple[str, str, str]]:
+    palette = palette or pc.qualitative.Plotly
+    entries: list[tuple[str, str, str]] = []
+    for idx, config in enumerate(configs):
+        layer_label = _config_display_label(asdict(_config_with_scope(config, "overall")), idx, bundle).split(". ", 1)[1]
+        selected_offsets = selected_color_offsets_by_layer.get(idx, {})
+
+        if st.session_state.get(_layer_combined_checkbox_key(idx), True):
+            color_offset = selected_offsets.get(_overall_combined_segment_id(), 0)
+            entries.append((layer_label, "Combined", palette[color_offset % len(palette)]))
+
+        broad_entries = _segment_legend_entries(bundle, _config_with_scope(config, "ecozone"), year_range)
+        for code, label in broad_entries:
+            if not st.session_state.get(_broad_ecozone_checkbox_key(idx, code), False):
+                continue
+            color_offset = selected_offsets.get(_broad_ecozone_segment_id(code), 0)
+            entries.append((layer_label, label, palette[color_offset % len(palette)]))
+
+        forest_config = _config_with_scope(config, "forest_community")
+        forest_entries = _segment_legend_entries(bundle, forest_config, year_range)
+        grouped_entries = _forest_community_grouped_legend_entries(forest_entries, bundle, forest_config)
+        for group_key, group_label, group_entries in grouped_entries:
+            if len(group_entries) > 1 and st.session_state.get(_segment_group_combined_checkbox_key(idx, group_key), False):
+                color_offset = selected_offsets.get(_combined_segment_id(group_key), 0)
+                entries.append((layer_label, f"{group_label} Combined", palette[color_offset % len(palette)]))
+            for code, label in group_entries:
+                if not st.session_state.get(_segment_checkbox_key(idx, code), False):
+                    continue
+                color_offset = selected_offsets.get(code, 0)
+                entries.append((layer_label, label, palette[color_offset % len(palette)]))
+    return entries
+
+
+def _render_plot_selection_legend(
+    bundle,
+    configs: list[ComparisonConfig],
+    year_range: tuple[int, int],
+    selected_color_offsets_by_layer: dict[int, dict[object, int]],
+) -> None:
+    entries = _selected_plot_legend_entries(bundle, configs, year_range, selected_color_offsets_by_layer)
+    if not entries:
+        return
+    chips = []
+    for layer_label, item_label, color in entries:
+        safe_layer_label = html.escape(str(layer_label))
+        safe_item_label = html.escape(str(item_label))
+        chips.append(
+            f"""
+            <div class="plot-selection-legend-item">
+                <span class="plot-selection-legend-swatch" style="background:{color};"></span>
+                <span><strong>{safe_layer_label}</strong> / {safe_item_label}</span>
+            </div>
+            """
+        )
+    st.markdown(
+        f"""
+        <div class="plot-selection-legend">
+            {''.join(chips)}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def _render_layer_segmentation_controls(bundle, config_dict: dict, layer_idx: int) -> None:
     available_scopes = bundle.available_values("analysis_scope")
     current_scope = config_dict.get("analysis_scope", "overall")
@@ -1597,6 +1692,7 @@ def main() -> None:
     for message in messages:
         st.info(message)
 
+    _render_plot_selection_legend(bundle, config_objects, year_range, selected_color_offsets_by_layer)
     _render_config_table(bundle, year_range, selected_color_offsets_by_layer)
 
 
