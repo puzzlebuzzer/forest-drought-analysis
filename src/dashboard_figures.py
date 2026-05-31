@@ -482,6 +482,9 @@ def build_growing_season_figure(
     selected_year: int,
     year_range: tuple[int, int] | None = None,
 ) -> tuple[go.Figure, str | None]:
+    data_year_range = None
+    if year_range is not None:
+        data_year_range = (int(year_range[0]) - 1, int(year_range[1]) + 1)
     data_config = ComparisonConfig(
         **{
             **config.__dict__,
@@ -493,7 +496,7 @@ def build_growing_season_figure(
     filtered = filter_frame(
         bundle.frame_for_config(data_config),
         filters=filters_for_config(data_config),
-        year_range=year_range,
+        year_range=data_year_range,
     )
     if filtered.empty:
         return go.Figure(), "No growing-season rows match the selected configuration."

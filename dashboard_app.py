@@ -19,7 +19,6 @@ import streamlit as st
 from src.dashboard_data import ECOZONE_LABELS, filter_frame, filters_for_config, load_dashboard_data
 from src.dashboard_figures import (
     ECOZONE_TRACE_COLORS,
-    available_growing_season_years,
     build_growing_season_figure,
     build_timeseries_figure,
 )
@@ -1209,10 +1208,10 @@ def _stack_growing_year_selector(
     config: ComparisonConfig,
     year_range: tuple[int, int],
 ) -> int:
-    available_years = available_growing_season_years(bundle, config, year_range)
-    if not available_years:
+    page_years = list(range(int(year_range[0]), int(year_range[1]) + 1))
+    if not page_years:
         return int(year_range[1])
-    default_year = available_years[1] if len(available_years) > 1 else available_years[0]
+    default_year = page_years[1] if len(page_years) > 1 else page_years[0]
     current_year = st.session_state.get(STACK_GROWING_SELECTED_YEAR_KEY, default_year)
     current_year = int(current_year)
     if current_year < year_range[0] or current_year > year_range[1]:
@@ -1230,20 +1229,16 @@ def _render_stack_growing_year_controls(
     config: ComparisonConfig,
     year_range: tuple[int, int],
 ) -> None:
-    available_years = available_growing_season_years(bundle, config, year_range)
-    if not available_years:
+    page_years = list(range(int(year_range[0]), int(year_range[1]) + 1))
+    if not page_years:
         return
-    default_year = available_years[1] if len(available_years) > 1 else available_years[0]
+    default_year = page_years[1] if len(page_years) > 1 else page_years[0]
     current_year = int(st.session_state.get(STACK_GROWING_SELECTED_YEAR_KEY, default_year))
     current_year = min(max(current_year, int(year_range[0])), int(year_range[1]))
     st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = current_year
-    if current_year not in available_years:
-        available_years_with_current = sorted({*available_years, current_year})
-    else:
-        available_years_with_current = available_years
-    current_index = available_years_with_current.index(current_year)
-    previous_year = available_years_with_current[max(0, current_index - 1)]
-    next_year = available_years_with_current[min(len(available_years_with_current) - 1, current_index + 1)]
+    current_index = page_years.index(current_year)
+    previous_year = page_years[max(0, current_index - 1)]
+    next_year = page_years[min(len(page_years) - 1, current_index + 1)]
     left_col, select_col, right_col, spacer_col = st.columns([0.08, 0.16, 0.08, 0.68])
     with left_col:
         st.button(
@@ -1258,7 +1253,7 @@ def _render_stack_growing_year_controls(
     with select_col:
         st.selectbox(
             "Highlighted year",
-            available_years_with_current,
+            page_years,
             index=current_index,
             key=STACK_GROWING_SELECTED_YEAR_KEY,
             label_visibility="collapsed",
@@ -1268,7 +1263,7 @@ def _render_stack_growing_year_controls(
             "›",
             key="stack_growing_next_year",
             help="Next year",
-            disabled=current_index == len(available_years_with_current) - 1,
+            disabled=current_index == len(page_years) - 1,
             on_click=_set_stack_growing_year,
             args=(next_year,),
             width="stretch",
