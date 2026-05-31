@@ -1326,7 +1326,7 @@ def _growing_overlay_selected_source(
     year_range: tuple[int, int],
 ) -> tuple[ComparisonConfig, pd.DataFrame | None, str | None]:
     if st.session_state.get(_layer_combined_checkbox_key(layer_idx), True):
-        return _config_with_scope(config, "overall"), None, None
+        return _config_with_scope(config, "overall"), None, "Overlay source: Overall Combined"
 
     broad_config = _config_with_scope(config, "ecozone")
     for code, label in _segment_legend_entries(bundle, broad_config, year_range):
