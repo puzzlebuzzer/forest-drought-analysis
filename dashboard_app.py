@@ -320,12 +320,21 @@ def _timestamp_for_download() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
-def _plotly_camera_export_config(bundle, configs: list[ComparisonConfig]) -> dict:
+def _plotly_camera_export_config(
+    bundle,
+    configs: list[ComparisonConfig],
+    selection_entries: list[tuple[str, str, str]] | None = None,
+) -> dict:
     if configs:
         first_label = _config_display_label(asdict(_config_with_scope(configs[0], "overall")), 0, bundle).split(". ", 1)[1]
     else:
         first_label = "dashboard_plot"
-    filename = f"{_download_filename_stem(first_label)}_{_timestamp_for_download()}"
+    first_selection = selection_entries[0][1] if selection_entries else "Overall Combined"
+    filename = (
+        f"{_download_filename_stem(first_label)}_"
+        f"{_download_filename_stem(first_selection)}_"
+        f"{_timestamp_for_download()}"
+    )
     return {
         "toImageButtonOptions": {
             "format": "png",
@@ -1916,7 +1925,7 @@ def main() -> None:
         st.plotly_chart(
             figure,
             width="stretch",
-            config=_plotly_camera_export_config(bundle, config_objects),
+            config=_plotly_camera_export_config(bundle, config_objects, plot_selection_legend_entries),
         )
         if growing_overlay_config is not None:
             _render_growing_overlay_year_controls(bundle, growing_overlay_config, year_range)
