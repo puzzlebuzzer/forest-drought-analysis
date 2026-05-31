@@ -843,7 +843,11 @@ def filter_frame(frame: pd.DataFrame, filters: dict, year_range: tuple[int, int]
             continue
         if value == "all" and column != "season_filter":
             continue
-        if column == "season_filter" and value in {"growing", "stack_growing"} and "growing_season_day" in filtered.columns:
+        if (
+            column == "season_filter"
+            and value in {"growing", "growing_overlay", "stack_growing"}
+            and "growing_season_day" in filtered.columns
+        ):
             if column in filtered.columns and filtered[column].eq("growing").any():
                 filtered = filtered[filtered[column] == "growing"]
             else:

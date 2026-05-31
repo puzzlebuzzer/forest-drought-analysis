@@ -29,8 +29,9 @@ ENABLE_GROWING_SEASON_OVERLAY = False
 DEFAULT_SPATIAL_PERCENTILE = "p99"
 DEFAULT_TEMPORAL_AGG = "half_month"
 DEFAULT_TEMPORAL_PERCENTILE = "p99"
-STACK_GROWING_SEASON_FILTER = "stack_growing"
-STACK_GROWING_SELECTED_YEAR_KEY = "stack_growing_selected_year"
+GROWING_OVERLAY_SEASON_FILTER = "growing_overlay"
+LEGACY_STACK_GROWING_SEASON_FILTER = "stack_growing"
+GROWING_OVERLAY_SELECTED_YEAR_KEY = "growing_overlay_selected_year"
 SPATIAL_PERCENTILE_LABELS = {
     "p50": "p50 (median)",
     "p75": "p75 (upper quartile)",
@@ -54,7 +55,8 @@ ANALYSIS_SCOPE_LABELS = {
 }
 SEASON_FILTER_LABELS = {
     "growing": "growing",
-    STACK_GROWING_SEASON_FILTER: "stack growing",
+    GROWING_OVERLAY_SEASON_FILTER: "growing overlay",
+    LEGACY_STACK_GROWING_SEASON_FILTER: "growing overlay",
     "all": "all",
 }
 BUILDER_WIDGET_KEYS = [
@@ -90,10 +92,14 @@ def _cloud_threshold_label(value) -> str:
 
 
 def _season_filter_options(values: list) -> list:
-    options = list(values)
-    if STACK_GROWING_SEASON_FILTER not in options:
+    options = []
+    for value in values:
+        normalized_value = GROWING_OVERLAY_SEASON_FILTER if value == LEGACY_STACK_GROWING_SEASON_FILTER else value
+        if normalized_value not in options:
+            options.append(normalized_value)
+    if GROWING_OVERLAY_SEASON_FILTER not in options:
         insert_at = options.index("growing") + 1 if "growing" in options else 0
-        options.insert(insert_at, STACK_GROWING_SEASON_FILTER)
+        options.insert(insert_at, GROWING_OVERLAY_SEASON_FILTER)
     return options
 
 
@@ -1203,7 +1209,7 @@ def _render_plot_selection_legend(
     )
 
 
-def _stack_growing_year_selector(
+def _growing_overlay_year_selector(
     bundle,
     config: ComparisonConfig,
     year_range: tuple[int, int],
@@ -1212,16 +1218,16 @@ def _stack_growing_year_selector(
     if not page_years:
         return int(year_range[1])
     default_year = page_years[1] if len(page_years) > 1 else page_years[0]
-    current_year = st.session_state.get(STACK_GROWING_SELECTED_YEAR_KEY, default_year)
+    current_year = st.session_state.get(GROWING_OVERLAY_SELECTED_YEAR_KEY, default_year)
     current_year = int(current_year)
     if current_year < year_range[0] or current_year > year_range[1]:
         current_year = default_year
-    st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = current_year
+    st.session_state[GROWING_OVERLAY_SELECTED_YEAR_KEY] = current_year
     return current_year
 
 
-def _set_stack_growing_year(year: int) -> None:
-    st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = int(year)
+def _set_growing_overlay_year(year: int) -> None:
+    st.session_state[GROWING_OVERLAY_SELECTED_YEAR_KEY] = int(year)
 
 
 def _config_with_segment(config: ComparisonConfig, analysis_scope: str, code_column: str, code: int) -> ComparisonConfig:
@@ -1230,7 +1236,7 @@ def _config_with_segment(config: ComparisonConfig, analysis_scope: str, code_col
     return ComparisonConfig(**config_dict)
 
 
-def _stack_growing_selected_source(
+def _growing_overlay_selected_source(
     bundle,
     config: ComparisonConfig,
     layer_idx: int,
@@ -1242,7 +1248,7 @@ def _stack_growing_selected_source(
     broad_config = _config_with_scope(config, "ecozone")
     for code, label in _segment_legend_entries(bundle, broad_config, year_range):
         if st.session_state.get(_broad_ecozone_checkbox_key(layer_idx, code), False):
-            return _config_with_segment(config, "ecozone", "ecozone_code", code), None, f"Overlay source: {label}"
+            return _config_with_segment(config, "ecozone", "ecozone_code", code), None, f"Overlay source (topmost): {label}"
 
     forest_config = _config_with_scope(config, "forest_community")
     forest_entries = _segment_legend_entries(bundle, forest_config, year_range)
@@ -1266,15 +1272,15 @@ def _stack_growing_selected_source(
                 group_frame = group_frame.copy()
                 group_frame["forest_community_label"] = f"{group_label} Combined"
                 group_frame["forest_community_code"] = group_code
-            return forest_config, group_frame, f"Overlay source: {group_label} Combined"
+            return forest_config, group_frame, f"Overlay source (topmost): {group_label} Combined"
         for code, label in group_entries:
             if st.session_state.get(_segment_checkbox_key(layer_idx, code), False):
-                return _config_with_segment(config, "forest_community", "forest_community_code", code), None, f"Overlay source: {label}"
+                return _config_with_segment(config, "forest_community", "forest_community_code", code), None, f"Overlay source (topmost): {label}"
 
     return _config_with_scope(config, "overall"), None, "No layer checklist items are selected; showing Overall Combined."
 
 
-def _render_stack_growing_year_controls(
+def _render_growing_overlay_year_controls(
     bundle,
     config: ComparisonConfig,
     year_range: tuple[int, int],
@@ -1283,9 +1289,9 @@ def _render_stack_growing_year_controls(
     if not page_years:
         return
     default_year = page_years[1] if len(page_years) > 1 else page_years[0]
-    current_year = int(st.session_state.get(STACK_GROWING_SELECTED_YEAR_KEY, default_year))
+    current_year = int(st.session_state.get(GROWING_OVERLAY_SELECTED_YEAR_KEY, default_year))
     current_year = min(max(current_year, int(year_range[0])), int(year_range[1]))
-    st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = current_year
+    st.session_state[GROWING_OVERLAY_SELECTED_YEAR_KEY] = current_year
     current_index = page_years.index(current_year)
     previous_year = page_years[max(0, current_index - 1)]
     next_year = page_years[min(len(page_years) - 1, current_index + 1)]
@@ -1293,10 +1299,10 @@ def _render_stack_growing_year_controls(
     with left_col:
         st.button(
             "‹",
-            key="stack_growing_previous_year",
+            key="growing_overlay_previous_year",
             help="Previous year",
             disabled=current_index == 0,
-            on_click=_set_stack_growing_year,
+            on_click=_set_growing_overlay_year,
             args=(previous_year,),
             width="stretch",
         )
@@ -1305,19 +1311,19 @@ def _render_stack_growing_year_controls(
             "Highlighted year",
             page_years,
             index=current_index,
-            key=f"stack_growing_year_dropdown_{year_range[0]}_{year_range[1]}_{current_year}",
+            key=f"growing_overlay_year_dropdown_{year_range[0]}_{year_range[1]}_{current_year}",
             label_visibility="collapsed",
         )
         if int(dropdown_year) != current_year:
-            st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = int(dropdown_year)
+            st.session_state[GROWING_OVERLAY_SELECTED_YEAR_KEY] = int(dropdown_year)
             st.rerun()
     with right_col:
         st.button(
             "›",
-            key="stack_growing_next_year",
+            key="growing_overlay_next_year",
             help="Next year",
             disabled=current_index == len(page_years) - 1,
-            on_click=_set_stack_growing_year,
+            on_click=_set_growing_overlay_year,
             args=(next_year,),
             width="stretch",
         )
@@ -1802,29 +1808,31 @@ def main() -> None:
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     selected_color_offsets_by_layer = _selected_color_offsets_by_layer(bundle, config_objects, year_range)
-    stack_growing_layers = [
-        (idx, config) for idx, config in enumerate(config_objects) if config.season_filter == STACK_GROWING_SEASON_FILTER
+    growing_overlay_layers = [
+        (idx, config)
+        for idx, config in enumerate(config_objects)
+        if config.season_filter in {GROWING_OVERLAY_SEASON_FILTER, LEGACY_STACK_GROWING_SEASON_FILTER}
     ]
-    stack_growing_config = stack_growing_layers[0][1] if stack_growing_layers else None
-    if stack_growing_layers:
-        stack_layer_idx, stack_base_config = stack_growing_layers[0]
-        stack_growing_config, stack_source_frame, stack_source_message = _stack_growing_selected_source(
+    growing_overlay_config = growing_overlay_layers[0][1] if growing_overlay_layers else None
+    if growing_overlay_layers:
+        overlay_layer_idx, overlay_base_config = growing_overlay_layers[0]
+        growing_overlay_config, overlay_source_frame, overlay_source_message = _growing_overlay_selected_source(
             bundle,
-            stack_base_config,
-            stack_layer_idx,
+            overlay_base_config,
+            overlay_layer_idx,
             year_range,
         )
-        selected_year = _stack_growing_year_selector(bundle, stack_growing_config, year_range)
+        selected_year = _growing_overlay_year_selector(bundle, growing_overlay_config, year_range)
         figure, message = build_growing_season_figure(
             bundle,
-            stack_growing_config,
+            growing_overlay_config,
             selected_year,
             year_range=year_range,
-            source_frame=stack_source_frame,
+            source_frame=overlay_source_frame,
         )
-        messages = [msg for msg in (stack_source_message, message) if msg]
-        if len(stack_growing_layers) > 1:
-            messages.append("Stack growing mode uses the first layer with `stack growing` selected.")
+        messages = [msg for msg in (overlay_source_message, message) if msg]
+        if len(growing_overlay_layers) > 1:
+            messages.append("Growing overlay mode uses the first layer with `growing overlay` selected.")
     else:
         (
             plot_configs,
@@ -1849,14 +1857,14 @@ def main() -> None:
         )
     if figure.data:
         st.plotly_chart(figure, width="stretch")
-        if stack_growing_config is not None:
-            _render_stack_growing_year_controls(bundle, stack_growing_config, year_range)
+        if growing_overlay_config is not None:
+            _render_growing_overlay_year_controls(bundle, growing_overlay_config, year_range)
     else:
         st.warning("No lines could be drawn from the current configurations and year range.")
     for message in messages:
         st.info(message)
 
-    if not stack_growing_layers:
+    if not growing_overlay_layers:
         _render_plot_selection_legend(bundle, config_objects, year_range, selected_color_offsets_by_layer)
     _render_config_table(bundle, year_range, selected_color_offsets_by_layer)
 

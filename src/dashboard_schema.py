@@ -105,7 +105,7 @@ DEFAULT_VALUE_ORDER = {
     "temporal_agg": ["month", "half_month", "scene"],
     "temporal_percentile": ["none", "p50", "p75", "p95", "p98", "p99", "p100"],
     "cloud_threshold": [30, 40, 50],
-    "season_filter": ["growing", "stack_growing", "all"],
+    "season_filter": ["growing", "growing_overlay", "all"],
 }
 
 
