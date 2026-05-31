@@ -25,6 +25,7 @@ ENABLE_GROWING_SEASON_OVERLAY = False
 DEFAULT_SPATIAL_PERCENTILE = "p99"
 DEFAULT_TEMPORAL_AGG = "half_month"
 DEFAULT_TEMPORAL_PERCENTILE = "p99"
+STACK_GROWING_SEASON_FILTER = "stack_growing"
 SPATIAL_PERCENTILE_LABELS = {
     "p50": "p50 (median)",
     "p75": "p75 (upper quartile)",
@@ -45,6 +46,11 @@ ANALYSIS_SCOPE_LABELS = {
     "overall": "Overall",
     "ecozone": "Broad ecozone",
     "forest_community": "Forest communities",
+}
+SEASON_FILTER_LABELS = {
+    "growing": "growing",
+    STACK_GROWING_SEASON_FILTER: "stack growing",
+    "all": "all",
 }
 BUILDER_WIDGET_KEYS = [
     "builder_analysis_scope",
@@ -76,6 +82,14 @@ def _cloud_threshold_label(value) -> str:
         return f"{int(float(value))}%"
     except (TypeError, ValueError):
         return str(value)
+
+
+def _season_filter_options(values: list) -> list:
+    options = list(values)
+    if STACK_GROWING_SEASON_FILTER not in options:
+        insert_at = options.index("growing") + 1 if "growing" in options else 0
+        options.insert(insert_at, STACK_GROWING_SEASON_FILTER)
+    return options
 
 
 def _inject_ui_css() -> None:
@@ -903,7 +917,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, in
     spatial_percentiles = bundle.available_values("spatial_percentile")
     temporal_aggs = bundle.available_values("temporal_agg")
     cloud_thresholds = bundle.available_values("cloud_threshold")
-    season_filters = bundle.available_values("season_filter")
+    season_filters = _season_filter_options(bundle.available_values("season_filter"))
 
     _ensure_builder_state(bundle)
     _apply_pending_builder_values()
@@ -964,6 +978,7 @@ def _build_sidebar(bundle) -> tuple[tuple[int, int], ComparisonConfig | None, in
         _builder_default("builder_season_filter", "growing"),
         scope=st.sidebar,
         key="builder_season_filter",
+        format_func=lambda value: SEASON_FILTER_LABELS.get(value, value),
     )
     exclude_above_stddev = _safe_plain_selectbox(
         "Exclude above z-score",
@@ -1660,27 +1675,42 @@ def main() -> None:
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     selected_color_offsets_by_layer = _selected_color_offsets_by_layer(bundle, config_objects, year_range)
-    (
-        plot_configs,
-        visible_segments_by_layer,
-        combined_group_frames_by_layer,
-        segment_color_offsets_by_layer,
-        config_color_overrides_by_layer,
-    ) = _build_plot_layers(
-        bundle,
-        config_objects,
-        year_range,
-        selected_color_offsets_by_layer,
-    )
-    figure, messages = build_timeseries_figure(
-        bundle,
-        plot_configs,
-        year_range,
-        visible_segments_by_layer,
-        combined_group_frames_by_layer,
-        segment_color_offsets_by_layer,
-        config_color_overrides_by_layer,
-    )
+    stack_growing_configs = [
+        config for config in config_objects if config.season_filter == STACK_GROWING_SEASON_FILTER
+    ]
+    if stack_growing_configs:
+        selected_year = int(year_range[1])
+        figure, message = build_growing_season_figure(
+            bundle,
+            stack_growing_configs[0],
+            selected_year,
+            year_range=year_range,
+        )
+        messages = [message] if message else []
+        if len(stack_growing_configs) > 1:
+            messages.append("Stack growing mode uses the first layer with `stack growing` selected.")
+    else:
+        (
+            plot_configs,
+            visible_segments_by_layer,
+            combined_group_frames_by_layer,
+            segment_color_offsets_by_layer,
+            config_color_overrides_by_layer,
+        ) = _build_plot_layers(
+            bundle,
+            config_objects,
+            year_range,
+            selected_color_offsets_by_layer,
+        )
+        figure, messages = build_timeseries_figure(
+            bundle,
+            plot_configs,
+            year_range,
+            visible_segments_by_layer,
+            combined_group_frames_by_layer,
+            segment_color_offsets_by_layer,
+            config_color_overrides_by_layer,
+        )
     if figure.data:
         st.plotly_chart(figure, width="stretch")
     else:
@@ -1688,7 +1718,8 @@ def main() -> None:
     for message in messages:
         st.info(message)
 
-    _render_plot_selection_legend(bundle, config_objects, year_range, selected_color_offsets_by_layer)
+    if not stack_growing_configs:
+        _render_plot_selection_legend(bundle, config_objects, year_range, selected_color_offsets_by_layer)
     _render_config_table(bundle, year_range, selected_color_offsets_by_layer)
 
 

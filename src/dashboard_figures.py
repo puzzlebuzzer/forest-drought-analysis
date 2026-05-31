@@ -480,8 +480,21 @@ def build_growing_season_figure(
     bundle: DashboardDataBundle,
     config: ComparisonConfig,
     selected_year: int,
+    year_range: tuple[int, int] | None = None,
 ) -> tuple[go.Figure, str | None]:
-    filtered = filter_frame(bundle.scene_summary, filters=filters_for_config(config, {"season_filter": "growing"}))
+    data_config = ComparisonConfig(
+        **{
+            **config.__dict__,
+            "temporal_agg": "scene",
+            "temporal_percentile": "none",
+            "season_filter": "growing",
+        }
+    )
+    filtered = filter_frame(
+        bundle.frame_for_config(data_config),
+        filters=filters_for_config(data_config),
+        year_range=year_range,
+    )
     if filtered.empty:
         return go.Figure(), "No growing-season rows match the selected configuration."
     filtered = _apply_stddev_filters(filtered, config)
