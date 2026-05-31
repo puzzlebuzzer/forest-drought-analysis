@@ -1306,7 +1306,7 @@ def _growing_overlay_selected_source(
     broad_config = _config_with_scope(config, "ecozone")
     for code, label in _segment_legend_entries(bundle, broad_config, year_range):
         if st.session_state.get(_broad_ecozone_checkbox_key(layer_idx, code), False):
-            return _config_with_segment(config, "ecozone", "ecozone_code", code), None, f"Overlay source (topmost): {label}"
+            return _config_with_segment(config, "ecozone", "ecozone_code", code), None, f"Overlay source: {label}"
 
     forest_config = _config_with_scope(config, "forest_community")
     forest_entries = _segment_legend_entries(bundle, forest_config, year_range)
@@ -1330,10 +1330,10 @@ def _growing_overlay_selected_source(
                 group_frame = group_frame.copy()
                 group_frame["forest_community_label"] = f"{group_label} Combined"
                 group_frame["forest_community_code"] = group_code
-            return forest_config, group_frame, f"Overlay source (topmost): {group_label} Combined"
+            return forest_config, group_frame, f"Overlay source: {group_label} Combined"
         for code, label in group_entries:
             if st.session_state.get(_segment_checkbox_key(layer_idx, code), False):
-                return _config_with_segment(config, "forest_community", "forest_community_code", code), None, f"Overlay source (topmost): {label}"
+                return _config_with_segment(config, "forest_community", "forest_community_code", code), None, f"Overlay source: {label}"
 
     return _config_with_scope(config, "overall"), None, "No layer checklist items are selected; showing Overall Combined."
 
@@ -1891,7 +1891,9 @@ def main() -> None:
         )
         messages = [msg for msg in (overlay_source_message, message) if msg]
         if len(growing_overlay_layers) > 1:
-            messages.append("Growing overlay mode uses the first layer with `growing overlay` selected.")
+            messages.append(
+                "Growing overlay mode uses the first selection in the first layer with `growing overlay` selected."
+            )
     else:
         (
             plot_configs,
