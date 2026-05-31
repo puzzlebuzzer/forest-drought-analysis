@@ -1235,8 +1235,7 @@ def _render_plot_selection_legend(
 def _add_plot_selection_legend_to_figure(figure, entries: list[tuple[str, str, str]]) -> None:
     if not entries:
         return
-    n_columns = 2 if len(entries) > 4 else 1
-    n_rows = (len(entries) + n_columns - 1) // n_columns
+    n_rows = len(entries)
     row_step = 0.07
     start_y = -0.36
     margin = figure.layout.margin.to_plotly_json() if figure.layout.margin else {}
@@ -1248,10 +1247,8 @@ def _add_plot_selection_legend_to_figure(figure, entries: list[tuple[str, str, s
         margin={**margin, "b": target_bottom_margin},
     )
     for row_idx, (layer_label, item_label, color) in enumerate(entries):
-        column_idx = row_idx // n_rows
-        legend_row = row_idx % n_rows
-        x_position = 0.0 + (0.5 * column_idx)
-        y_position = start_y - row_step * legend_row
+        x_position = 0.0
+        y_position = start_y - row_step * row_idx
         figure.add_annotation(
             x=x_position,
             y=y_position,
