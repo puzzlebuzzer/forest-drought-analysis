@@ -31,6 +31,8 @@ DEFAULT_SPATIAL_PERCENTILE = "p99"
 DEFAULT_TEMPORAL_AGG = "half_month"
 DEFAULT_TEMPORAL_PERCENTILE = "p99"
 STACK_GROWING_SEASON_FILTER = "stack_growing"
+STACK_GROWING_SELECTED_YEAR_KEY = "stack_growing_selected_year"
+STACK_GROWING_SLIDER_KEY = "stack_growing_year_slider"
 SPATIAL_PERCENTILE_LABELS = {
     "p50": "p50 (median)",
     "p75": "p75 (upper quartile)",
@@ -1212,11 +1214,11 @@ def _stack_growing_year_selector(
     if not available_years:
         return int(year_range[1])
     default_year = available_years[-1]
-    current_year = st.session_state.get("stack_growing_highlight_year", default_year)
+    current_year = st.session_state.get(STACK_GROWING_SELECTED_YEAR_KEY, default_year)
     current_year = int(current_year)
     if current_year < year_range[0] or current_year > year_range[1]:
         current_year = default_year
-    st.session_state.stack_growing_highlight_year = current_year
+    st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = current_year
     return current_year
 
 
@@ -1228,26 +1230,28 @@ def _render_stack_growing_year_controls(
     available_years = available_growing_season_years(bundle, config, year_range)
     if not available_years:
         return
-    current_year = int(st.session_state.get("stack_growing_highlight_year", available_years[-1]))
+    current_year = int(st.session_state.get(STACK_GROWING_SELECTED_YEAR_KEY, available_years[-1]))
     current_year = min(max(current_year, int(year_range[0])), int(year_range[1]))
-    st.session_state.stack_growing_highlight_year = current_year
+    st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = current_year
+    st.session_state[STACK_GROWING_SLIDER_KEY] = current_year
     left_col, slider_col, right_col = st.columns([0.12, 0.76, 0.12])
     with left_col:
         if st.button("‹", key="stack_growing_previous_year", help="Previous year", width="stretch"):
-            st.session_state.stack_growing_highlight_year = max(int(year_range[0]), current_year - 1)
+            st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = max(int(year_range[0]), current_year - 1)
             st.rerun()
     with slider_col:
-        st.slider(
+        slider_year = st.slider(
             "Highlighted year",
             min_value=int(year_range[0]),
             max_value=int(year_range[1]),
             value=current_year,
             step=1,
-            key="stack_growing_highlight_year",
+            key=STACK_GROWING_SLIDER_KEY,
         )
+        st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = int(slider_year)
     with right_col:
         if st.button("›", key="stack_growing_next_year", help="Next year", width="stretch"):
-            st.session_state.stack_growing_highlight_year = min(int(year_range[1]), current_year + 1)
+            st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = min(int(year_range[1]), current_year + 1)
             st.rerun()
 
 
