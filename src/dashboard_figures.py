@@ -482,6 +482,7 @@ def build_growing_season_figure(
     selected_year: int,
     year_range: tuple[int, int] | None = None,
     source_frame: pd.DataFrame | None = None,
+    selection_label: str | None = None,
 ) -> tuple[go.Figure, str | None]:
     data_year_range = None
     if year_range is not None:
@@ -540,9 +541,21 @@ def build_growing_season_figure(
             )
         )
 
+    title_config = ComparisonConfig(
+        **{
+            **config.__dict__,
+            "analysis_scope": "overall",
+            "ecozone_code": None,
+            "forest_community_code": None,
+        }
+    )
+    title = f"Growing Season Overlay: {_series_label(title_config)}"
+    if selection_label:
+        title = f"{title} / {selection_label}"
+
     fig.update_layout(
         template="plotly_white",
-        title=f"Growing Season Overlay: {_series_label(config)}",
+        title=title,
         xaxis_title="Day of growing season (May 15 = 1)",
         yaxis_title="Summary value",
         hovermode="closest",

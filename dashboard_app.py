@@ -1331,14 +1331,14 @@ def _growing_overlay_selected_source(
     config: ComparisonConfig,
     layer_idx: int,
     year_range: tuple[int, int],
-) -> tuple[ComparisonConfig, pd.DataFrame | None, str | None]:
+) -> tuple[ComparisonConfig, pd.DataFrame | None, str | None, str | None]:
     if st.session_state.get(_layer_combined_checkbox_key(layer_idx), True):
-        return _config_with_scope(config, "overall"), None, "Overlay source: Overall Combined"
+        return _config_with_scope(config, "overall"), None, "Overlay source: Overall Combined", "Overall Combined"
 
     thermal_config = _config_with_scope(config, "ecozone")
     for code, label in _segment_legend_entries(bundle, thermal_config, year_range):
         if st.session_state.get(_thermal_ecozone_checkbox_key(layer_idx, code), False):
-            return _config_with_segment(config, "ecozone", "ecozone_code", code), None, f"Overlay source: {label}"
+            return _config_with_segment(config, "ecozone", "ecozone_code", code), None, f"Overlay source: {label}", label
 
     forest_config = _config_with_scope(config, "forest_community")
     forest_entries = _segment_legend_entries(bundle, forest_config, year_range)
@@ -1362,12 +1362,18 @@ def _growing_overlay_selected_source(
                 group_frame = group_frame.copy()
                 group_frame["forest_community_label"] = f"{group_label} Combined"
                 group_frame["forest_community_code"] = group_code
-            return forest_config, group_frame, f"Overlay source: {group_label} Combined"
+            selection_label = f"{group_label} Combined"
+            return forest_config, group_frame, f"Overlay source: {selection_label}", selection_label
         for code, label in group_entries:
             if st.session_state.get(_segment_checkbox_key(layer_idx, code), False):
-                return _config_with_segment(config, "forest_community", "forest_community_code", code), None, f"Overlay source: {label}"
+                return _config_with_segment(config, "forest_community", "forest_community_code", code), None, f"Overlay source: {label}", label
 
-    return _config_with_scope(config, "overall"), None, "No layer checklist items are selected; showing Overall Combined."
+    return (
+        _config_with_scope(config, "overall"),
+        None,
+        "No layer checklist items are selected; showing Overall Combined.",
+        "Overall Combined",
+    )
 
 
 def _render_growing_overlay_year_controls(
@@ -1913,7 +1919,12 @@ def main() -> None:
             overlay_layer_idx,
             year_range,
         )
-        growing_overlay_config, overlay_source_frame, overlay_source_message = _growing_overlay_selected_source(
+        (
+            growing_overlay_config,
+            overlay_source_frame,
+            overlay_source_message,
+            overlay_selection_label,
+        ) = _growing_overlay_selected_source(
             bundle,
             overlay_base_config,
             overlay_layer_idx,
@@ -1926,6 +1937,7 @@ def main() -> None:
             selected_year,
             year_range=year_range,
             source_frame=overlay_source_frame,
+            selection_label=overlay_selection_label,
         )
         messages = [msg for msg in (overlay_source_message, message) if msg]
         if overlay_selection_count > 1 or len(growing_overlay_layers) > 1:
