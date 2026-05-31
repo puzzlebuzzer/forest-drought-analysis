@@ -1240,7 +1240,7 @@ def _add_plot_selection_legend_to_figure(figure, entries: list[tuple[str, str, s
             align="left",
             showarrow=False,
             text=f"<b>{html.escape(str(layer_label))}</b> / {html.escape(str(item_label))}",
-            font={"size": 11, "color": "#444444"},
+            font={"size": 13, "color": "#444444"},
         )
 
 
@@ -1907,14 +1907,6 @@ def main() -> None:
     for message in messages:
         st.info(message)
 
-    if not growing_overlay_layers:
-        if plot_selection_legend_entries:
-            _render_plot_selection_legend(
-                bundle,
-                config_objects,
-                year_range,
-                selected_color_offsets_by_layer,
-            )
     _render_config_table(bundle, year_range, selected_color_offsets_by_layer)
 
 
