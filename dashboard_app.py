@@ -1251,13 +1251,16 @@ def _render_stack_growing_year_controls(
             width="stretch",
         )
     with select_col:
-        st.selectbox(
+        dropdown_year = st.selectbox(
             "Highlighted year",
             page_years,
             index=current_index,
-            key=STACK_GROWING_SELECTED_YEAR_KEY,
+            key=f"stack_growing_year_dropdown_{year_range[0]}_{year_range[1]}_{current_year}",
             label_visibility="collapsed",
         )
+        if int(dropdown_year) != current_year:
+            st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = int(dropdown_year)
+            st.rerun()
     with right_col:
         st.button(
             "›",
