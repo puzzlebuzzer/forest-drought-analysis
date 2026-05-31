@@ -1294,6 +1294,31 @@ def _config_with_segment(config: ComparisonConfig, analysis_scope: str, code_col
     return ComparisonConfig(**config_dict)
 
 
+def _growing_overlay_selection_count(
+    bundle,
+    config: ComparisonConfig,
+    layer_idx: int,
+    year_range: tuple[int, int],
+) -> int:
+    selected_count = int(bool(st.session_state.get(_layer_combined_checkbox_key(layer_idx), True)))
+
+    broad_config = _config_with_scope(config, "ecozone")
+    for code, _ in _segment_legend_entries(bundle, broad_config, year_range):
+        if st.session_state.get(_broad_ecozone_checkbox_key(layer_idx, code), False):
+            selected_count += 1
+
+    forest_config = _config_with_scope(config, "forest_community")
+    forest_entries = _segment_legend_entries(bundle, forest_config, year_range)
+    grouped_entries = _forest_community_grouped_legend_entries(forest_entries, bundle, forest_config)
+    for group_key, _, group_entries in grouped_entries:
+        if len(group_entries) > 1 and st.session_state.get(_segment_group_combined_checkbox_key(layer_idx, group_key), False):
+            selected_count += 1
+        for code, _ in group_entries:
+            if st.session_state.get(_segment_checkbox_key(layer_idx, code), False):
+                selected_count += 1
+    return selected_count
+
+
 def _growing_overlay_selected_source(
     bundle,
     config: ComparisonConfig,
@@ -1875,6 +1900,12 @@ def main() -> None:
     growing_overlay_config = growing_overlay_layers[0][1] if growing_overlay_layers else None
     if growing_overlay_layers:
         overlay_layer_idx, overlay_base_config = growing_overlay_layers[0]
+        overlay_selection_count = _growing_overlay_selection_count(
+            bundle,
+            overlay_base_config,
+            overlay_layer_idx,
+            year_range,
+        )
         growing_overlay_config, overlay_source_frame, overlay_source_message = _growing_overlay_selected_source(
             bundle,
             overlay_base_config,
@@ -1890,7 +1921,7 @@ def main() -> None:
             source_frame=overlay_source_frame,
         )
         messages = [msg for msg in (overlay_source_message, message) if msg]
-        if len(growing_overlay_layers) > 1:
+        if overlay_selection_count > 1 or len(growing_overlay_layers) > 1:
             messages.append(
                 "Growing overlay mode uses the first selection in the first layer with `growing overlay` selected."
             )
