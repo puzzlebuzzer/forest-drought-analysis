@@ -1209,6 +1209,41 @@ def _render_plot_selection_legend(
     )
 
 
+def _add_plot_selection_legend_to_figure(figure, entries: list[tuple[str, str, str]]) -> None:
+    if not entries:
+        return
+    row_step = 0.055
+    start_y = -0.24
+    margin = figure.layout.margin.to_plotly_json() if figure.layout.margin else {}
+    margin["b"] = max(int(margin.get("b") or 40), 95 + 22 * len(entries))
+    figure.update_layout(margin=margin)
+    for row_idx, (layer_label, item_label, color) in enumerate(entries):
+        y_position = start_y - row_step * row_idx
+        figure.add_annotation(
+            x=0.0,
+            y=y_position,
+            xref="paper",
+            yref="paper",
+            xanchor="left",
+            yanchor="middle",
+            showarrow=False,
+            text="■",
+            font={"size": 14, "color": color},
+        )
+        figure.add_annotation(
+            x=0.025,
+            y=y_position,
+            xref="paper",
+            yref="paper",
+            xanchor="left",
+            yanchor="middle",
+            align="left",
+            showarrow=False,
+            text=f"<b>{html.escape(str(layer_label))}</b> / {html.escape(str(item_label))}",
+            font={"size": 11, "color": "#444444"},
+        )
+
+
 def _growing_overlay_year_selector(
     bundle,
     config: ComparisonConfig,
@@ -1808,6 +1843,7 @@ def main() -> None:
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     selected_color_offsets_by_layer = _selected_color_offsets_by_layer(bundle, config_objects, year_range)
+    plot_selection_legend_entries: list[tuple[str, str, str]] = []
     growing_overlay_layers = [
         (idx, config)
         for idx, config in enumerate(config_objects)
@@ -1855,6 +1891,13 @@ def main() -> None:
             segment_color_offsets_by_layer,
             config_color_overrides_by_layer,
         )
+        plot_selection_legend_entries = _selected_plot_legend_entries(
+            bundle,
+            config_objects,
+            year_range,
+            selected_color_offsets_by_layer,
+        )
+        _add_plot_selection_legend_to_figure(figure, plot_selection_legend_entries)
     if figure.data:
         st.plotly_chart(figure, width="stretch")
         if growing_overlay_config is not None:
@@ -1865,7 +1908,13 @@ def main() -> None:
         st.info(message)
 
     if not growing_overlay_layers:
-        _render_plot_selection_legend(bundle, config_objects, year_range, selected_color_offsets_by_layer)
+        if plot_selection_legend_entries:
+            _render_plot_selection_legend(
+                bundle,
+                config_objects,
+                year_range,
+                selected_color_offsets_by_layer,
+            )
     _render_config_table(bundle, year_range, selected_color_offsets_by_layer)
 
 
