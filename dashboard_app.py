@@ -1235,15 +1235,20 @@ def _render_plot_selection_legend(
 def _add_plot_selection_legend_to_figure(figure, entries: list[tuple[str, str, str]]) -> None:
     if not entries:
         return
-    row_step = 0.055
-    start_y = -0.24
+    n_columns = 2 if len(entries) > 4 else 1
+    n_rows = (len(entries) + n_columns - 1) // n_columns
+    row_step = 0.07
+    start_y = -0.36
     margin = figure.layout.margin.to_plotly_json() if figure.layout.margin else {}
-    margin["b"] = max(int(margin.get("b") or 40), 95 + 22 * len(entries))
+    margin["b"] = max(int(margin.get("b") or 40), 145 + 26 * n_rows)
     figure.update_layout(margin=margin)
     for row_idx, (layer_label, item_label, color) in enumerate(entries):
-        y_position = start_y - row_step * row_idx
+        column_idx = row_idx // n_rows
+        legend_row = row_idx % n_rows
+        x_position = 0.0 + (0.5 * column_idx)
+        y_position = start_y - row_step * legend_row
         figure.add_annotation(
-            x=0.0,
+            x=x_position,
             y=y_position,
             xref="paper",
             yref="paper",
@@ -1254,7 +1259,7 @@ def _add_plot_selection_legend_to_figure(figure, entries: list[tuple[str, str, s
             font={"size": 14, "color": color},
         )
         figure.add_annotation(
-            x=0.025,
+            x=x_position + 0.025,
             y=y_position,
             xref="paper",
             yref="paper",
@@ -1263,7 +1268,7 @@ def _add_plot_selection_legend_to_figure(figure, entries: list[tuple[str, str, s
             align="left",
             showarrow=False,
             text=f"<b>{html.escape(str(layer_label))}</b> / {html.escape(str(item_label))}",
-            font={"size": 13, "color": "#444444"},
+            font={"size": 13, "color": "#f2f2f2"},
         )
 
 
