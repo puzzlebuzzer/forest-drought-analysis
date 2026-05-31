@@ -1224,6 +1224,56 @@ def _set_stack_growing_year(year: int) -> None:
     st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = int(year)
 
 
+def _config_with_segment(config: ComparisonConfig, analysis_scope: str, code_column: str, code: int) -> ComparisonConfig:
+    config_dict = asdict(_config_with_scope(config, analysis_scope))
+    config_dict[code_column] = int(code)
+    return ComparisonConfig(**config_dict)
+
+
+def _stack_growing_selected_source(
+    bundle,
+    config: ComparisonConfig,
+    layer_idx: int,
+    year_range: tuple[int, int],
+) -> tuple[ComparisonConfig, pd.DataFrame | None, str | None]:
+    if st.session_state.get(_layer_combined_checkbox_key(layer_idx), True):
+        return _config_with_scope(config, "overall"), None, None
+
+    broad_config = _config_with_scope(config, "ecozone")
+    for code, label in _segment_legend_entries(bundle, broad_config, year_range):
+        if st.session_state.get(_broad_ecozone_checkbox_key(layer_idx, code), False):
+            return _config_with_segment(config, "ecozone", "ecozone_code", code), None, f"Overlay source: {label}"
+
+    forest_config = _config_with_scope(config, "forest_community")
+    forest_entries = _segment_legend_entries(bundle, forest_config, year_range)
+    grouped_entries = _forest_community_grouped_legend_entries(forest_entries, bundle, forest_config)
+    for group_key, group_label, group_entries in grouped_entries:
+        if len(group_entries) > 1 and st.session_state.get(_segment_group_combined_checkbox_key(layer_idx, group_key), False):
+            try:
+                group_code = int(group_key)
+            except ValueError:
+                continue
+            data_config = ComparisonConfig(
+                **{
+                    **forest_config.__dict__,
+                    "temporal_agg": "scene",
+                    "temporal_percentile": "none",
+                    "season_filter": "growing",
+                }
+            )
+            group_frame = bundle.frame_for_forest_community_group(data_config, group_code)
+            if not group_frame.empty:
+                group_frame = group_frame.copy()
+                group_frame["forest_community_label"] = f"{group_label} Combined"
+                group_frame["forest_community_code"] = group_code
+            return forest_config, group_frame, f"Overlay source: {group_label} Combined"
+        for code, label in group_entries:
+            if st.session_state.get(_segment_checkbox_key(layer_idx, code), False):
+                return _config_with_segment(config, "forest_community", "forest_community_code", code), None, f"Overlay source: {label}"
+
+    return _config_with_scope(config, "overall"), None, "No layer checklist items are selected; showing Overall Combined."
+
+
 def _render_stack_growing_year_controls(
     bundle,
     config: ComparisonConfig,
@@ -1752,20 +1802,28 @@ def main() -> None:
 
     config_objects = [ComparisonConfig(**cfg) for cfg in st.session_state.comparison_configs]
     selected_color_offsets_by_layer = _selected_color_offsets_by_layer(bundle, config_objects, year_range)
-    stack_growing_configs = [
-        config for config in config_objects if config.season_filter == STACK_GROWING_SEASON_FILTER
+    stack_growing_layers = [
+        (idx, config) for idx, config in enumerate(config_objects) if config.season_filter == STACK_GROWING_SEASON_FILTER
     ]
-    stack_growing_config = stack_growing_configs[0] if stack_growing_configs else None
-    if stack_growing_configs:
+    stack_growing_config = stack_growing_layers[0][1] if stack_growing_layers else None
+    if stack_growing_layers:
+        stack_layer_idx, stack_base_config = stack_growing_layers[0]
+        stack_growing_config, stack_source_frame, stack_source_message = _stack_growing_selected_source(
+            bundle,
+            stack_base_config,
+            stack_layer_idx,
+            year_range,
+        )
         selected_year = _stack_growing_year_selector(bundle, stack_growing_config, year_range)
         figure, message = build_growing_season_figure(
             bundle,
             stack_growing_config,
             selected_year,
             year_range=year_range,
+            source_frame=stack_source_frame,
         )
-        messages = [message] if message else []
-        if len(stack_growing_configs) > 1:
+        messages = [msg for msg in (stack_source_message, message) if msg]
+        if len(stack_growing_layers) > 1:
             messages.append("Stack growing mode uses the first layer with `stack growing` selected.")
     else:
         (
@@ -1798,7 +1856,7 @@ def main() -> None:
     for message in messages:
         st.info(message)
 
-    if not stack_growing_configs:
+    if not stack_growing_layers:
         _render_plot_selection_legend(bundle, config_objects, year_range, selected_color_offsets_by_layer)
     _render_config_table(bundle, year_range, selected_color_offsets_by_layer)
 
