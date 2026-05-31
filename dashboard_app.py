@@ -1240,8 +1240,13 @@ def _add_plot_selection_legend_to_figure(figure, entries: list[tuple[str, str, s
     row_step = 0.07
     start_y = -0.36
     margin = figure.layout.margin.to_plotly_json() if figure.layout.margin else {}
-    margin["b"] = max(int(margin.get("b") or 40), 145 + 26 * n_rows)
-    figure.update_layout(margin=margin)
+    current_bottom_margin = int(margin.get("b") or 40)
+    target_bottom_margin = max(current_bottom_margin, 145 + 26 * n_rows)
+    current_height = int(figure.layout.height or 450)
+    figure.update_layout(
+        height=current_height + max(0, target_bottom_margin - current_bottom_margin),
+        margin={**margin, "b": target_bottom_margin},
+    )
     for row_idx, (layer_label, item_label, color) in enumerate(entries):
         column_idx = row_idx // n_rows
         legend_row = row_idx % n_rows
