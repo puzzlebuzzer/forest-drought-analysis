@@ -1170,19 +1170,15 @@ def _render_plot_selection_legend(
         safe_layer_label = html.escape(str(layer_label))
         safe_item_label = html.escape(str(item_label))
         chips.append(
-            f"""
-            <div class="plot-selection-legend-item">
-                <span class="plot-selection-legend-swatch" style="background:{color};"></span>
-                <span><strong>{safe_layer_label}</strong> / {safe_item_label}</span>
-            </div>
-            """
+            (
+                '<div class="plot-selection-legend-item">'
+                f'<span class="plot-selection-legend-swatch" style="background:{color};"></span>'
+                f"<span><strong>{safe_layer_label}</strong> / {safe_item_label}</span>"
+                "</div>"
+            )
         )
     st.markdown(
-        f"""
-        <div class="plot-selection-legend">
-            {''.join(chips)}
-        </div>
-        """,
+        f'<div class="plot-selection-legend">{"".join(chips)}</div>',
         unsafe_allow_html=True,
     )
 
