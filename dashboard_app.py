@@ -17,7 +17,12 @@ import plotly.io as pio
 import streamlit as st
 
 from src.dashboard_data import ECOZONE_LABELS, filter_frame, filters_for_config, load_dashboard_data
-from src.dashboard_figures import ECOZONE_TRACE_COLORS, build_growing_season_figure, build_timeseries_figure
+from src.dashboard_figures import (
+    ECOZONE_TRACE_COLORS,
+    available_growing_season_years,
+    build_growing_season_figure,
+    build_timeseries_figure,
+)
 from src.dashboard_schema import ComparisonConfig
 
 DEFAULT_DATA_DIR = Path(__file__).resolve().parent / "Results" / "tables" / "dashboard_data"
@@ -1198,6 +1203,26 @@ def _render_plot_selection_legend(
     )
 
 
+def _stack_growing_year_selector(
+    bundle,
+    config: ComparisonConfig,
+    year_range: tuple[int, int],
+) -> int:
+    available_years = available_growing_season_years(bundle, config, year_range)
+    if not available_years:
+        return int(year_range[1])
+    default_year = available_years[-1]
+    current_year = st.session_state.get("stack_growing_highlight_year", default_year)
+    if current_year not in available_years:
+        current_year = default_year
+    return st.selectbox(
+        "Highlight year",
+        available_years,
+        index=available_years.index(current_year),
+        key="stack_growing_highlight_year",
+    )
+
+
 def _render_layer_segmentation_controls(bundle, config_dict: dict, layer_idx: int) -> None:
     available_scopes = bundle.available_values("analysis_scope")
     current_scope = config_dict.get("analysis_scope", "overall")
@@ -1678,11 +1703,12 @@ def main() -> None:
     stack_growing_configs = [
         config for config in config_objects if config.season_filter == STACK_GROWING_SEASON_FILTER
     ]
+    stack_growing_config = stack_growing_configs[0] if stack_growing_configs else None
     if stack_growing_configs:
-        selected_year = int(year_range[1])
+        selected_year = _stack_growing_year_selector(bundle, stack_growing_config, year_range)
         figure, message = build_growing_season_figure(
             bundle,
-            stack_growing_configs[0],
+            stack_growing_config,
             selected_year,
             year_range=year_range,
         )

@@ -543,3 +543,27 @@ def build_growing_season_figure(
     )
     fig.update_xaxes(range=[1, 124])
     return fig, None
+
+
+def available_growing_season_years(
+    bundle: DashboardDataBundle,
+    config: ComparisonConfig,
+    year_range: tuple[int, int] | None = None,
+) -> list[int]:
+    data_config = ComparisonConfig(
+        **{
+            **config.__dict__,
+            "temporal_agg": "scene",
+            "temporal_percentile": "none",
+            "season_filter": "growing",
+        }
+    )
+    filtered = filter_frame(
+        bundle.frame_for_config(data_config),
+        filters=filters_for_config(data_config),
+        year_range=year_range,
+    )
+    if filtered.empty or "year" not in filtered.columns:
+        return []
+    years = pd.to_numeric(filtered["year"], errors="coerce").dropna().astype(int)
+    return sorted(years.unique().tolist())
