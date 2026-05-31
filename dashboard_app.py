@@ -320,6 +320,20 @@ def _timestamp_for_download() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
+def _plotly_camera_export_config(bundle, configs: list[ComparisonConfig]) -> dict:
+    if configs:
+        first_label = _config_display_label(asdict(_config_with_scope(configs[0], "overall")), 0, bundle).split(". ", 1)[1]
+    else:
+        first_label = "dashboard_plot"
+    filename = f"{_download_filename_stem(first_label)}_{_timestamp_for_download()}"
+    return {
+        "toImageButtonOptions": {
+            "format": "png",
+            "filename": filename,
+        }
+    }
+
+
 def _is_all_segment_config(config_dict: dict) -> bool:
     analysis_scope = config_dict.get("analysis_scope", "overall")
     if analysis_scope == "ecozone":
@@ -1899,7 +1913,11 @@ def main() -> None:
         )
         _add_plot_selection_legend_to_figure(figure, plot_selection_legend_entries)
     if figure.data:
-        st.plotly_chart(figure, width="stretch")
+        st.plotly_chart(
+            figure,
+            width="stretch",
+            config=_plotly_camera_export_config(bundle, config_objects),
+        )
         if growing_overlay_config is not None:
             _render_growing_overlay_year_controls(bundle, growing_overlay_config, year_range)
     else:
