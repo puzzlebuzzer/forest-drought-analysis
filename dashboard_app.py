@@ -1212,7 +1212,7 @@ def _stack_growing_year_selector(
     available_years = available_growing_season_years(bundle, config, year_range)
     if not available_years:
         return int(year_range[1])
-    default_year = available_years[-1]
+    default_year = available_years[1] if len(available_years) > 1 else available_years[0]
     current_year = st.session_state.get(STACK_GROWING_SELECTED_YEAR_KEY, default_year)
     current_year = int(current_year)
     if current_year < year_range[0] or current_year > year_range[1]:
@@ -1233,7 +1233,8 @@ def _render_stack_growing_year_controls(
     available_years = available_growing_season_years(bundle, config, year_range)
     if not available_years:
         return
-    current_year = int(st.session_state.get(STACK_GROWING_SELECTED_YEAR_KEY, available_years[-1]))
+    default_year = available_years[1] if len(available_years) > 1 else available_years[0]
+    current_year = int(st.session_state.get(STACK_GROWING_SELECTED_YEAR_KEY, default_year))
     current_year = min(max(current_year, int(year_range[0])), int(year_range[1]))
     st.session_state[STACK_GROWING_SELECTED_YEAR_KEY] = current_year
     if current_year not in available_years:
