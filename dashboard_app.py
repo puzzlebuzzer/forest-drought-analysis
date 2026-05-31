@@ -1213,14 +1213,42 @@ def _stack_growing_year_selector(
         return int(year_range[1])
     default_year = available_years[-1]
     current_year = st.session_state.get("stack_growing_highlight_year", default_year)
-    if current_year not in available_years:
+    current_year = int(current_year)
+    if current_year < year_range[0] or current_year > year_range[1]:
         current_year = default_year
-    return st.selectbox(
-        "Highlight year",
-        available_years,
-        index=available_years.index(current_year),
-        key="stack_growing_highlight_year",
-    )
+    st.session_state.stack_growing_highlight_year = current_year
+    return current_year
+
+
+def _render_stack_growing_year_controls(
+    bundle,
+    config: ComparisonConfig,
+    year_range: tuple[int, int],
+) -> None:
+    available_years = available_growing_season_years(bundle, config, year_range)
+    if not available_years:
+        return
+    current_year = int(st.session_state.get("stack_growing_highlight_year", available_years[-1]))
+    current_year = min(max(current_year, int(year_range[0])), int(year_range[1]))
+    st.session_state.stack_growing_highlight_year = current_year
+    left_col, slider_col, right_col = st.columns([0.12, 0.76, 0.12])
+    with left_col:
+        if st.button("‹", key="stack_growing_previous_year", help="Previous year", width="stretch"):
+            st.session_state.stack_growing_highlight_year = max(int(year_range[0]), current_year - 1)
+            st.rerun()
+    with slider_col:
+        st.slider(
+            "Highlighted year",
+            min_value=int(year_range[0]),
+            max_value=int(year_range[1]),
+            value=current_year,
+            step=1,
+            key="stack_growing_highlight_year",
+        )
+    with right_col:
+        if st.button("›", key="stack_growing_next_year", help="Next year", width="stretch"):
+            st.session_state.stack_growing_highlight_year = min(int(year_range[1]), current_year + 1)
+            st.rerun()
 
 
 def _render_layer_segmentation_controls(bundle, config_dict: dict, layer_idx: int) -> None:
@@ -1739,6 +1767,8 @@ def main() -> None:
         )
     if figure.data:
         st.plotly_chart(figure, width="stretch")
+        if stack_growing_config is not None:
+            _render_stack_growing_year_controls(bundle, stack_growing_config, year_range)
     else:
         st.warning("No lines could be drawn from the current configurations and year range.")
     for message in messages:
