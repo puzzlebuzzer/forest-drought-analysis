@@ -50,7 +50,7 @@ DEFAULT_EXCLUDE_BELOW_STDDEV = 2
 ECOZONE_ALL_OPTION = "all"
 ANALYSIS_SCOPE_LABELS = {
     "overall": "Overall",
-    "ecozone": "Broad ecozone",
+    "ecozone": "Thermal ecozone",
     "forest_community": "Forest communities",
 }
 SEASON_FILTER_LABELS = {
@@ -61,7 +61,7 @@ SEASON_FILTER_LABELS = {
 }
 BUILDER_WIDGET_KEYS = [
     "builder_analysis_scope",
-    "builder_select_broad_ecozone",
+    "builder_select_thermal_ecozone",
     "builder_select_forest_communities",
     "builder_sensor",
     "builder_aoi",
@@ -391,12 +391,12 @@ def _layer_expanded_key(layer_idx: int) -> str:
     return f"layer_{layer_idx}_expanded"
 
 
-def _broad_ecozone_checkbox_key(layer_idx: int, ecozone_code: int) -> str:
-    return f"layer_{layer_idx}_broad_ecozone_{ecozone_code}_visible"
+def _thermal_ecozone_checkbox_key(layer_idx: int, ecozone_code: int) -> str:
+    return f"layer_{layer_idx}_thermal_ecozone_{ecozone_code}_visible"
 
 
-def _broad_ecozone_group_checkbox_key(layer_idx: int) -> str:
-    return f"layer_{layer_idx}_broad_ecozone_group_visible"
+def _thermal_ecozone_group_checkbox_key(layer_idx: int) -> str:
+    return f"layer_{layer_idx}_thermal_ecozone_group_visible"
 
 
 def _segment_group_checkbox_key(layer_idx: int, group_key: str) -> str:
@@ -418,7 +418,7 @@ def _segment_all_checkbox_key(layer_idx: int) -> str:
 def _clear_layer_segment_state(layer_idx: int) -> None:
     prefixes = (
         f"layer_{layer_idx}_combined_visible",
-        f"layer_{layer_idx}_broad_ecozone_",
+        f"layer_{layer_idx}_thermal_ecozone_",
         f"layer_{layer_idx}_segment_",
         f"layer_{layer_idx}_segment_group_",
         f"layer_{layer_idx}_segments_all_visible",
@@ -612,7 +612,7 @@ def _visible_segments_by_layer(
     return visible
 
 
-def _visible_broad_ecozones_by_layer(
+def _visible_thermal_ecozones_by_layer(
     bundle,
     configs: list[ComparisonConfig],
     year_range: tuple[int, int],
@@ -624,7 +624,7 @@ def _visible_broad_ecozones_by_layer(
             continue
         selected_codes = set()
         for code, _ in entries:
-            key = _broad_ecozone_checkbox_key(idx, code)
+            key = _thermal_ecozone_checkbox_key(idx, code)
             if key not in st.session_state:
                 st.session_state[key] = False
             if st.session_state.get(key, False):
@@ -637,8 +637,8 @@ def _combined_segment_id(group_key: str) -> str:
     return f"combined:{group_key}"
 
 
-def _broad_ecozone_segment_id(ecozone_code: int) -> str:
-    return f"broad:{ecozone_code}"
+def _thermal_ecozone_segment_id(ecozone_code: int) -> str:
+    return f"thermal:{ecozone_code}"
 
 
 def _overall_combined_segment_id() -> str:
@@ -697,10 +697,10 @@ def _selected_color_offsets_by_layer(
         if st.session_state.get(_layer_combined_checkbox_key(idx), True):
             selected_segments.append(_overall_combined_segment_id())
 
-        broad_entries = _segment_legend_entries(bundle, _config_with_scope(config, "ecozone"), year_range)
-        for code, _ in broad_entries:
-            if st.session_state.get(_broad_ecozone_checkbox_key(idx, code), False):
-                selected_segments.append(_broad_ecozone_segment_id(code))
+        thermal_entries = _segment_legend_entries(bundle, _config_with_scope(config, "ecozone"), year_range)
+        for code, _ in thermal_entries:
+            if st.session_state.get(_thermal_ecozone_checkbox_key(idx, code), False):
+                selected_segments.append(_thermal_ecozone_segment_id(code))
 
         forest_config = _config_with_scope(config, "forest_community")
         segment_entries = _segment_legend_entries(bundle, forest_config, year_range)
@@ -734,7 +734,7 @@ def _build_plot_layers(
     dict[int, str],
 ]:
     palette = palette or pc.qualitative.Plotly
-    broad_visible_by_base = _visible_broad_ecozones_by_layer(bundle, configs, year_range)
+    thermal_visible_by_base = _visible_thermal_ecozones_by_layer(bundle, configs, year_range)
     forest_visible_by_base = _visible_segments_by_layer(bundle, configs, year_range)
     combined_frames_by_base = _combined_group_frames_by_layer(
         bundle,
@@ -758,16 +758,16 @@ def _build_plot_layers(
             if color_offset is not None:
                 config_color_overrides_by_plot[plot_idx] = palette[color_offset % len(palette)]
 
-        broad_visible = broad_visible_by_base.get(base_idx, set())
-        if broad_visible:
+        thermal_visible = thermal_visible_by_base.get(base_idx, set())
+        if thermal_visible:
             plot_idx = len(plot_configs)
             plot_configs.append(_config_with_scope(config, "ecozone"))
-            visible_segments_by_plot[plot_idx] = broad_visible
+            visible_segments_by_plot[plot_idx] = thermal_visible
             base_offsets = selected_color_offsets_by_layer.get(base_idx, {})
             segment_color_offsets_by_plot[plot_idx] = {
                 int(code): offset
-                for code in broad_visible
-                if (offset := base_offsets.get(_broad_ecozone_segment_id(code))) is not None
+                for code in thermal_visible
+                if (offset := base_offsets.get(_thermal_ecozone_segment_id(code))) is not None
             }
 
         forest_visible = forest_visible_by_base.get(base_idx, set())
@@ -828,7 +828,7 @@ def _load_builder_values(config_dict: dict) -> None:
     analysis_scope = config_dict.get("analysis_scope", "overall")
     st.session_state.builder_pending_values = {
         "builder_analysis_scope": analysis_scope,
-        "builder_select_broad_ecozone": analysis_scope == "ecozone",
+        "builder_select_thermal_ecozone": analysis_scope == "ecozone",
         "builder_select_forest_communities": analysis_scope == "forest_community",
         "builder_sensor": config_dict.get("sensor"),
         "builder_aoi": config_dict.get("aoi"),
@@ -1070,21 +1070,21 @@ def _render_segment_legend(
     selected_color_offsets: dict[object, int],
     year_range: tuple[int, int],
 ) -> None:
-    broad_config = _config_with_scope(config, "ecozone")
+    thermal_config = _config_with_scope(config, "ecozone")
     forest_config = _config_with_scope(config, "forest_community")
     forest_entries = _segment_legend_entries(bundle, forest_config, year_range)
     grouped_entries = _forest_community_grouped_legend_entries(forest_entries, bundle, forest_config)
 
-    broad_entries = _segment_legend_entries(bundle, broad_config, year_range)
+    thermal_entries = _segment_legend_entries(bundle, thermal_config, year_range)
     combined_key = _layer_combined_checkbox_key(layer_idx)
-    broad_child_keys = [_broad_ecozone_checkbox_key(layer_idx, code) for code, _ in broad_entries]
+    thermal_child_keys = [_thermal_ecozone_checkbox_key(layer_idx, code) for code, _ in thermal_entries]
     forest_child_keys = [_segment_checkbox_key(layer_idx, code) for code, _ in forest_entries]
     group_combined_keys = [
         _segment_group_combined_checkbox_key(layer_idx, group_key)
         for group_key, _, group_entries in grouped_entries
         if len(group_entries) > 1
     ]
-    child_keys = [combined_key, *broad_child_keys, *forest_child_keys, *group_combined_keys]
+    child_keys = [combined_key, *thermal_child_keys, *forest_child_keys, *group_combined_keys]
     for child_key in child_keys:
         if child_key not in st.session_state:
             st.session_state[child_key] = child_key == combined_key
@@ -1100,20 +1100,20 @@ def _render_segment_legend(
         color=overall_color,
     )
 
-    if broad_entries:
-        broad_group_key = _broad_ecozone_group_checkbox_key(layer_idx)
-        st.session_state[broad_group_key] = all(st.session_state.get(child_key, False) for child_key in broad_child_keys)
+    if thermal_entries:
+        thermal_group_key = _thermal_ecozone_group_checkbox_key(layer_idx)
+        st.session_state[thermal_group_key] = all(st.session_state.get(child_key, False) for child_key in thermal_child_keys)
         _render_indented_checkbox(
-            "Broad ecozones",
-            key=broad_group_key,
+            "Thermal ecozones",
+            key=thermal_group_key,
             level=1,
             on_change=_set_all_segment_checkboxes,
-            args=(broad_group_key, broad_child_keys),
+            args=(thermal_group_key, thermal_child_keys),
         )
-        for code, entry in broad_entries:
-            checkbox_key = _broad_ecozone_checkbox_key(layer_idx, code)
+        for code, entry in thermal_entries:
+            checkbox_key = _thermal_ecozone_checkbox_key(layer_idx, code)
             is_selected = st.session_state.get(checkbox_key, False)
-            color_offset = selected_color_offsets.get(_broad_ecozone_segment_id(code), start_color_idx)
+            color_offset = selected_color_offsets.get(_thermal_ecozone_segment_id(code), start_color_idx)
             color = palette[color_offset % len(palette)]
             if not is_selected:
                 color = "#c9c9c9"
@@ -1183,11 +1183,11 @@ def _selected_plot_legend_entries(
             color_offset = selected_offsets.get(_overall_combined_segment_id(), 0)
             entries.append((layer_label, "Overall Combined", palette[color_offset % len(palette)]))
 
-        broad_entries = _segment_legend_entries(bundle, _config_with_scope(config, "ecozone"), year_range)
-        for code, label in broad_entries:
-            if not st.session_state.get(_broad_ecozone_checkbox_key(idx, code), False):
+        thermal_entries = _segment_legend_entries(bundle, _config_with_scope(config, "ecozone"), year_range)
+        for code, label in thermal_entries:
+            if not st.session_state.get(_thermal_ecozone_checkbox_key(idx, code), False):
                 continue
-            color_offset = selected_offsets.get(_broad_ecozone_segment_id(code), 0)
+            color_offset = selected_offsets.get(_thermal_ecozone_segment_id(code), 0)
             entries.append((layer_label, label, palette[color_offset % len(palette)]))
 
         forest_config = _config_with_scope(config, "forest_community")
@@ -1302,9 +1302,9 @@ def _growing_overlay_selection_count(
 ) -> int:
     selected_count = int(bool(st.session_state.get(_layer_combined_checkbox_key(layer_idx), True)))
 
-    broad_config = _config_with_scope(config, "ecozone")
-    for code, _ in _segment_legend_entries(bundle, broad_config, year_range):
-        if st.session_state.get(_broad_ecozone_checkbox_key(layer_idx, code), False):
+    thermal_config = _config_with_scope(config, "ecozone")
+    for code, _ in _segment_legend_entries(bundle, thermal_config, year_range):
+        if st.session_state.get(_thermal_ecozone_checkbox_key(layer_idx, code), False):
             selected_count += 1
 
     forest_config = _config_with_scope(config, "forest_community")
@@ -1328,9 +1328,9 @@ def _growing_overlay_selected_source(
     if st.session_state.get(_layer_combined_checkbox_key(layer_idx), True):
         return _config_with_scope(config, "overall"), None, "Overlay source: Overall Combined"
 
-    broad_config = _config_with_scope(config, "ecozone")
-    for code, label in _segment_legend_entries(bundle, broad_config, year_range):
-        if st.session_state.get(_broad_ecozone_checkbox_key(layer_idx, code), False):
+    thermal_config = _config_with_scope(config, "ecozone")
+    for code, label in _segment_legend_entries(bundle, thermal_config, year_range):
+        if st.session_state.get(_thermal_ecozone_checkbox_key(layer_idx, code), False):
             return _config_with_segment(config, "ecozone", "ecozone_code", code), None, f"Overlay source: {label}"
 
     forest_config = _config_with_scope(config, "forest_community")
@@ -1417,18 +1417,18 @@ def _render_growing_overlay_year_controls(
 def _render_layer_segmentation_controls(bundle, config_dict: dict, layer_idx: int) -> None:
     available_scopes = bundle.available_values("analysis_scope")
     current_scope = config_dict.get("analysis_scope", "overall")
-    can_select_broad_ecozone = "ecozone" in available_scopes
+    can_select_thermal_ecozone = "ecozone" in available_scopes
     can_select_forest_communities = "forest_community" in available_scopes
-    broad_key = _layer_segmentation_checkbox_key(layer_idx, "ecozone", current_scope)
+    thermal_key = _layer_segmentation_checkbox_key(layer_idx, "ecozone", current_scope)
     forest_key = _layer_segmentation_checkbox_key(layer_idx, "forest_community", current_scope)
     _render_indented_checkbox(
-        "Select broad ecozone",
-        key=broad_key,
+        "Select thermal ecozone",
+        key=thermal_key,
         level=1,
         value=current_scope == "ecozone",
-        disabled=current_scope == "forest_community" or not can_select_broad_ecozone,
+        disabled=current_scope == "forest_community" or not can_select_thermal_ecozone,
         on_change=_set_layer_segmentation,
-        args=(layer_idx, "ecozone", broad_key),
+        args=(layer_idx, "ecozone", thermal_key),
     )
     _render_indented_checkbox(
         "Select forest communities",
@@ -1547,18 +1547,18 @@ def _build_layer_export_subset(
         subsets.append(_export_frame_with_label(filtered, label, export_order))
         export_order += 1
 
-    broad_config = _config_with_scope(config, "ecozone")
-    broad_entries = _segment_legend_entries(bundle, broad_config, year_range)
-    selected_broad_codes = [
+    thermal_config = _config_with_scope(config, "ecozone")
+    thermal_entries = _segment_legend_entries(bundle, thermal_config, year_range)
+    selected_thermal_codes = [
         code
-        for code, _ in broad_entries
-        if st.session_state.get(_broad_ecozone_checkbox_key(layer_idx, code), False)
+        for code, _ in thermal_entries
+        if st.session_state.get(_thermal_ecozone_checkbox_key(layer_idx, code), False)
     ]
-    if selected_broad_codes:
-        frame = bundle.frame_for_config(broad_config)
-        filtered = filter_frame(frame, filters=filters_for_config(broad_config), year_range=year_range)
-        filtered = filtered[filtered["ecozone_code"].isin(selected_broad_codes)]
-        label = broad_config.label or _config_display_label(asdict(broad_config), bundle=bundle)
+    if selected_thermal_codes:
+        frame = bundle.frame_for_config(thermal_config)
+        filtered = filter_frame(frame, filters=filters_for_config(thermal_config), year_range=year_range)
+        filtered = filtered[filtered["ecozone_code"].isin(selected_thermal_codes)]
+        label = thermal_config.label or _config_display_label(asdict(thermal_config), bundle=bundle)
         subsets.append(_export_frame_with_label(filtered, label, export_order))
         export_order += 1
 
