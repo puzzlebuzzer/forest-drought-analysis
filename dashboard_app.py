@@ -110,9 +110,9 @@ def _inject_ui_css() -> None:
         }
         .plot-selection-legend {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.45rem 0.75rem;
-            align-items: center;
+            flex-direction: column;
+            gap: 0.28rem;
+            align-items: flex-start;
             margin: -0.25rem 0 0.85rem 0;
             padding: 0.45rem 0 0.1rem 0;
             color: #f2f2f2;
@@ -1045,7 +1045,7 @@ def _render_segment_legend(
     if not st.session_state.get(combined_key, True):
         overall_color = "#c9c9c9"
     _render_indented_segment_checkbox(
-        "Combined",
+        "Overall Combined",
         key=combined_key,
         level=1,
         color=overall_color,
@@ -1132,7 +1132,7 @@ def _selected_plot_legend_entries(
 
         if st.session_state.get(_layer_combined_checkbox_key(idx), True):
             color_offset = selected_offsets.get(_overall_combined_segment_id(), 0)
-            entries.append((layer_label, "Combined", palette[color_offset % len(palette)]))
+            entries.append((layer_label, "Overall Combined", palette[color_offset % len(palette)]))
 
         broad_entries = _segment_legend_entries(bundle, _config_with_scope(config, "ecozone"), year_range)
         for code, label in broad_entries:
