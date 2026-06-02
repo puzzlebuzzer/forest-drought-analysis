@@ -91,6 +91,7 @@ desktop.ini
 
 # ── Large binary outputs (tracked via Results/LAYER_PACKAGES.txt instead) ──
 *.lpkx
+Deliverables/
 
 # ── Large source data ─────────────────────────────────────────
 *.zip
