@@ -166,12 +166,12 @@ flowchart TD
 | Family | Main location | Purpose |
 |---|---|---|
 | Cache acquisition | `Python/Cache/` | Build Sentinel and Landsat per-scene caches |
-| Composite generation | `Python/Analysis/Indices/` | Build monthly/annual composites and anomaly rasters |
-| Trait preparation | `Python/Analysis/Traits/` | Prepare and verify ecozone/elevation/forest/terrain masks |
-| Ecozone core analyses | `Python/Analysis/Traits/Ecozone/` | Seasonal, drought, stress, trend, and ecozone comparisons |
-| Crosstabs | `Python/Analysis/Crosstab/` | Inter-trait and aspect cross-tabulation |
-| Diagnostics | `Python/Analysis/Diagnostics/` | Demo and troubleshooting products |
-| ArcGIS packaging | `Python/Analysis/arcgis/` | Layer package / mosaic support |
+| Composite generation | `Python/Analysis/SupportingAnalyses/CompositesAndAnomalies/` | Build monthly/annual composites and anomaly rasters |
+| Trait preparation | `Python/Preprocessing/Traits/` | Prepare and verify ecozone/elevation/forest/terrain masks |
+| Ecozone core analyses | `Python/Analysis/SupportingAnalyses/EcozoneInvestigations/` | Seasonal, drought, stress, trend, and ecozone comparisons |
+| Crosstabs | `Python/Analysis/SupportingAnalyses/SlopeAspect/Crosstab/` | Inter-trait and aspect cross-tabulation |
+| Diagnostics | `Python/Analysis/SupportingAnalyses/Diagnostics/` | Demo and troubleshooting products |
+| ArcGIS packaging | `Python/Analysis/SupportingAnalyses/ArcGISExports/` | Layer package / mosaic support |
 
 ## Practical Reading Order
 
@@ -180,7 +180,7 @@ flowchart TD
 3. [project_paths.yaml](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/config/project_paths.yaml)
 4. [build_sentinel_cache.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Cache/build_sentinel_cache.py)
 5. [build_landsat_cache.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Cache/build_landsat_cache.py)
-6. [investigation_common.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/investigation_common.py)
+6. [investigation_common.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/investigation_common.py)
 7. The `Results/2_Anomaly_Onset`, `Results/3_Anomaly_Progression`, `Results/4_Anomaly_Recovery`, and `Results/Other` trees
 
 ## Short Summary

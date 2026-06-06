@@ -179,11 +179,11 @@ Layer packages (`.lpkx`) are documented in `LAYER_PACKAGES.txt` in each Results 
 ## Important Existing Helper Scripts
 
 - Seasonal scene-level plot generation:
-  - `Analysis/Traits/Ecozone/ecozone_seasonal_curves.py`
+  - `Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_seasonal_curves.py`
 - Plotly renderer from existing scene-level spreadsheet:
-  - `Analysis/Traits/Ecozone/ecozone_seasonal_scenelevel_plotly.py`
+  - `Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_seasonal_scenelevel_plotly.py`
 - Bokeh renderer from existing scene-level spreadsheet:
-  - `Analysis/Traits/Ecozone/ecozone_seasonal_scenelevel_bokeh.py`
+  - `Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_seasonal_scenelevel_bokeh.py`
 - Session snapshot helper:
   - `Cache/save_session_snapshot.sh`
 

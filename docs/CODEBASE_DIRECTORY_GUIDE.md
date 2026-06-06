@@ -22,9 +22,10 @@ This guide maps the main project directories and separates active dashboard/data
 | `Python/dashboard_app.py` | Streamlit dashboard entry point | Active runtime. |
 | `Python/src/` | Shared application and pipeline modules | Active core code. |
 | `Python/Cache/` | Sentinel-2 and Landsat cache builders/auditors | Active for full data rebuilds; not needed for dashboard-only users. |
-| `Python/Analysis/TableFactory/` | Dashboard summary table builders and parquet optimization | Active preprocessing pipeline. |
-| `Python/Analysis/Traits/Forest/` | Forest community raster preparation | Active when rebuilding forest-community inputs. |
-| `Python/Analysis/Climate/` | PRISM and satellite-index year classification workflows | Active supplemental climate/context workflows. |
+| `Python/Analysis/DashboardPipeline/TableFactory/` | Dashboard summary table builders and parquet optimization | Active preprocessing pipeline. |
+| `Python/Analysis/DashboardPipeline/Climate/` | PRISM and satellite-index year classification workflows | Active supplemental climate/context workflows. |
+| `Python/Preprocessing/Traits/ForestCommunity/` | Forest community raster preparation | Active shared preprocessing. |
+| `Python/Preprocessing/Traits/Terrain/` | DEM, slope/aspect, and terrain trait preparation | Active shared preprocessing. |
 | `Python/config/` | Path and classification config files | Active configuration; local paths may need editing on other machines. |
 | `Python/docs/` | Project and pipeline documentation | Active documentation. |
 | `Python/tests/` | Dashboard loader/figure tests | Active validation. |
@@ -55,15 +56,16 @@ This guide maps the main project directories and separates active dashboard/data
    - `Python/Cache/build_sentinel_cache.py`
    - `Python/Cache/build_landsat_cache.py`
 2. Prepare forest-community raster inputs:
-   - `Python/Analysis/Traits/Forest/prep_forest_community.py`
+   - `Python/Preprocessing/Traits/ForestCommunity/prep_forest_community.py`
+   - `Python/Preprocessing/Traits/Terrain/build_elevation_cache.py`
 3. Build dashboard base summaries:
-   - `Python/Analysis/TableFactory/build_dashboard_tables.py`
+   - `Python/Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py`
 4. Build thermal-ecozone summaries:
-   - `Python/Analysis/TableFactory/build_dashboard_ecozone_tables.py`
+   - `Python/Analysis/DashboardPipeline/TableFactory/build_dashboard_ecozone_tables.py`
 5. Build forest-community and forest-community-group summaries:
-   - `Python/Analysis/TableFactory/build_dashboard_forest_community_tables.py`
+   - `Python/Analysis/DashboardPipeline/TableFactory/build_dashboard_forest_community_tables.py`
 6. Optimize/write dashboard parquet datasets:
-   - `Python/Analysis/TableFactory/optimize_dashboard_ecozone_parquet.py`
+   - `Python/Analysis/DashboardPipeline/TableFactory/optimize_dashboard_ecozone_parquet.py`
 7. Run dashboard:
    - `streamlit run Python/dashboard_app.py` from the `Python/` directory, or `streamlit run dashboard_app.py` after changing into `Python/`.
 
@@ -101,14 +103,14 @@ These directories contain useful analysis history but are not currently part of 
 
 | Path | Notes |
 | --- | --- |
-| `Python/Analysis/Traits/Ecozone/` | Many ecological investigation scripts. Some remain useful for report figures, but most are not required by dashboard runtime. |
-| `Python/Analysis/Traits/Elevation/` | Elevation/aspect/gradient analyses and prep. Rebuild support or exploratory analysis. |
-| `Python/Analysis/Crosstab/` | Cross-tabulation analyses. Not dashboard runtime. |
-| `Python/Analysis/Indices/` | Annual/monthly composites and anomaly rasters. Useful for map products, not dashboard table runtime. |
-| `Python/Analysis/Diagnostics/` | Diagnostic/demo products. Not runtime. |
-| `Python/Analysis/arcgis/` | ArcGIS Pro layer-package workflow. Optional delivery path, not dashboard runtime. |
-| `Python/Charts/` | Static chart/export scripts. Some export support, mostly legacy/auxiliary. |
-| `Python/Traits/` | Older duplicate trait scripts; `Python/Analysis/Traits/` appears more canonical now. |
+| `Python/Analysis/SupportingAnalyses/EcozoneInvestigations/` | Many ecological investigation scripts. Some remain useful for report figures, but most are not required by dashboard runtime. |
+| `Python/Analysis/SupportingAnalyses/Terrain/` | Elevation/aspect/gradient supporting analyses. Not dashboard runtime. |
+| `Python/Analysis/SupportingAnalyses/SlopeAspect/Crosstab/` | Cross-tabulation analyses. Not dashboard runtime. |
+| `Python/Analysis/SupportingAnalyses/CompositesAndAnomalies/` | Annual/monthly composites and anomaly rasters. Useful for map products, not dashboard table runtime. |
+| `Python/Analysis/SupportingAnalyses/Diagnostics/` | Diagnostic/demo products. Not runtime. |
+| `Python/Analysis/SupportingAnalyses/ArcGISExports/` | ArcGIS Pro layer-package workflow. Optional delivery path, not dashboard runtime. |
+| `Python/Charts/` | Static chart image assets. Active scripts were moved into dashboard or supporting-analysis folders. |
+| `Python/Archived/LegacyTraits/` | Older duplicate trait scripts retained for historical reference. |
 | `Python/Archived/` | Archived Python analyses. |
 | `Python/ScriptSnapshots/` | Historical snapshots. |
 
@@ -118,7 +120,7 @@ These directories contain useful analysis history but are not currently part of 
 - Raw/cached raster rebuild capability is hundreds of GB.
 - Dashboard-only runtime can be packaged much smaller by including only code, manifests, and partitioned parquet summary tables.
 - The dashboard does not use QGIS or DuckDB currently.
-- ArcGIS Pro appears only in optional layer-package workflows under `Python/Analysis/arcgis/`.
+- ArcGIS Pro appears only in optional layer-package workflows under `Python/Analysis/SupportingAnalyses/ArcGISExports/`.
 
 ## Known Current Housekeeping Flags
 

@@ -48,7 +48,7 @@ Relevant code:
 
 The monthly composite builder is:
 
-- [build_monthly_composites.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Indices/build_monthly_composites.py)
+- [build_monthly_composites.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/CompositesAndAnomalies/build_monthly_composites.py)
 
 What it does:
 
@@ -61,15 +61,15 @@ This means the monthly NDVI raster is a monthly maximum composite, not a mean or
 
 Relevant code:
 
-- [build_monthly_composites.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Indices/build_monthly_composites.py#L5)
-- [build_monthly_composites.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Indices/build_monthly_composites.py#L75)
-- [build_monthly_composites.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Indices/build_monthly_composites.py#L107)
+- [build_monthly_composites.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/CompositesAndAnomalies/build_monthly_composites.py#L5)
+- [build_monthly_composites.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/CompositesAndAnomalies/build_monthly_composites.py#L75)
+- [build_monthly_composites.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/CompositesAndAnomalies/build_monthly_composites.py#L107)
 
 ## 3. Monthly composites are intersected with ecozone masks
 
 Shared investigation helpers are in:
 
-- [investigation_common.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/investigation_common.py)
+- [investigation_common.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/investigation_common.py)
 
 What this layer loads:
 
@@ -79,15 +79,15 @@ What this layer loads:
 
 Relevant code:
 
-- [investigation_common.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/investigation_common.py#L49)
-- [investigation_common.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/investigation_common.py#L61)
-- [investigation_common.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/investigation_common.py#L68)
+- [investigation_common.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/investigation_common.py#L49)
+- [investigation_common.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/investigation_common.py#L61)
+- [investigation_common.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/investigation_common.py#L68)
 
 ## 4. For each monthly raster, the ecozone percentile value is computed
 
 The function:
 
-- [ecozone_percentiles()](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/investigation_common.py#L88)
+- [ecozone_percentiles()](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/investigation_common.py#L88)
 
 does the following for each ecozone:
 
@@ -97,7 +97,7 @@ does the following for each ecozone:
 
 The table builder:
 
-- [build_monthly_ecozone_dataframe()](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/investigation_common.py#L108)
+- [build_monthly_ecozone_dataframe()](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/investigation_common.py#L108)
 
 loops over:
 
@@ -123,11 +123,11 @@ For a historical `p99` trajectory plot, this is the point where the ecozone summ
 
 The trajectory script is:
 
-- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/ecozone_monthly_trajectory_investigation.py)
+- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_monthly_trajectory_investigation.py)
 
 It builds the baseline with:
 
-- [baseline_monthly_stats()](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/investigation_common.py#L173)
+- [baseline_monthly_stats()](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/investigation_common.py#L173)
 
 This groups only `classification == "neutral"` rows by:
 
@@ -153,8 +153,8 @@ The trajectory script merges the monthly ecozone table with the neutral baseline
 
 Relevant code:
 
-- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/ecozone_monthly_trajectory_investigation.py#L45)
-- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/ecozone_monthly_trajectory_investigation.py#L49)
+- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_monthly_trajectory_investigation.py#L45)
+- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_monthly_trajectory_investigation.py#L49)
 
 It then filters to:
 
@@ -165,8 +165,8 @@ which means the trajectory plot only shows wet and dry year anomalies for April 
 
 Relevant code:
 
-- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/ecozone_monthly_trajectory_investigation.py#L55)
-- [investigation_common.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/investigation_common.py#L36)
+- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_monthly_trajectory_investigation.py#L55)
+- [investigation_common.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/investigation_common.py#L36)
 
 ## 7. Monthly anomalies are averaged across wet years and across dry years
 
@@ -187,7 +187,7 @@ and computes:
 
 Relevant code:
 
-- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/ecozone_monthly_trajectory_investigation.py#L60)
+- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_monthly_trajectory_investigation.py#L60)
 
 For the historical `p99` NDVI plot, each plotted y-value is therefore:
 
@@ -212,7 +212,7 @@ The figure title is:
 
 Relevant code:
 
-- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/ecozone_monthly_trajectory_investigation.py#L117)
+- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_monthly_trajectory_investigation.py#L117)
 
 Line semantics:
 
@@ -229,8 +229,8 @@ The output filename pattern is:
 
 Relevant code:
 
-- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/ecozone_monthly_trajectory_investigation.py#L126)
-- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/ecozone_monthly_trajectory_investigation.py#L176)
+- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_monthly_trajectory_investigation.py#L126)
+- [ecozone_monthly_trajectory_investigation.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_monthly_trajectory_investigation.py#L176)
 
 ## Mathematical Interpretation
 
@@ -251,7 +251,7 @@ For the specific historical plot in question, the percentile would be `p99` and 
 
 The current code defines:
 
-- [SUMMARY_PERCENTILES = [50, 75]](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/Traits/Ecozone/investigation_common.py#L29)
+- [SUMMARY_PERCENTILES = [50, 75]](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Analysis/SupportingAnalyses/EcozoneInvestigations/investigation_common.py#L29)
 
 So the current repository directly reproduces:
 

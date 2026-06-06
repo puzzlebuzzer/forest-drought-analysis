@@ -115,12 +115,10 @@ Python/
   dashboard_app.py              Streamlit dashboard
   src/                          Shared dashboard and pipeline modules
   Analysis/
-    Climate/                    PRISM and index-based year classification
-    TableFactory/               Dashboard summary table builders and parquet optimization
-    Traits/                     Forest, ecozone, terrain, and slope/aspect analyses
-    Indices/                    Composite and anomaly raster workflows
-    Diagnostics/                Diagnostic/example analyses
-    arcgis/                     Optional ArcGIS layer-package workflow
+    DashboardPipeline/          Scripts that build dashboard-ready tables/context
+    SupportingAnalyses/         Non-dashboard analyses, figures, diagnostics, exports
+  Preprocessing/
+    Traits/                     Shared trait/raster preparation inputs
   Cache/                        Sentinel-2 and Landsat cache builders/auditors
   config/                       Path config and classification tables
   docs/                         Methods, provenance, ontology, and codebase guides
@@ -145,13 +143,14 @@ Key scripts:
 
 - `Cache/build_sentinel_cache.py`
 - `Cache/build_landsat_cache.py`
-- `Analysis/Traits/Forest/prep_forest_community.py`
-- `Analysis/TableFactory/build_dashboard_tables.py`
-- `Analysis/TableFactory/build_dashboard_ecozone_tables.py`
-- `Analysis/TableFactory/build_dashboard_forest_community_tables.py`
-- `Analysis/TableFactory/optimize_dashboard_ecozone_parquet.py`
-- `Analysis/Climate/build_prism_growing_season_precip.py`
-- `Analysis/Climate/classify_index_based_moisture_years.py`
+- `Preprocessing/Traits/ForestCommunity/prep_forest_community.py`
+- `Preprocessing/Traits/Terrain/build_elevation_cache.py`
+- `Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py`
+- `Analysis/DashboardPipeline/TableFactory/build_dashboard_ecozone_tables.py`
+- `Analysis/DashboardPipeline/TableFactory/build_dashboard_forest_community_tables.py`
+- `Analysis/DashboardPipeline/TableFactory/optimize_dashboard_ecozone_parquet.py`
+- `Analysis/DashboardPipeline/Climate/build_prism_growing_season_precip.py`
+- `Analysis/DashboardPipeline/Climate/classify_index_based_moisture_years.py`
 
 ## Documentation
 

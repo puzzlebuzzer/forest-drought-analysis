@@ -72,21 +72,21 @@ Ecozone dashboard viewing:
 From the `Python/` directory:
 
 ```bash
-python Analysis/TableFactory/build_dashboard_tables.py
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py
 ```
 
 Ecozone table prep:
 
 ```bash
-python Analysis/TableFactory/build_dashboard_ecozone_tables.py scene-summary
-python Analysis/TableFactory/build_dashboard_ecozone_tables.py temporal-summary
-python Analysis/TableFactory/build_dashboard_ecozone_tables.py data-dictionary
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_ecozone_tables.py scene-summary
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_ecozone_tables.py temporal-summary
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_ecozone_tables.py data-dictionary
 ```
 
 Streaming CSV-to-Parquet conversion:
 
 ```bash
-python Analysis/TableFactory/convert_dashboard_csv_to_parquet.py --ecozone-only
+python Analysis/DashboardPipeline/TableFactory/convert_dashboard_csv_to_parquet.py --ecozone-only
 ```
 
 This keeps the CSV files in place and writes `.parquet` siblings. The dashboard uses filtered Parquet reads for selected ecozone layers when those Parquet files exist.
@@ -94,7 +94,7 @@ This keeps the CSV files in place and writes `.parquet` siblings. The dashboard 
 Ecozone Parquet optimization bundle:
 
 ```bash
-python Analysis/TableFactory/optimize_dashboard_ecozone_parquet.py
+python Analysis/DashboardPipeline/TableFactory/optimize_dashboard_ecozone_parquet.py
 ```
 
 This reads existing ecozone Parquet siblings, writes slim typed/sorted Parquet files under `optimized_parquet/`, writes moderately partitioned dashboard datasets under `partitioned_parquet/`, and writes `scene_summary_ecozone_manifest.*` / `temporal_summary_ecozone_manifest.*`. The dashboard prefers the partitioned datasets when present.
@@ -102,13 +102,13 @@ This reads existing ecozone Parquet siblings, writes slim typed/sorted Parquet f
 Optional dev limiter:
 
 ```bash
-python Analysis/TableFactory/build_dashboard_tables.py --limit-scenes-per-group 2
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py --limit-scenes-per-group 2
 ```
 
 Optional year window:
 
 ```bash
-python Analysis/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 scene-summary
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 scene-summary
 ```
 
 ## Staged subcommands
@@ -116,18 +116,18 @@ python Analysis/TableFactory/build_dashboard_tables.py --start-year 1990 --end-y
 You can build and test each artifact boundary independently:
 
 ```bash
-python Analysis/TableFactory/build_dashboard_tables.py scene-catalog
-python Analysis/TableFactory/build_dashboard_tables.py scene-summary --limit-scenes-per-group 5
-python Analysis/TableFactory/build_dashboard_tables.py temporal-summary
-python Analysis/TableFactory/build_dashboard_tables.py data-dictionary
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py scene-catalog
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py scene-summary --limit-scenes-per-group 5
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py temporal-summary
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py data-dictionary
 ```
 
 Decade-at-a-time example:
 
 ```bash
-python Analysis/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 scene-catalog
-python Analysis/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 scene-summary
-python Analysis/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 temporal-summary
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 scene-catalog
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 scene-summary
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 temporal-summary
 ```
 
 Notes:

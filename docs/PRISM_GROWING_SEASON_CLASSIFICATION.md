@@ -5,13 +5,13 @@ This workflow builds AOI-level wet / neutral / dry year labels from PRISM monthl
 Script:
 
 ```bash
-python Analysis/Climate/build_prism_growing_season_precip.py
+python Analysis/DashboardPipeline/Climate/build_prism_growing_season_precip.py
 ```
 
 Landsat-period run used for the current project tables:
 
 ```bash
-python Analysis/Climate/build_prism_growing_season_precip.py --start-year 1984 --end-year 2026 --download
+python Analysis/DashboardPipeline/Climate/build_prism_growing_season_precip.py --start-year 1984 --end-year 2026 --download
 ```
 
 ## Data Source

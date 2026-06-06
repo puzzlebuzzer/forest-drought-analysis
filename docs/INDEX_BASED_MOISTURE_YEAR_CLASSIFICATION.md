@@ -7,7 +7,7 @@ It does not read PRISM, USDM, SPEI, drought.gov, or any other external climate d
 Run:
 
 ```bash
-python Analysis/Climate/classify_index_based_moisture_years.py
+python Analysis/DashboardPipeline/Climate/classify_index_based_moisture_years.py
 ```
 
 ## Input Data

@@ -25,7 +25,7 @@ Status: `Mostly covered with validated archive evidence`
 
 Evidence:
 
-- `Analysis/Traits/Ecozone/ecozone_peak_productivity.py`
+- `Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_peak_productivity.py`
 - `Results_cache1/figures/ecozone_ndvi_p95_p99_p100.png`
 - `Results_cache1/figures/ecozone_ecological_space.png`
 
@@ -48,7 +48,7 @@ Validated archive evidence:
 
 Implemented but not evidenced:
 
-- `Analysis/Traits/Ecozone/ecozone_longterm_trend.py`
+- `Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_longterm_trend.py`
 
 Main gap:
 
@@ -74,7 +74,7 @@ Status: `Covered with validated archive evidence`
 
 Evidence:
 
-- `Analysis/Traits/Ecozone/ecozone_seasonal_curves.py`
+- `Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_seasonal_curves.py`
 - `Results_cache1/figures/ecozone_ndvi_seasonal.png`
 - `Results_cache1/figures/ecozone_ndmi_seasonal.png`
 - `Results_cache1/figures/ecozone_evi_seasonal.png`
@@ -90,9 +90,9 @@ Status: `Covered with validated archive evidence`
 
 Evidence:
 
-- `Analysis/Traits/Ecozone/plot_moisture_year_classification.py`
+- `Analysis/SupportingAnalyses/EcozoneInvestigations/plot_moisture_year_classification.py`
 - `Results_cache1/figures/moisture_year_classification.png`
-- `Analysis/Traits/Ecozone/ecozone_drought_response.py`
+- `Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_drought_response.py`
 
 Gap:
 
@@ -134,7 +134,7 @@ Status: `Covered with validated archive evidence`
 
 Evidence:
 
-- `Analysis/Traits/Ecozone/ecozone_moisture_stress.py`
+- `Analysis/SupportingAnalyses/EcozoneInvestigations/ecozone_moisture_stress.py`
 - `Results_cache1/figures/ecozone_moisture_amplitude.png`
 - `Results_cache1/figures/ecozone_moisture_seasons.png`
 
@@ -148,13 +148,13 @@ Status: `Partially covered`
 
 Validated archive evidence:
 
-- `Analysis/Traits/Elevation/ecozone_elevation_gradient.py`
+- `Analysis/SupportingAnalyses/Terrain/ecozone_elevation_gradient.py`
 - `Results_cache1/figures/elevation_ndvi_gradient.png`
 - `Results_cache1/figures/elevation_ndmi_gradient.png`
 
 Implemented but not evidenced:
 
-- `Analysis/Traits/Elevation/ecozone_elevation_gradient_landsat.py`
+- `Analysis/SupportingAnalyses/Terrain/ecozone_elevation_gradient_landsat.py`
 
 Main gap:
 
@@ -168,7 +168,7 @@ Status: `Validated archive evidence exists, but roadmap role is unclear`
 
 Evidence:
 
-- `Analysis/Crosstab/Index/crosstab_aspect_index.py`
+- `Analysis/SupportingAnalyses/SlopeAspect/Crosstab/Index/crosstab_aspect_index.py`
 - `Results_cache1/figures/aspect_index_summary.png`
 - `Results_cache1/figures/north_ndvi_aspect_timeseries.png`
 - `Results_cache1/figures/north_ndmi_aspect_timeseries.png`
@@ -187,9 +187,9 @@ Status: `Implemented but not evidenced`
 
 Scripts present:
 
-- `Analysis/Crosstab/InterTraits/crosstab_aspect_ftype.py`
-- `Analysis/Crosstab/InterTraits/crosstab_aspect_fgroup.py`
-- `Analysis/Crosstab/InterTraits/crosstab_ecozone_ftype.py`
+- `Analysis/SupportingAnalyses/SlopeAspect/Crosstab/InterTraits/crosstab_aspect_ftype.py`
+- `Analysis/SupportingAnalyses/SlopeAspect/Crosstab/InterTraits/crosstab_aspect_fgroup.py`
+- `Analysis/SupportingAnalyses/SlopeAspect/Crosstab/InterTraits/crosstab_ecozone_ftype.py`
 
 Gap:
 
