@@ -175,8 +175,8 @@ The project can be reproduced or handed off at three practical levels:
 | Level | What is included | Estimated storage | Estimated RAM |
 | --- | --- | ---: | ---: |
 | Dashboard-only use | App code, config, Python environment, and precomputed dashboard summary tables | 2-10 GB depending on packaging and table layout; local `SummaryTables/` is about 8.5 GB | 8 GB minimum, 16 GB recommended |
-| Dashboard table rebuild from existing caches | Dashboard-only files plus AOI source data, prepared trait rasters, PRISM rasters/classifications, Sentinel-2/Landsat index caches, and table-factory outputs | 50-150+ GB depending on cache completeness | 16 GB minimum, 32 GB recommended for smoother Parquet/table builds |
-| Full analytical workspace / raw-to-dashboard reproducibility | Everything above plus generated rasters, exploratory analysis outputs, figures, archived outputs, and intermediate products | 150-300+ GB; this local workspace currently has about 126 GB in `Results/` plus about 8.5 GB in `SummaryTables/` | 32 GB recommended for long rebuilds and large raster/table operations |
+| Dashboard table rebuild from existing caches | Dashboard-only files plus AOI source data, prepared trait rasters, PRISM rasters/classifications, Sentinel-2/Landsat index caches, and table-factory outputs | 500-700+ GB depending on cache completeness; local AOI caches are about 455 GB before `Results/` and `SummaryTables/` | 16 GB minimum, 32 GB recommended for smoother Parquet/table builds |
+| Full analytical workspace / raw-to-dashboard reproducibility | Everything above plus generated rasters, exploratory analysis outputs, figures, archived outputs, and intermediate products | 600 GB-1 TB+ depending on retained intermediates; this local workspace has about 455 GB in `AOI/`, 126 GB in `Results/`, and 8.5 GB in `SummaryTables/` | 32 GB recommended for long rebuilds and large raster/table operations |
 
 Dashboard-only use needs the app code and precomputed summary tables.
 Full reproducibility from raw/cached inputs requires the AOI source data, satellite caches, PRISM rasters, generated rasters, and table factory outputs.
