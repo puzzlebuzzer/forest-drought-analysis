@@ -1,8 +1,10 @@
 # Appalachian Ecozone-Vegetation Analysis
 
-This project analyzes Appalachian forest canopy dynamics across ecozone and forest-community gradients using satellite vegetation indices, terrain/ecological trait layers, and PRISM precipitation context.
+This project analyzes Appalachian forest canopy dynamics across ecozone and forest-community gradients using satellite vegetation indices, terrain/ecological trait layers, PRISM precipitation context, cloudcover threshold, spatial aggregation percentile, temporal aggregation interval and its aggregation percentile, and adjacent growing season curve comparison.
 
 The main user-facing product is a Streamlit dashboard for comparing vegetation-index behavior by AOI, sensor, index, year, thermal ecozone, forest-community group, and forest community.
+
+Forest-community terminology is canonical for the fine ecological categories; thermal ecozone is used for the broader cool/intermediate/hot tier.
 
 ## Study Areas
 
@@ -11,7 +13,7 @@ The project uses two Appalachian areas of interest:
 - **North AOI:** George Washington / Jefferson National Forest region in Virginia
 - **South AOI:** Smoky Mountains / Nantahala-region AOI
 
-The two AOIs are processed independently because their forest-community source datasets and category systems are not fully interchangeable.
+The two AOIs are processed independently because of the distance between them and because their forest-community source datasets and category systems are not fully interchangeable.
 
 ## Core Questions
 
@@ -28,8 +30,9 @@ This repository supports analysis of:
 
 ## Data Sources
 
-Primary data products:
+Primary input data products:
 
+- **Project AOI footprints** from `AOI/TNC_AOI_LayerPkg/TNC_AOIs.shp`
 - **Sentinel-2 Level-2A** from Microsoft Planetary Computer STAC
 - **Landsat Collection 2 Level 2** from Microsoft Planetary Computer STAC
 - **PRISM monthly precipitation** for precipitation context and wet/dry year classification
@@ -134,10 +137,11 @@ High-level rebuild path:
 
 1. Acquire/cache Sentinel-2 and Landsat index rasters.
 2. Prepare AOI-aligned terrain, thermal ecozone, and forest-community trait rasters.
-3. Build scene-level and temporal dashboard summary tables.
-4. Build thermal-ecozone, forest-community, and forest-community-group summaries.
-5. Optimize summary tables into Parquet and partitioned Parquet.
-6. Run the dashboard against `SummaryTables/dashboard_data/`.
+3. Download or ingest PRISM monthly precipitation and build AOI-level precipitation classifications.
+4. Build scene-level and temporal dashboard summary tables.
+5. Build thermal-ecozone, forest-community, and forest-community-group summaries.
+6. Optimize summary tables into Parquet and partitioned Parquet.
+7. Run the dashboard against `SummaryTables/dashboard_data/`.
 
 Key scripts:
 
@@ -166,21 +170,18 @@ Useful project documentation:
 
 ## Reproducibility Notes
 
-The dashboard package is much smaller than the full rebuild workspace.
+The project can be reproduced or handed off at three practical levels:
 
-- Dashboard-only use needs the app code and precomputed summary tables.
-- Full reproducibility from raw/cached inputs requires the AOI source data, satellite caches, PRISM rasters, generated rasters, and table factory outputs.
-- The full local workspace can require hundreds of GB.
+| Level | What is included | Estimated storage | Estimated RAM |
+| --- | --- | ---: | ---: |
+| Dashboard-only use | App code, config, Python environment, and precomputed dashboard summary tables | 2-10 GB depending on packaging and table layout; local `SummaryTables/` is about 8.5 GB | 8 GB minimum, 16 GB recommended |
+| Dashboard table rebuild from existing caches | Dashboard-only files plus AOI source data, prepared trait rasters, PRISM rasters/classifications, Sentinel-2/Landsat index caches, and table-factory outputs | 50-150+ GB depending on cache completeness | 16 GB minimum, 32 GB recommended for smoother Parquet/table builds |
+| Full analytical workspace / raw-to-dashboard reproducibility | Everything above plus generated rasters, exploratory analysis outputs, figures, archived outputs, and intermediate products | 150-300+ GB; this local workspace currently has about 126 GB in `Results/` plus about 8.5 GB in `SummaryTables/` | 32 GB recommended for long rebuilds and large raster/table operations |
+
+Dashboard-only use needs the app code and precomputed summary tables.
+Full reproducibility from raw/cached inputs requires the AOI source data, satellite caches, PRISM rasters, generated rasters, and table factory outputs.
 
 Generated outputs, rasters, cache directories, deliverable zips, local paths, and virtual environments are intentionally excluded or ignored in git.
-
-## Current Caveats
-
-- Sentinel-2 and Landsat processing histories are documented separately because historical trusted cache behavior and current rebuild code are not identical.
-- Landsat availability may be incomplete relative to the intended 1984-2026 analytical period unless the local cache has been fully rebuilt.
-- PRISM wet/dry classification is an external precipitation context layer, not a direct canopy-response measurement.
-- Index-based moisture classification is internal to the satellite record and should not be interpreted as independent meteorological drought classification.
-- Forest-community terminology is canonical for the fine ecological categories; thermal ecozone is used for the broad cool/intermediate/hot tier.
 
 ## Tests
 
