@@ -11,7 +11,7 @@ from src.dashboard_schema import ComparisonConfig
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SAMPLE_DIR = PROJECT_ROOT / "Results" / "tables" / "dashboard_samples"
+SAMPLE_DIR = PROJECT_ROOT / "SummaryTables" / "dashboard_samples"
 
 
 class DashboardLoaderTests(unittest.TestCase):

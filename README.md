@@ -75,7 +75,7 @@ Python 3.12 is recommended because that is the tested development environment. P
 The dashboard does not read raw satellite rasters at runtime. It uses precomputed summary tables in:
 
 ```text
-Results/tables/dashboard_data/
+SummaryTables/dashboard_data/
 ```
 
 Runtime data products include:
@@ -95,7 +95,7 @@ A dashboard-only user package can be built from:
 - `src/`
 - `config/`
 - `requirements-dashboard.txt`
-- `Results/tables/dashboard_data/`
+- `SummaryTables/dashboard_data/`
 
 Dashboard-only users do **not** need raw Sentinel-2, Landsat, PRISM, DEM, AOI raster caches, or table-rebuild scripts.
 
@@ -125,7 +125,8 @@ Python/
   config/                       Path config and classification tables
   docs/                         Methods, provenance, ontology, and codebase guides
   tests/                        Dashboard loader tests
-  Results/                      Generated outputs; large and mostly not git-tracked
+  SummaryTables/                Generated dashboard summary tables; ignored by git
+  Results/                      Final/generated analysis outputs; large and mostly not git-tracked
   Deliverables/                 Local handoff packages; ignored by git
 ```
 
@@ -138,7 +139,7 @@ High-level rebuild path:
 3. Build scene-level and temporal dashboard summary tables.
 4. Build thermal-ecozone, forest-community, and forest-community-group summaries.
 5. Optimize summary tables into Parquet and partitioned Parquet.
-6. Run the dashboard against `Results/tables/dashboard_data/`.
+6. Run the dashboard against `SummaryTables/dashboard_data/`.
 
 Key scripts:
 

@@ -50,7 +50,7 @@ def _existing_table(path: Path) -> Path | None:
 
 
 def default_source_table() -> SourceSelection:
-    dashboard_dir = project_path("results_tables_dir") / "dashboard_data"
+    dashboard_dir = project_path("summary_tables_dir") / "dashboard_data"
     candidates = [
         dashboard_dir / "temporal_summary",
         dashboard_dir / "growing_season_summary",

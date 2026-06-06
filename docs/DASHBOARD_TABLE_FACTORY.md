@@ -38,7 +38,7 @@ These are preserved as metadata fields, not exposed as user-facing toggles.
 
 Default output directory:
 
-- `Results/tables/dashboard_data/`
+- `SummaryTables/dashboard_data/`
 
 Products:
 

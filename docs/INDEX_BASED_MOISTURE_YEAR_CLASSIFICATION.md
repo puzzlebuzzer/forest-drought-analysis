@@ -15,7 +15,7 @@ python Analysis/Climate/classify_index_based_moisture_years.py
 The default input is the dashboard-ready AOI-level temporal summary table:
 
 ```text
-Results/tables/dashboard_data/temporal_summary.parquet
+SummaryTables/dashboard_data/temporal_summary.parquet
 ```
 
 If that table is unavailable, the script can be pointed at another dashboard-ready CSV/parquet table with `--input-table`.

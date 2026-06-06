@@ -44,6 +44,7 @@ paths:
   results_figures_dir: "Results/figures"
   results_rasters_dir: "Results/rasters"
   results_tables_dir:  "Results/tables"
+  summary_tables_dir:  "SummaryTables"
 
   results_figures_landsat_dir: "Results/figures/landsat"
   results_tables_landsat_dir:  "Results/tables/landsat"

@@ -14,7 +14,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Export static dashboard figures from precomputed CSV summaries.")
     parser.add_argument(
         "--data-dir",
-        default="Results/tables/dashboard_data",
+        default="SummaryTables/dashboard_data",
         help="Directory containing scene_summary.csv and temporal_summary.csv",
     )
     parser.add_argument("--figure-type", choices=["timeseries", "growing-season"], required=True)

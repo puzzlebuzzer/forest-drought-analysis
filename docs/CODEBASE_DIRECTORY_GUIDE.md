@@ -76,8 +76,8 @@ A non-programmer dashboard package generally needs only:
 | `Python/dashboard_app.py` | App entry point. |
 | `Python/src/` | Runtime modules used by dashboard. |
 | `Python/config/prism_growing_season_year_classes.csv` | PRISM year-band/classification table. |
-| `Python/Results/tables/dashboard_data/partitioned_parquet/` | Main dashboard-ready summary data. |
-| `Python/Results/tables/dashboard_data/*_manifest.csv` and `*_manifest.parquet` | Filter/year-range metadata for dashboard. |
+| `Python/SummaryTables/dashboard_data/partitioned_parquet/` | Main dashboard-ready summary data. |
+| `Python/SummaryTables/dashboard_data/*_manifest.csv` and `*_manifest.parquet` | Filter/year-range metadata for dashboard. |
 | `Python/requirements-dashboard.txt` | Install dependencies. |
 
 Dashboard-only users do not need raw rasters, Planetary Computer access, AOI caches, or table factory scripts unless they are rebuilding data.
@@ -86,11 +86,11 @@ Dashboard-only users do not need raw rasters, Planetary Computer access, AOI cac
 
 | Path | Role | Cleanup guidance |
 | --- | --- | --- |
-| `Python/Results/tables/dashboard_data/` | Current generated dashboard tables/manifests/parquet | Keep for dashboard use; reproducible from source caches but expensive to rebuild. |
-| `Python/Results/tables/dashboard_data/partitioned_parquet/` | Preferred dashboard data store | Keep for handoff/runtime. |
-| `Python/Results/tables/dashboard_data/optimized_parquet/` | Optimized intermediate parquet outputs | Useful but less central than `partitioned_parquet/`. |
-| `Python/Results/tables/dashboard_data/archive/` | Previous generated table versions | Archive/delete only after confirming no rollback needed. |
-| `Python/Results/tables/dashboard_data_test_*` | Test/dev generated table outputs | Safe archive/delete candidates. |
+| `Python/SummaryTables/dashboard_data/` | Current generated dashboard tables/manifests/parquet | Keep for dashboard use; reproducible from source caches but expensive to rebuild. |
+| `Python/SummaryTables/dashboard_data/partitioned_parquet/` | Preferred dashboard data store | Keep for handoff/runtime. |
+| `Python/SummaryTables/dashboard_data/optimized_parquet/` | Optimized intermediate parquet outputs | Useful but less central than `partitioned_parquet/`. |
+| `Python/SummaryTables/dashboard_data/archive/` | Previous generated table versions | Archive/delete only after confirming no rollback needed. |
+| `Python/SummaryTables/dashboard_data_test_*` | Test/dev generated table outputs | Safe archive/delete candidates. |
 | `Python/Results/rasters/` | Generated/intermediate rasters, including PRISM rasters | Needed for rebuild/provenance, not dashboard-only. |
 | `Python/Results/figures/` | Generated figures and exports | Keep selected deliverables; old exploratory figures can be archived. |
 | `Python/Results/0-CacheBaseData/`, `1_Foundation/`, `2_Anomaly_Onset/`, etc. | Organized analysis deliverables | Report/deliverable outputs, not dashboard runtime. |

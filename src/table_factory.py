@@ -56,7 +56,7 @@ class SceneRecord:
 
 
 def canonical_dashboard_tables_dir(project_root: Path) -> Path:
-    return project_root / "Results" / "tables" / "dashboard_data"
+    return project_root / "SummaryTables" / "dashboard_data"
 
 
 def _manifest_records(sensor: str, aoi: str, index_name: str) -> list[SceneRecord]:

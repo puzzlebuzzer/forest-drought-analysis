@@ -100,7 +100,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Convert dashboard CSV tables to Parquet without loading them fully into memory.")
     parser.add_argument(
         "--data-dir",
-        default=str(PROJECT_ROOT / "Results" / "tables" / "dashboard_data"),
+        default=str(PROJECT_ROOT / "SummaryTables" / "dashboard_data"),
         help="Directory containing dashboard CSV tables.",
     )
     parser.add_argument(

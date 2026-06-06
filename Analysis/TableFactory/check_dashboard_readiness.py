@@ -90,12 +90,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run dashboard data and plotting smoke checks.")
     parser.add_argument(
         "--data-dir",
-        default="Results/tables/dashboard_data",
+        default="SummaryTables/dashboard_data",
         help="Dashboard table directory.",
     )
     parser.add_argument(
         "--output",
-        default="Results/tables/dashboard_data/dashboard_readiness_report.json",
+        default="SummaryTables/dashboard_data/dashboard_readiness_report.json",
         help="JSON report path.",
     )
     return parser.parse_args()

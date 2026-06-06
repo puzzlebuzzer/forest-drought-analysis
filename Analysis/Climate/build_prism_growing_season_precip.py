@@ -73,7 +73,7 @@ def _default_end_year() -> int:
 
 
 def _infer_year_range() -> tuple[int, int]:
-    dashboard_dir = project_path("results_tables_dir") / "dashboard_data"
+    dashboard_dir = project_path("summary_tables_dir") / "dashboard_data"
     scene_catalog_parquet = dashboard_dir / "scene_catalog.parquet"
     scene_catalog_csv = dashboard_dir / "scene_catalog.csv"
     years: list[int] = []

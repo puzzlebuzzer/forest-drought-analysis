@@ -239,7 +239,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build optimized dashboard ecozone and forest-community Parquet products.")
     parser.add_argument(
         "--data-dir",
-        default=str(PROJECT_ROOT / "Results" / "tables" / "dashboard_data"),
+        default=str(PROJECT_ROOT / "SummaryTables" / "dashboard_data"),
         help="Directory containing dashboard ecozone tables.",
     )
     parser.add_argument("--stem", action="append", choices=SEGMENT_STEMS, help="Specific segment table stem to optimize.")

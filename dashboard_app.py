@@ -24,7 +24,7 @@ from src.dashboard_figures import (
 )
 from src.dashboard_schema import ComparisonConfig
 
-DEFAULT_DATA_DIR = Path(__file__).resolve().parent / "Results" / "tables" / "dashboard_data"
+DEFAULT_DATA_DIR = Path(__file__).resolve().parent / "SummaryTables" / "dashboard_data"
 ENABLE_GROWING_SEASON_OVERLAY = False
 DEFAULT_SPATIAL_PERCENTILE = "p99"
 DEFAULT_TEMPORAL_AGG = "half_month"

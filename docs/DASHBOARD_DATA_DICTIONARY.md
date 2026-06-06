@@ -66,6 +66,6 @@ If `growing_day` is missing, the dashboard derives it from `date` relative to Ma
 
 Runnable example CSVs live in:
 
-- `Results/tables/dashboard_samples/`
+- `SummaryTables/dashboard_samples/`
 
 They are intentionally small and are meant for app testing, UI development, and export-script validation.
