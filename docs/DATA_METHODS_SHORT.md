@@ -46,7 +46,7 @@ Trait rasters are aligned to the analysis grids and used for stratification:
 
 ## Satellite Cache Baselines
 
-The trusted Sentinel baseline was built from the historical `_3_4` cache lineage. Its key behavior:
+The accepted Sentinel-2 cache used for dashboard summaries has these key characteristics:
 
 - Sentinel-2 L2A source scenes
 - scene-level cloud filter: `eo:cloud_cover < 40`
@@ -57,13 +57,13 @@ The trusted Sentinel baseline was built from the historical `_3_4` cache lineage
 - numeric screen requiring needed raw bands in `(0, 10000)`
 - reflectance scaling by dividing raw values by `10000`
 
-The current Sentinel rebuild code is broader than the historical trusted cache:
+The current Sentinel rebuild code is broader than the accepted cache:
 
 - it applies an AOI polygon mask
 - it excludes cloud/snow SCL classes
-- it retains some non-cloud classes that the historical `SCL == 4` workflow did not retain
+- it retains some non-cloud classes that the accepted `SCL == 4` workflow did not retain
 
-For that reason, current Sentinel rebuild code should not be treated as an exact description of the historical trusted Sentinel cache.
+For that reason, current Sentinel rebuild code should not be treated as an exact description of the accepted Sentinel cache used for the dashboard summaries.
 
 The current Landsat builder uses:
 
@@ -75,7 +75,7 @@ The current Landsat builder uses:
 - QA exclusion of dilated cloud, cirrus, cloud, and snow
 - retention of cloud shadow and water in the current builder
 
-Dashboard table metadata contains fixed mask identifiers. Interpret Landsat mask descriptions with the provenance note above if comparing current builder code to historical/generated cache products.
+Dashboard table metadata contains fixed mask identifiers. Interpret Landsat mask descriptions with the provenance note above if comparing current builder code to generated cache products.
 
 ## Temporal Coverage On Disk
 
@@ -129,9 +129,9 @@ The PRISM layer is an external precipitation context. It is not derived from can
 
 ## Main Caveats
 
-- The historical Sentinel baseline uses a vegetation-only mask and a bounding-box grid rather than a strict AOI polygon footprint.
+- The accepted Sentinel cache uses a vegetation-only mask and a bounding-box grid rather than a strict AOI polygon footprint.
 - Landsat local cache coverage is incomplete relative to the intended full Landsat-era period.
-- Current rebuild code does not exactly match the historical trusted Sentinel cache behavior.
+- Current rebuild code does not exactly match the accepted Sentinel cache behavior used for dashboard summaries.
 - Forest-community terminology is canonical for detailed vegetation classes; thermal ecozone refers to the broader cool/intermediate/hot tier.
 - A satellite-index-only canopy response classification was used as a sanity check, not as dashboard infrastructure or an independent moisture dataset.
 
