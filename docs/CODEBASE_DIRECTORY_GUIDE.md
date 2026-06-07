@@ -82,11 +82,11 @@ Dashboard-only users do not need raw rasters, Planetary Computer access, AOI cac
 | `SummaryTables/dashboard_data/` | Current generated dashboard tables/manifests/parquet | Keep for dashboard use; reproducible from source caches but expensive to rebuild. |
 | `SummaryTables/dashboard_data/partitioned_parquet/` | Preferred dashboard data store | Keep for handoff/runtime. |
 | `SummaryTables/dashboard_data/optimized_parquet/` | Optimized intermediate parquet outputs | Useful but less central than `partitioned_parquet/`. |
-| `SummaryTables/dashboard_data/archive/` | Previous generated table versions, if present | Optional rollback material; not needed for dashboard-only packages. |
-| `SummaryTables/dashboard_data_test_*` | Test/dev generated table outputs, if present | Not needed for public release or dashboard-only packages. |
+| `SummaryTables/dashboard_data/archive/` | Previous generated table versions | Optional rollback material; not needed for dashboard-only packages. |
+| `SummaryTables/dashboard_data_test_*` | Test/dev generated table outputs | Not needed for public release or dashboard-only packages. |
 | `Results/rasters/` | Generated/intermediate rasters, including PRISM rasters | Needed for rebuild/provenance, not dashboard-only. |
 | `Results/figures/` | Generated figures and exports | Keep selected report/deliverable figures; not required for dashboard runtime. |
-| `Results/0-CacheBaseData/`, `1_Foundation/`, `2_Anomaly_Onset/`, etc. | Organized analysis deliverables, if present | Report/deliverable outputs, not dashboard runtime. |
+| `Results/0-CacheBaseData/`, `1_Foundation/`, `2_Anomaly_Onset/`, etc. | Organized analysis deliverables | Report/deliverable outputs, not dashboard runtime. |
 
 ## Exploratory Or Legacy Code
 
@@ -100,10 +100,10 @@ These directories contain useful analysis history but are not currently part of 
 | `Analysis/SupportingAnalyses/CompositesAndAnomalies/` | Annual/monthly composites and anomaly rasters. Useful for map products, not dashboard table runtime. |
 | `Analysis/SupportingAnalyses/Diagnostics/` | Diagnostic/demo products. Not runtime. |
 | `Analysis/SupportingAnalyses/ArcGISExports/` | ArcGIS Pro layer-package workflow. Optional delivery path, not dashboard runtime. |
-| `Charts/` | Legacy/static chart image assets, if present. Active scripts were moved into dashboard or supporting-analysis folders. |
-| `docs/Archived/` | Historical documentation archive, if present. Public docs are the curated files directly under `docs/`. |
-| `Archived/LegacyTraits/` | Older duplicate trait scripts, if present. Current trait prep lives under `Preprocessing/Traits/`. |
-| `Archived/` | Archived Python analyses, if present. |
+| `Charts/` | Legacy/static chart image assets. Active scripts were moved into dashboard or supporting-analysis folders. |
+| `docs/Archived/` | Historical documentation archive. Public docs are the curated files directly under `docs/`. |
+| `Archived/LegacyTraits/` | Older duplicate trait scripts. Current trait prep lives under `Preprocessing/Traits/`. |
+| `Archived/` | Archived Python analyses. |
 | `ScriptSnapshots/` | Historical snapshots. |
 
 ## Large Data And Reproducibility Notes
