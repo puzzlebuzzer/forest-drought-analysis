@@ -24,7 +24,7 @@ Most dashboard time-series points are built through this chain:
 
 The dashboard's z-score exclusion filters can remove displayed points, but they do not recalculate the stored summary values.
 
-Current dashboard selection model: each layer has base settings such as AOI, sensor, index, cloud threshold, spatial percentile, temporal aggregation, and temporal percentile. Spatial subsets are selected below the layer in the layer-list checklist. The checklist can show the layer's `Overall Combined` series, thermal ecozones, forest-community groups, group-level combined lines, and individual forest communities. The older separate Scope dropdown has been collapsed into those layer checklist selections. Internally, the summary tables still store an `analysis_scope` field such as `overall`, `ecozone`, `forest_ecozone_group`, or `forest_community`.
+Current dashboard selection model: each layer has base settings such as AOI, sensor, index, cloud threshold, spatial percentile, temporal aggregation, and temporal percentile. Spatial subsets are selected below the layer in the layer-list checklist. The checklist can show the layer's `Overall Combined` series, thermal ecozones, forest-community groups, group-level `Combined` lines, and individual forest communities. The older separate Scope dropdown has been collapsed into those layer checklist selections. Internally, the summary tables still store an `analysis_scope` field such as `overall`, `ecozone`, `forest_ecozone_group`, or `forest_community`.
 
 ## Example 1: Landsat NDVI, Cove Forest Group
 
@@ -38,8 +38,8 @@ Dashboard hover value:
 | Sensor | `ls` |
 | AOI | `north` |
 | Index | `ndvi` |
-| Layer checklist selection | Cove forest group, combined |
-| Underlying table scope | forest-community group |
+| Layer checklist selection | Cove forest Combined |
+| Underlying table scope | `forest_ecozone_group` |
 | Temporal aggregation | `half_month` |
 | Spatial percentile | `p99` |
 | Temporal percentile | `p99` |
@@ -67,7 +67,7 @@ NDVI = (NIR - Red) / (NIR + Red)
 
 The Landsat bands are reprojected to the project Landsat grid in `EPSG:32617` at 30 m resolution. Pixels outside the AOI polygon are set to `NaN`. The cache masks invalid reflectance plus dilated cloud, cirrus, cloud, and snow before writing the NDVI GeoTIFF. The Landsat mask metadata is documented in `DATA_METHODS_SHORT.md` and `DATA_PROVENANCE_AND_CACHE_CHARACTERISTICS.md`.
 
-For forest-community-group summaries, the TNC forest-community raster is aligned to the Landsat grid with nearest-neighbor resampling. "Cove forest, combined" means all detailed forest communities assigned to the Cove forest group are pooled before the statistic is calculated.
+For forest-community-group summaries, the TNC forest-community raster is aligned to the Landsat grid with nearest-neighbor resampling. `Cove forest Combined` means all detailed forest communities assigned to the Cove forest group are pooled before the statistic is calculated.
 
 For each qualifying Landsat scene, the table factory reads the cached NDVI raster, keeps finite pixels in the Cove forest group, and calculates the spatial p99 NDVI. That produces one scene-level p99 value per scene.
 
@@ -109,7 +109,7 @@ Dashboard hover value:
 | AOI | `south` |
 | Index | `ndmi` |
 | Layer checklist selection | Overall Combined |
-| Underlying table scope | overall |
+| Underlying table scope | `overall` |
 | Temporal aggregation | `month` |
 | Spatial percentile | `p75` |
 | Temporal percentile | `p95` |
@@ -189,7 +189,7 @@ The two values differ in nearly every dashboard setting:
 | Sensor | Landsat | Sentinel-2 |
 | AOI | north | south |
 | Index | NDVI | NDMI |
-| Spatial scope | Cove forest group, combined | whole AOI |
+| Spatial scope | Cove forest Combined | whole AOI |
 | Temporal bin | half-month | month |
 | Spatial statistic | p99 | p75 |
 | Temporal statistic | p99 | p95 |
