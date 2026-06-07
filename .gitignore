@@ -99,6 +99,7 @@ Deliverables/
 SummaryTables/
 Archived/LegacyTraits/
 docs/Archived/
+docs/valueTrace*.txt
 
 # ── Large source data ─────────────────────────────────────────
 *.zip
