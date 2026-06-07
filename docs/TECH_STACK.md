@@ -5,7 +5,7 @@ This document summarizes the technology stack for the Appalachian Ecozone-Vegeta
 ## Product Components
 
 - Streamlit dashboard application
-- Plotly interactive figures and PNG export support
+- Plotly interactive figures with CSV and PNG export support
 - Precomputed dashboard summary tables
 - Sentinel-2 and Landsat raster cache builders
 - PRISM precipitation classification workflow
@@ -64,7 +64,7 @@ Runtime/dashboard formats:
 - Parquet
 - CSV manifests
 - JSON/YAML configuration
-- PNG dashboard exports
+- CSV and PNG dashboard exports
 - HTML Plotly exports where enabled
 
 Rebuild/provenance formats:
