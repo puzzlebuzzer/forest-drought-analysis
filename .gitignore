@@ -51,6 +51,7 @@ __pycache__/
 *.pyc
 *.pyo
 .Python
+*.tmp.*
 .env
 .venv
 env/
@@ -70,7 +71,6 @@ config/paths.yaml
 !Results_cache1/figures/*.png
 !Results_cache1/figures/landsat/*.png
 !docs/*.png
-!Charts/*.png
 
 *.jpg
 *.jpeg
@@ -80,6 +80,7 @@ config/paths.yaml
 Results/figures/
 Results/rasters/
 Results/tables/
+Charts/
 
 # ── OS / editor ───────────────────────────────────────────────
 .DS_Store

@@ -109,8 +109,8 @@ These directories contain useful analysis history but are not currently part of 
 | `Python/Analysis/SupportingAnalyses/CompositesAndAnomalies/` | Annual/monthly composites and anomaly rasters. Useful for map products, not dashboard table runtime. |
 | `Python/Analysis/SupportingAnalyses/Diagnostics/` | Diagnostic/demo products. Not runtime. |
 | `Python/Analysis/SupportingAnalyses/ArcGISExports/` | ArcGIS Pro layer-package workflow. Optional delivery path, not dashboard runtime. |
-| `Python/Charts/` | Static chart image assets. Active scripts were moved into dashboard or supporting-analysis folders. |
-| `Python/Archived/LegacyTraits/` | Older duplicate trait scripts retained for historical reference. |
+| `Python/Charts/` | Local/legacy static chart image assets. Ignored by git; active scripts were moved into dashboard or supporting-analysis folders. |
+| `Python/Archived/LegacyTraits/` | Local-only older duplicate trait scripts retained for historical reference. Ignored by git; current trait prep lives under `Python/Preprocessing/Traits/`. |
 | `Python/Archived/` | Archived Python analyses. |
 | `Python/ScriptSnapshots/` | Historical snapshots. |
 
@@ -122,12 +122,6 @@ These directories contain useful analysis history but are not currently part of 
 - The dashboard does not use QGIS or DuckDB currently.
 - ArcGIS Pro appears only in optional layer-package workflows under `Python/Analysis/SupportingAnalyses/ArcGISExports/`.
 
-## Known Current Housekeeping Flags
+## Release Hygiene
 
-At the time this guide was created, the nested `Python/` git repo had unrelated dirty/generated files. Important examples:
-
-- `Python/src/sentinel.py` and `Python/src/ecozone_scenelevel.py` were untracked but referenced by active or semi-active code.
-- Several generated result files were untracked.
-- Several old figure files were marked deleted.
-
-Before a formal release, review `git status` and commit active source files separately from generated outputs.
+Before a formal release, review `git status` from the `Python/` directory and keep active source/docs separate from generated outputs. Generated dashboard tables, figures, rasters, deliverable packages, local Streamlit settings, local legacy trait archives, and chart image outputs are intentionally ignored by git.
