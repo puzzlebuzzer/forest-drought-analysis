@@ -127,7 +127,7 @@ The PRISM workflow is intended to replace or supplement that method because it i
 
 - Calendar-year precipitation is broader than the team-defined growing season and can include winter/spring/fall moisture effects that may not directly map to canopy growing-season response.
 - AOI mean precipitation is an area summary; it does not capture within-AOI topographic gradients unless analyzed separately.
-- Rank-based top/bottom 20% labels depend on the selected year range.
+- Rank-based top/bottom 20% labels depend on the classification period used when the PRISM table is generated, such as the current `1984-2026` script run. Dashboard year filtering does not recalculate the PRISM moisture-year labels.
 - Dashboard color bands are anomaly/z-score context bands, while the table's wet/neutral/dry class is rank based.
 - PRISM monthly products and availability vary by date; recent years may be provisional or incomplete.
 - The script uses `geopandas` to read AOI polygons when available. If `geopandas` is unavailable, it falls back to the GDAL `ogr2ogr` command.
