@@ -16,7 +16,7 @@ This document separates:
 
 ## Scope And Trust Boundary
 
-The authoritative cache baseline is `_3_4`, as configured in [project_paths.yaml](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/config/project_paths.yaml) and described in [PROJECT_OVERVIEW.md](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/docs/PROJECT_OVERVIEW.md).
+The authoritative cache baseline is `_3_4`, as configured in [project_paths.yaml](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/config/project_paths.yaml). Historical project-state notes were archived locally under `docs/Archived/`.
 
 Active cache branches:
 
