@@ -98,8 +98,6 @@ The large storage tiers are driven mainly by AOI satellite caches, generated ras
 - WSL/Linux shell for development
 - ArcGIS Pro for optional layer-package workflows
 
-The dashboard does not currently use DuckDB or QGIS as runtime dependencies.
-
 ## Scientific Vocabulary
 
 - AOI: north and south Appalachian study areas
