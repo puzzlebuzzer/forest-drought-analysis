@@ -14,7 +14,7 @@ This guide maps the public repository and separates active dashboard/data-pipeli
 | `Preprocessing/Traits/ForestCommunity/` | Forest community raster preparation | Active shared preprocessing. |
 | `Preprocessing/Traits/Terrain/` | DEM, slope/aspect, and terrain trait preparation | Active shared preprocessing. |
 | `config/` | Path and classification config files | Active configuration; local paths may need editing on other machines. |
-| `docs/` | Curated project and pipeline documentation | Active documentation. Local historical notes may be retained under ignored `docs/Archived/`. |
+| `docs/` | Curated project and pipeline documentation | Active documentation. Historical notes are not part of the public documentation set. |
 | `tests/` | Dashboard loader/figure tests | Active validation. |
 | `requirements-dashboard.txt` | Dashboard Python dependencies | Active handoff/install file. |
 
@@ -27,7 +27,7 @@ This guide maps the public repository and separates active dashboard/data-pipeli
 | `cli.py` | Shared CLI argument helpers. |
 | `labels.py` | Label dictionaries and small display-label corrections. |
 | `landsat.py` | Landsat cache loading and aligned trait raster helpers. |
-| `sentinel.py` | Sentinel cache loading and aligned trait raster helpers. Important for ecozone table rebuilds. |
+| `sentinel.py` | Sentinel cache loading and aligned trait raster helpers. Important for thermal-ecozone table rebuilds. |
 | `forest_community.py` | Forest community inventory/raster loading and Landsat/Sentinel alignment helpers. |
 | `table_factory.py` | Base scene catalog, scene summaries, temporal summaries. |
 | `table_factory_ecozone.py` | Thermal-ecozone scene/temporal summary builders. |
@@ -35,7 +35,7 @@ This guide maps the public repository and separates active dashboard/data-pipeli
 | `dashboard_schema.py` | Canonical dashboard schema and config dataclass. |
 | `dashboard_data.py` | Dashboard table loading, filtering, parquet/manifest handling. |
 | `dashboard_figures.py` | Plotly figure construction, PRISM year bands, exports. |
-| `ecozone_scenelevel.py` | Shared scene-level ecozone analysis helper for older/diagnostic scripts. |
+| `ecozone_scenelevel.py` | Older scene-level thermal-ecozone analysis helper. The active table factory still reuses its shared thermal-ecozone constants. |
 
 ## Active Data Rebuild Flow
 
@@ -82,11 +82,11 @@ Dashboard-only users do not need raw rasters, Planetary Computer access, AOI cac
 | `SummaryTables/dashboard_data/` | Current generated dashboard tables/manifests/parquet | Keep for dashboard use; reproducible from source caches but expensive to rebuild. |
 | `SummaryTables/dashboard_data/partitioned_parquet/` | Preferred dashboard data store | Keep for handoff/runtime. |
 | `SummaryTables/dashboard_data/optimized_parquet/` | Optimized intermediate parquet outputs | Useful but less central than `partitioned_parquet/`. |
-| `SummaryTables/dashboard_data/archive/` | Previous generated table versions | Archive/delete only after confirming no rollback needed. |
-| `SummaryTables/dashboard_data_test_*` | Test/dev generated table outputs | Safe archive/delete candidates. |
+| `SummaryTables/dashboard_data/archive/` | Previous generated table versions, if present | Optional rollback material; not needed for dashboard-only packages. |
+| `SummaryTables/dashboard_data_test_*` | Test/dev generated table outputs, if present | Not needed for public release or dashboard-only packages. |
 | `Results/rasters/` | Generated/intermediate rasters, including PRISM rasters | Needed for rebuild/provenance, not dashboard-only. |
-| `Results/figures/` | Generated figures and exports | Keep selected deliverables; old exploratory figures can be archived. |
-| `Results/0-CacheBaseData/`, `1_Foundation/`, `2_Anomaly_Onset/`, etc. | Organized analysis deliverables | Report/deliverable outputs, not dashboard runtime. |
+| `Results/figures/` | Generated figures and exports | Keep selected report/deliverable figures; not required for dashboard runtime. |
+| `Results/0-CacheBaseData/`, `1_Foundation/`, `2_Anomaly_Onset/`, etc. | Organized analysis deliverables, if present | Report/deliverable outputs, not dashboard runtime. |
 
 ## Exploratory Or Legacy Code
 
@@ -100,22 +100,21 @@ These directories contain useful analysis history but are not currently part of 
 | `Analysis/SupportingAnalyses/CompositesAndAnomalies/` | Annual/monthly composites and anomaly rasters. Useful for map products, not dashboard table runtime. |
 | `Analysis/SupportingAnalyses/Diagnostics/` | Diagnostic/demo products. Not runtime. |
 | `Analysis/SupportingAnalyses/ArcGISExports/` | ArcGIS Pro layer-package workflow. Optional delivery path, not dashboard runtime. |
-| `Charts/` | Local/legacy static chart image assets. Ignored by git; active scripts were moved into dashboard or supporting-analysis folders. |
-| `docs/Archived/` | Local-only historical documentation archive. Ignored by git; public docs are the curated files directly under `docs/`. |
-| `Archived/LegacyTraits/` | Local-only older duplicate trait scripts retained for historical reference. Ignored by git; current trait prep lives under `Preprocessing/Traits/`. |
-| `Archived/` | Archived Python analyses. |
+| `Charts/` | Legacy/static chart image assets, if present. Active scripts were moved into dashboard or supporting-analysis folders. |
+| `docs/Archived/` | Historical documentation archive, if present. Public docs are the curated files directly under `docs/`. |
+| `Archived/LegacyTraits/` | Older duplicate trait scripts, if present. Current trait prep lives under `Preprocessing/Traits/`. |
+| `Archived/` | Archived Python analyses, if present. |
 | `ScriptSnapshots/` | Historical snapshots. |
 
 ## Large Data And Reproducibility Notes
 
-- Local AOI caches and `Results/` dominate storage.
+- Satellite caches, generated rasters, and `Results/` outputs dominate storage for rebuild workflows.
 - Dashboard-only use is about 2-10 GB and 8-16 GB RAM.
 - Dashboard table rebuild from existing caches is about 500-700+ GB and 16-32 GB RAM.
-- Full raw-to-dashboard workspace is about 600 GB-1 TB+ and 32 GB RAM.
+- Full raw-to-dashboard rebuild is about 600 GB-1 TB+ and 32 GB RAM.
 - Dashboard-only runtime can be packaged much smaller by including only code, manifests, and partitioned parquet summary tables.
-- The dashboard does not use QGIS or DuckDB currently.
-- ArcGIS Pro appears only in optional layer-package workflows under `Analysis/SupportingAnalyses/ArcGISExports/`.
+- Optional ArcGIS Pro export scripts, if used, live under `Analysis/SupportingAnalyses/ArcGISExports/` and are separate from the Streamlit dashboard runtime.
 
 ## Release Hygiene
 
-Before a formal release, review `git status` from the repository root and keep active source/docs separate from generated outputs. Generated dashboard tables, figures, rasters, deliverable packages, local Streamlit settings, local legacy trait archives, and chart image outputs are intentionally ignored by git.
+Before a formal release, review `git status` from the repository root and keep active source/docs separate from generated outputs. Generated dashboard tables, figures, rasters, deliverable packages, Streamlit settings, archived notes, and chart image outputs are intentionally ignored by git.
