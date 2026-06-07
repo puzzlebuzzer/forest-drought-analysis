@@ -1,6 +1,6 @@
 # Dashboard Value Derivation Examples
 
-This document traces two dashboard hover values from source acquisition through cached rasters, summary tables, and final dashboard display. The goal is to make explicit that dashboard points are precomputed multi-stage summaries, not raw pixels or single-scene values.
+This document traces two dashboard hover values from source acquisition through cached rasters, summary tables, and final dashboard display. It is intended as a concrete reference for how selected dashboard values are assembled from the underlying data products.
 
 For the broader data-methods context, see:
 
@@ -195,4 +195,4 @@ The two values differ in nearly every dashboard setting:
 | Temporal statistic | p99 | p95 |
 | Interpretation | high-end canopy greenness in a specific forest group | upper-quartile canopy moisture signal across an AOI |
 
-Together, the examples show why dashboard values should be read as configurable summaries of precomputed raster products. A point's meaning depends on the sensor, AOI, vegetation index, spatial subset, spatial percentile, temporal bin, temporal percentile, cloud threshold, and mask definition.
+Together, the examples provide reference cases for following a value through the active derivation path: sensor, AOI, vegetation index, spatial subset, spatial percentile, temporal bin, temporal percentile, cloud threshold, and mask definition.
