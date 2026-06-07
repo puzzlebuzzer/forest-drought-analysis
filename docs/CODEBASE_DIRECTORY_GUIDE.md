@@ -39,6 +39,8 @@ This guide maps the public repository and separates active dashboard/data-pipeli
 
 ## Active Data Rebuild Flow
 
+Run these commands from the repository root after activating a Python environment with the project dependencies installed. A local `.venv` is the recommended setup for reproducible dashboard use.
+
 1. Acquire/cache satellite index rasters:
    - `Cache/build_sentinel_cache.py`
    - `Cache/build_landsat_cache.py`
@@ -56,7 +58,7 @@ This guide maps the public repository and separates active dashboard/data-pipeli
 7. Optimize/write dashboard parquet datasets:
    - `Analysis/DashboardPipeline/TableFactory/optimize_dashboard_ecozone_parquet.py`
 8. Run dashboard:
-   - `streamlit run dashboard_app.py` from the repository root.
+   - `streamlit run dashboard_app.py`
 
 ## Dashboard-Only Runtime Assets
 
