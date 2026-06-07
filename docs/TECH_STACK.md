@@ -34,9 +34,8 @@ streamlit run dashboard_app.py
 
 ## Rebuild Stack
 
-Full or partial data rebuilds additionally use:
+Full or partial data rebuild workflows use:
 
-- Bash / Linux shell or WSL
 - Microsoft Planetary Computer STAC access
 - `pystac-client`
 - `planetary-computer`
@@ -46,6 +45,8 @@ Full or partial data rebuilds additionally use:
 - rasterio / GDAL-backed geospatial IO
 - matplotlib for generated figures
 - PyArrow for optimized and partitioned Parquet products
+
+The project rebuild and deliverable-packaging workflow was developed in a Bash/Linux-style shell environment, primarily WSL on Windows. Equivalent environments should work if the Python and geospatial dependencies install correctly.
 
 ## Remote Data And Source Platforms
 
