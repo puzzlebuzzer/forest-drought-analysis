@@ -135,8 +135,7 @@ The PRISM layer is an external precipitation context. It is not derived from can
 
 ## Main Caveats
 
-- The accepted Sentinel cache uses a vegetation-only mask and a bounding-box grid rather than a strict AOI polygon footprint.
-- Landsat local cache coverage is incomplete relative to the intended full Landsat-era period.
+- The accepted Sentinel cache uses a vegetation-only mask and a bounding-box grid; AOI footprint and trait masks are applied downstream during analysis/table generation.
 - Current rebuild code does not exactly match the accepted Sentinel cache behavior used for dashboard summaries.
 - Forest-community terminology is canonical for detailed vegetation classes; thermal ecozone refers to the broader cool/intermediate/hot tier.
 - A satellite-index-only canopy response classification was used as a sanity check, not as dashboard infrastructure or an independent moisture dataset.
