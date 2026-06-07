@@ -2,6 +2,8 @@
 
 This workflow builds AOI-level wet / neutral / dry year labels from PRISM monthly precipitation.
 
+The script and output filename still contain `growing_season` for historical continuity, but the current method uses full calendar-year precipitation totals from January through December.
+
 Script:
 
 ```bash
@@ -87,6 +89,8 @@ Incomplete AOI-years are retained in the output tables but excluded from AOI mea
 
 For the May 2026 run, PRISM monthly data were available only through April 2026, so calendar-year 2026 is listed as `incomplete`.
 
+The dashboard background bands use the same output table but not the rank label directly. The bands are drawn from AOI-relative `precip_zscore`: years within the configured neutral threshold are unshaded, dry years are red, wet years are blue, and ramp brightness increases with the magnitude of the precipitation anomaly.
+
 ## Outputs
 
 Primary output:
@@ -106,6 +110,8 @@ Results/figures/prism_growing_season_precip_classification.png
 
 If static PNG export fails, the script attempts to write an HTML fallback next to the requested figure path.
 
+The retained `growing_season` filename is a legacy naming artifact. The `precip_period_definition` output column is the authoritative description of the current precipitation period.
+
 ## Comparison To Previous USDM Method
 
 The previous project moisture context was `config/wet_dry_years.csv`, based on USDM / drought.gov-style county averages. That method used county/category summaries, including D1 and W1 percentages, and classified years with threshold logic on a net score.
@@ -122,5 +128,6 @@ The PRISM workflow is intended to replace or supplement that method because it i
 - Calendar-year precipitation is broader than the team-defined growing season and can include winter/spring/fall moisture effects that may not directly map to canopy growing-season response.
 - AOI mean precipitation is an area summary; it does not capture within-AOI topographic gradients unless analyzed separately.
 - Rank-based top/bottom 20% labels depend on the selected year range.
+- Dashboard color bands are anomaly/z-score context bands, while the table's wet/neutral/dry class is rank based.
 - PRISM monthly products and availability vary by date; recent years may be provisional or incomplete.
 - The script uses `geopandas` to read AOI polygons when available. If `geopandas` is unavailable, it falls back to the GDAL `ogr2ogr` command.

@@ -12,7 +12,13 @@ python Analysis/DashboardPipeline/Climate/classify_index_based_moisture_years.py
 
 ## Input Data
 
-The default input is the dashboard-ready AOI-level temporal summary table:
+The default input is the first available dashboard-ready summary table found under `SummaryTables/dashboard_data/`, currently checked in this order:
+
+1. `temporal_summary`
+2. `growing_season_summary`
+3. `scene_summary`
+
+For the current dashboard tables, that usually means:
 
 ```text
 SummaryTables/dashboard_data/temporal_summary.parquet
@@ -29,6 +35,8 @@ Default filters:
 - `cloud_threshold = 30`
 
 These defaults use the median vegetation-index signal for each AOI/sensor/index growing-season time bin.
+
+The script classifies each sensor separately. Landsat and Sentinel-2 are not merged into one time series.
 
 ## Growing Season
 
@@ -56,6 +64,8 @@ Classification is relative within each AOI x sensor x index time series:
 
 The output also includes anomaly, z-score, percentile, and rank fields.
 
+These labels are based on relative vegetation-index behavior, not precipitation. Higher NDMI years are labeled `wet/canopy-moist`; lower NDMI years are labeled `dry/canopy-stressed`. NDVI and EVI use the same rank logic but should be interpreted as greenness/productivity response checks.
+
 ## Why NDMI Is Primary
 
 NDMI is treated as the primary internal moisture-response classifier because it is more directly tied to canopy water content than NDVI or EVI.
@@ -81,6 +91,8 @@ Results/figures/index_based_moisture_year_classification.png
 
 If Plotly static PNG export is unavailable, the script writes an HTML fallback and creates a simpler PNG with Pillow.
 
+The metadata JSON records the actual input table and command arguments used for a run.
+
 ## Limitations
 
 - This is not an independent meteorological drought classification.
@@ -88,4 +100,5 @@ If Plotly static PNG export is unavailable, the script writes an HTML fallback a
 - It may capture phenology, disturbance, sensor differences, cloud/mask artifacts, or vegetation condition, not only moisture.
 - Landsat and Sentinel-2 are classified separately and should not be blindly merged unless harmonization is already handled.
 - NDVI and EVI can saturate or respond to canopy structure differently from NDMI.
+- A high vegetation-index year can reflect favorable moisture, phenology, disturbance recovery, sensor availability, or masking conditions; it is not automatically a meteorological wet year.
 - Use this classification alongside PRISM-derived moisture years for comparison, not as a replacement for climate context.
