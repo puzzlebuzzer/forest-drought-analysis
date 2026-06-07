@@ -55,6 +55,7 @@ __pycache__/
 .venv
 env/
 venv/
+.streamlit/
 *.egg-info/
 dist/
 build/
@@ -66,8 +67,6 @@ config/paths.yaml
 
 # ── Output files ─────────────────────────────────────────────
 *.png
-!Results/figures/*.png
-!Results/figures/landsat/*.png
 !Results_cache1/figures/*.png
 !Results_cache1/figures/landsat/*.png
 !docs/*.png
@@ -78,6 +77,9 @@ config/paths.yaml
 *.pdf
 *.csv
 *.xlsx
+Results/figures/
+Results/rasters/
+Results/tables/
 
 # ── OS / editor ───────────────────────────────────────────────
 .DS_Store
