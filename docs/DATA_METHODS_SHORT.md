@@ -56,6 +56,7 @@ The accepted Sentinel-2 cache used for dashboard summaries has these key charact
 - `SCL == 4` vegetation-only mask
 - numeric screen requiring needed raw bands in `(0, 10000)`
 - reflectance scaling by dividing raw values by `10000`
+- no harmonization correction for the Sentinel-2 processing-baseline shift introduced in early 2022
 
 The source script snapshot for this accepted Sentinel-2 cache behavior is:
 
@@ -68,8 +69,11 @@ The current Sentinel rebuild code is broader than the accepted cache:
 - it applies an AOI polygon mask
 - it excludes cloud/snow SCL classes
 - it retains some non-cloud classes that the accepted `SCL == 4` workflow did not retain
+- it includes processing-baseline/harmonization handling that was not applied to the accepted dashboard cache
 
 For that reason, current Sentinel rebuild code should not be treated as an exact description of the accepted Sentinel cache used for the dashboard summaries.
+
+Dashboard users should treat abrupt Sentinel-2 shifts around 2022 with caution. The accepted Sentinel cache was not corrected for the Sentinel-2 processing-baseline shift, so a visible step change near that period may reflect sensor/product processing rather than ecological response.
 
 The current Landsat builder uses:
 
@@ -136,6 +140,7 @@ The PRISM layer is an external precipitation context. It is not derived from can
 ## Main Caveats
 
 - The accepted Sentinel cache uses a vegetation-only mask and a bounding-box grid; AOI footprint and trait masks are applied downstream during analysis/table generation.
+- The accepted Sentinel cache was not corrected for the early-2022 Sentinel-2 processing-baseline shift; abrupt Sentinel-only changes around 2022 may be processing artifacts.
 - Current rebuild code does not exactly match the accepted Sentinel cache behavior used for dashboard summaries.
 - Forest-community terminology is canonical for detailed vegetation classes; thermal ecozone refers to the broader cool/intermediate/hot tier.
 - A satellite-index-only canopy response classification was used as a sanity check, not as dashboard infrastructure or an independent moisture dataset.

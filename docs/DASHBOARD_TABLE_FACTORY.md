@@ -90,7 +90,8 @@ The dashboard prefers partitioned Parquet when present, then optimized Parquet, 
 Sentinel-2:
 
 - `s2_scl4_veg_v1`
-- historical trusted baseline uses `SCL = 4` vegetation pixels only
+- accepted dashboard baseline uses `SCL = 4` vegetation pixels only
+- accepted dashboard baseline was not harmonized for the early-2022 Sentinel-2 processing-baseline shift
 
 Landsat:
 
@@ -98,6 +99,8 @@ Landsat:
 - QA-based mask semantics are documented in `DATA_METHODS_SHORT.md` and `DATA_PROVENANCE_AND_CACHE_CHARACTERISTICS.md`
 
 Mask identifiers are stored as metadata fields. They are fixed dataset definitions, not dashboard user controls.
+
+Interpretation note: abrupt Sentinel-2 changes around 2022 may reflect the uncorrected Sentinel-2 processing-baseline shift in the accepted dashboard cache, not necessarily canopy response. Use Landsat overlap, PRISM context, and cross-year patterning when interpreting that period.
 
 ## Key Columns
 

@@ -61,6 +61,7 @@ The accepted Sentinel cache was built from Sentinel-2 L2A scenes using:
 - AOI polygon mask during cache generation: none
 - pixel inclusion: `SCL == 4` and required bands in `(0, 10000)`
 - reflectance scaling: divide raw bands by `10000`
+- Sentinel-2 processing-baseline harmonization: none
 - output indices: NDVI, NDMI, EVI
 - output type: one float32 GeoTIFF per scene per index
 - nodata: `NaN`
@@ -71,6 +72,8 @@ The accepted-cache source script did not:
 - compute snow fraction
 - apply PB04.00 harmonization
 - polygon-clip to the exact AOI footprint
+
+Because PB04.00 harmonization was not applied, the accepted Sentinel cache can show an abrupt Sentinel-2 index shift around the early-2022 processing-baseline change. Treat that step-like behavior as a processing-boundary artifact unless corroborated by Landsat, PRISM context, or other ecological evidence.
 
 ## Sentinel `veg_coverage`
 
@@ -181,12 +184,13 @@ Advantages:
 Limitations:
 
 - transitional canopy states may be underrepresented if stressed vegetation is not classified as `SCL == 4`
+- abrupt Sentinel-2 shifts around 2022 may reflect the uncorrected Sentinel-2 processing-baseline change rather than canopy condition
 - bounding-box leakage is possible at the cache level where vegetation-class pixels occur outside the AOI polygon but inside the bounding-box grid; downstream AOI/trait masks limit the dashboard summaries.
 - current rebuild code and accepted Sentinel cache behavior are not interchangeable
 
 ## Recommended Language
 
-> The project uses AOI-aligned Sentinel-2 and Landsat vegetation-index caches in UTM Zone 17N for two Appalachian study areas. The accepted Sentinel cache was built on canonical AOI bounding-box grids at 10 m resolution using a strict `SCL == 4` vegetation mask plus numeric validity screening, without AOI polygon masking during cache generation. AOI footprint and trait masks are applied downstream during analysis/table generation. Landsat caches are AOI-aligned at 30 m, cover 1984 through early 2026 in the current on-disk products, and store the same derived indices. Dashboard summary tables are derived from these caches and should be interpreted with these mask and coverage boundaries in mind.
+> The project uses AOI-aligned Sentinel-2 and Landsat vegetation-index caches in UTM Zone 17N for two Appalachian study areas. The accepted Sentinel cache was built on canonical AOI bounding-box grids at 10 m resolution using a strict `SCL == 4` vegetation mask plus numeric validity screening, without AOI polygon masking during cache generation and without harmonization correction for the early-2022 Sentinel-2 processing-baseline shift. AOI footprint and trait masks are applied downstream during analysis/table generation. Landsat caches are AOI-aligned at 30 m, cover 1984 through early 2026 in the current on-disk products, and store the same derived indices. Dashboard summary tables are derived from these caches and should be interpreted with these mask, coverage, and processing-baseline boundaries in mind.
 
 ## Reproducibility Note
 
