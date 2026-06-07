@@ -95,6 +95,7 @@ desktop.ini
 *.lpkx
 Deliverables/
 SummaryTables/
+Archived/LegacyTraits/
 
 # ── Large source data ─────────────────────────────────────────
 *.zip
