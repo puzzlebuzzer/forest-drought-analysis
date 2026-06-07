@@ -1,123 +1,140 @@
 # Data Methods Short
 
-Last updated: 2026-03-31
+This short note summarizes the data methods behind the Appalachian Ecozone-Vegetation dashboard. For more detail, see `DATA_PROVENANCE_AND_CACHE_CHARACTERISTICS.md`.
 
-Primary historical source of truth for the trusted Sentinel `_3_4` build:
+## Study Data
 
-- [cache_build_script.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/ScriptSnapshots/cache_build_script.py)
+The project uses two Appalachian AOIs:
 
-## What Data The Project Uses
+- north: George Washington / Jefferson National Forest region
+- south: Smoky Mountains / Nantahala-region AOI
 
-The project currently relies on `_3_4` cache branches as the authoritative baseline.
+Primary inputs:
 
-Active cache segments:
+- Sentinel-2 Level-2A from Microsoft Planetary Computer
+- Landsat Collection 2 Level 2 from Microsoft Planetary Computer
+- PRISM monthly precipitation
+- TNC Appalachian forest-community/ecozone source data
+- Copernicus DEM GLO-30
+- project AOI footprints from the configured TNC AOI shapefile
 
-- north Sentinel-2: `AOI/NorthAOI/GWNF_cache/s2/indices`
-- south Sentinel-2: `AOI/SouthAOI/Smoky_cache/s2/indices`
-- north Landsat: `AOI/NorthAOI/GWNF_cache/landsat/indices`
-- south Landsat: `AOI/SouthAOI/Smoky_cache/landsat/indices`
+Vegetation indices:
 
-Derived products in use:
+- NDVI
+- NDMI
+- EVI
 
-- `NDVI`
-- `NDMI`
-- `EVI`
+## Spatial Framework
 
-Trait rasters aligned to the Sentinel grid:
+Satellite index rasters are stored in AOI-aligned projected grids using `EPSG:32617`.
 
-- terrain
-- ecozone
-- forest type and forest group
+Current cache grids:
 
-## Spatial Design
+| Segment | Grid |
+| --- | ---: |
+| north Sentinel-2 | `6451 x 9812` at 10 m |
+| south Sentinel-2 | `9198 x 4289` at 10 m |
+| north Landsat | `2150 x 3270` at 30 m |
+| south Landsat | `3066 x 1429` at 30 m |
 
-All cache segments are stored on AOI-aligned projected grids in `EPSG:32617`.
+Trait rasters are aligned to the analysis grids and used for stratification:
 
-- north Sentinel grid: `6451 x 9812` at 10 m
-- south Sentinel grid: `9198 x 4289` at 10 m
-- north Landsat grid: `2150 x 3270` at 30 m
-- south Landsat grid: `3066 x 1429` at 30 m
+- thermal ecozone
+- forest-community group
+- forest community
+- terrain/elevation/slope/aspect
 
-The trusted Sentinel `_3_4` workflow uses canonical AOI bounding-box grids for alignment and does not apply an AOI polygon mask in the historical source script.
+## Satellite Cache Baselines
 
-## Temporal Coverage On Disk
+The trusted Sentinel baseline was built from the historical `_3_4` cache lineage. Its key behavior:
 
-- north Sentinel: `2017-04-09` to `2026-02-21`
-- south Sentinel: `2017-01-25` to `2026-03-01`
-- north Landsat: `1984-03-12` to `2008-12-25`
-- south Landsat: `1984-03-27` to `1988-12-24`
-
-## Most Important Data-Handling Point
-
-The trusted Sentinel `_3_4` baseline is more restrictive than the current rebuild code.
-
-Confirmed from the historical source script:
-
-- trusted Sentinel `_3_4` retains only `SCL = 4` vegetation pixels
-- it also requires needed raw bands to fall within `(0, 10000)`
-- it does not polygon-mask to the exact AOI footprint
-- current Sentinel rebuild code is broader and excludes only cloud and snow classes while applying an AOI polygon mask
-
-That means the historical trusted Sentinel baseline is best understood as a vegetation-focused bounding-box-grid analysis dataset, not a strict AOI-footprint condition sample.
-
-## Historical Sentinel `_3_4` Build Logic
-
-The trusted `_3_4` Sentinel cache was built with:
-
-- source: Sentinel-2 L2A from Planetary Computer
+- Sentinel-2 L2A source scenes
 - scene-level cloud filter: `eo:cloud_cover < 40`
 - 10 m output grid in `EPSG:32617`
 - canonical AOI bounding-box grid
-- no AOI polygon mask
+- no AOI polygon mask during cache generation
 - `SCL == 4` vegetation-only mask
-- numeric screen requiring needed bands in `(0, 10000)`
+- numeric screen requiring needed raw bands in `(0, 10000)`
 - reflectance scaling by dividing raw values by `10000`
 
-## Current Landsat Builder Logic
+The current Sentinel rebuild code is broader than the historical trusted cache:
 
-No historical Landsat `_3_4` build snapshot has been provided yet, so the best available method description is from the current code:
+- it applies an AOI polygon mask
+- it excludes cloud/snow SCL classes
+- it retains some non-cloud classes that the historical `SCL == 4` workflow did not retain
 
-- source: Landsat Collection 2 Level 2 from Planetary Computer
-- platforms: Landsat 5, 7, 8, 9
-- default cloud threshold: `eo:cloud_cover < 40`
+For that reason, current Sentinel rebuild code should not be treated as an exact description of the historical trusted Sentinel cache.
+
+The current Landsat builder uses:
+
+- Landsat 5, 7, 8, and 9 Collection 2 Level 2
+- default scene-level cloud filter: `eo:cloud_cover < 40`
 - 30 m output grid in `EPSG:32617`
-- AOI polygon mask applied after reprojection
-- excluded QA flags: dilated cloud, cirrus, cloud, snow
-- retained QA conditions include cloud shadow and water
+- AOI polygon mask after reprojection
 - reflectance scaling: `raw * 0.0000275 - 0.2`
+- QA exclusion of dilated cloud, cirrus, cloud, and snow
+- retention of cloud shadow and water in the current builder
 
-## Metadata Preserved In The Trusted Cache
+Dashboard table metadata contains fixed mask identifiers. Interpret Landsat mask descriptions with the provenance note above if comparing current builder code to historical/generated cache products.
 
-Sentinel manifests currently preserve:
+## Temporal Coverage On Disk
 
-- file name
-- scene date
-- scene-level cloud cover
-- `veg_coverage`
-- processing timestamp
+Current local cache coverage:
 
-Important:
+| Segment | Date range on disk |
+| --- | --- |
+| north Sentinel-2 | `2017-04-09` to `2026-02-21` |
+| south Sentinel-2 | `2017-01-25` to `2026-03-01` |
+| north Landsat | `1984-03-12` to `2008-12-25` |
+| south Landsat | `1984-03-27` to `1988-12-24` |
 
-- `veg_coverage` is the fraction of the bounding-box grid that survives the vegetation and numeric masks
-- it is not an AOI-polygon coverage metric
+Landsat coverage on disk is incomplete relative to the intended 1984-2026 analytical period unless the cache is rebuilt.
 
-Landsat manifests currently preserve:
+## Dashboard Summary Tables
 
-- file name
-- scene date
-- scene-level cloud cover
-- `clear_coverage`
-- platform
-- path/row
-- processing timestamp
+The dashboard does not read raw rasters at runtime. It reads precomputed products in:
+
+```text
+SummaryTables/dashboard_data/
+```
+
+The table factory computes:
+
+- scene-level spatial percentiles
+- temporal summaries for `scene`, `half_month`, and `month`
+- cloud-threshold-filtered temporal products
+- whole-AOI, thermal ecozone, forest-community-group, and forest community summaries
+- manifests and partitioned Parquet datasets for fast dashboard filtering
+
+Default dashboard-facing percentiles include:
+
+- spatial percentiles: `p50`, `p75`, `p95`, `p98`, `p99`, `p100`
+- temporal percentiles: `p50`, `p75`, `p95`, `p98`, `p99`, `p100`
+
+## Climate Context
+
+PRISM monthly precipitation is used as the external moisture context layer.
+
+Current PRISM classification:
+
+- source: PRISM monthly `ppt`
+- preferred resolution: 4 km
+- years: 1984-2026
+- aggregation: calendar-year total precipitation from January through December
+- AOI metric: mean monthly precipitation extracted inside each AOI polygon, summed by year
+- table classification: AOI-relative top/bottom 20% rank labels
+- dashboard background stripes: annual precipitation z-score relative to that AOI's mean annual precipitation series, with neutral years unshaded within the configured threshold
+
+The PRISM layer is an external precipitation context. It is not derived from canopy response.
 
 ## Main Caveats
 
-- The trusted Sentinel baseline definitely uses a vegetation-only rule in the historical source script, which reduces contamination but may miss transitional stress states.
-- The trusted Sentinel baseline definitely uses bounding-box extents without AOI polygon masking in the historical source script.
-- Landsat coverage on disk is incomplete relative to the intended 1984-present scope.
-- Current rebuild code should not be assumed to exactly match the historical trusted `_3_4` Sentinel workflow.
+- The historical Sentinel baseline uses a vegetation-only mask and a bounding-box grid rather than a strict AOI polygon footprint.
+- Landsat local cache coverage is incomplete relative to the intended full Landsat-era period.
+- Current rebuild code does not exactly match the historical trusted Sentinel cache behavior.
+- Forest-community terminology is canonical for detailed vegetation classes; thermal ecozone refers to the broader cool/intermediate/hot tier.
+- PRISM wet/dry context and satellite-index canopy response classifications answer different questions and should be compared rather than treated as interchangeable.
 
-## Short Description You Can Reuse
+## Reusable Methods Summary
 
-> The project uses AOI-aligned raster caches in UTM Zone 17N for north and south Appalachian study areas. The trusted Sentinel `_3_4` cache was built on canonical AOI bounding-box grids at 10 m resolution using a strict `SCL = 4` vegetation mask plus numeric validity screening, without AOI polygon masking. It stores scene-level NDVI, NDMI, and EVI rasters and records scene date, cloud cover, and vegetation coverage in the manifest. Landsat `_3_4` caches are also AOI-aligned and store the same indices, but current on-disk Landsat coverage is incomplete. Modern rebuild code uses different masking logic and should not be treated as the source of truth for the historical Sentinel `_3_4` baseline.
+The project uses AOI-aligned Sentinel-2 and Landsat vegetation-index caches in UTM Zone 17N, summarized into precomputed dashboard tables by AOI, sensor, index, temporal bin, spatial percentile, thermal ecozone, forest-community group, and forest community. Sentinel-2, Landsat, PRISM, TNC forest-community data, and DEM-derived terrain traits provide the main data sources. The Streamlit dashboard reads summary tables and PRISM classifications at runtime rather than raw rasters.

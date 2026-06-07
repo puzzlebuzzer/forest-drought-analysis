@@ -1,404 +1,196 @@
 # Data Provenance And Cache Characteristics
 
-Last updated: 2026-03-31
+This document summarizes the provenance and interpretation boundaries of the satellite cache products used by the Appalachian Ecozone-Vegetation dashboard.
 
-This document summarizes the cache segments currently active in project memory and on disk, with emphasis on the characteristics a data scientist, remote sensing analyst, or environmental collaborator would ask about.
+## Purpose
 
-Primary historical source of truth for the Sentinel `_3_4` cache:
+The dashboard is powered by precomputed summary tables derived from AOI-aligned Sentinel-2 and Landsat raster caches. This document records what is known about those caches, how historical trusted cache behavior differs from current rebuild code, and how that affects interpretation.
 
-- [cache_build_script.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/ScriptSnapshots/cache_build_script.py)
+## Trust Boundary
 
-This document separates:
+The trusted Sentinel baseline is the historical `_3_4` cache lineage, with source behavior preserved in:
 
-- verified on-disk characteristics
-- confirmed historical `_3_4` Sentinel build behavior from the snapshot script
-- current builder behavior in code, included only for comparison
+```text
+ScriptSnapshots/cache_build_script.py
+```
 
-## Scope And Trust Boundary
+Current cache-builder scripts are useful for rebuilding and comparison, but the current Sentinel builder does not exactly reproduce the historical trusted Sentinel `_3_4` behavior.
 
-The authoritative cache baseline is `_3_4`, as configured in [project_paths.yaml](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/config/project_paths.yaml). Historical project-state notes were archived locally under `docs/Archived/`.
-
-Active cache branches:
+Active local cache branches:
 
 - `AOI/NorthAOI/GWNF_cache`
 - `AOI/SouthAOI/Smoky_cache`
 
-Sub-branches in current use:
+Active sub-branches:
 
 - `s2/indices` for Sentinel-2 NDVI, NDMI, EVI
 - `landsat/indices` for Landsat NDVI, NDMI, EVI
 - `s2/traits` for terrain and ecological trait rasters aligned to the Sentinel grid
 
-I do not currently find `_3_24` cache manifests on disk, so this document focuses on `_3_4`.
-
-## Important Distinction
-
-There are now two clearly different workflows:
-
-1. The historical Sentinel `_3_4` snapshot script, which is the source of truth for how the trusted Sentinel baseline was built.
-2. The current cache-builder code, which describes how a modern rebuild would behave.
-
-Most importantly:
-
-- the historical Sentinel `_3_4` build used a strict `SCL == 4` vegetation mask
-- the historical Sentinel `_3_4` build used the AOI bounding-box grid and did not apply an AOI polygon mask
-- the current Sentinel builder uses broader cloud/snow exclusion and AOI polygon masking
-
-That difference matters directly for interpretation.
+Historical `_3_24` cache references exist in some older scripts and comments, but the current documented baseline for dashboard interpretation is the `_3_4` cache lineage.
 
 ## Segment Summary
 
 | Segment | Sensor family | Grid | CRS | Extent behavior | Date range on disk | Scene count per index | Manifest evidence |
-|---|---|---:|---|---|---|---:|---|
+| --- | --- | ---: | --- | --- | --- | ---: | --- |
 | North Sentinel `_3_4` | Sentinel-2 L2A | `6451 x 9812` at 10 m | `EPSG:32617` | canonical AOI bounding-box grid, no polygon mask in historical source script | `2017-04-09` to `2026-02-21` | `437` | `veg_coverage`, `cloud_cover`, timestamp |
 | South Sentinel `_3_4` | Sentinel-2 L2A | `9198 x 4289` at 10 m | `EPSG:32617` | canonical AOI bounding-box grid, no polygon mask in historical source script | `2017-01-25` to `2026-03-01` | `1618` | `veg_coverage`, `cloud_cover`, timestamp |
-| North Landsat `_3_4` | Landsat C2 L2 | `2150 x 3270` at 30 m | `EPSG:32617` | canonical AOI-aligned bounding-box grid | `1984-03-12` to `2008-12-25` | `1258` | `clear_coverage`, `platform`, `path_row`, `cloud_cover`, timestamp |
-| South Landsat `_3_4` | Landsat C2 L2 | `3066 x 1429` at 30 m | `EPSG:32617` | canonical AOI-aligned bounding-box grid | `1984-03-27` to `1988-12-24` | `126` | `clear_coverage`, `platform`, `path_row`, `cloud_cover`, timestamp |
+| North Landsat `_3_4` | Landsat C2 L2 | `2150 x 3270` at 30 m | `EPSG:32617` | canonical AOI-aligned grid | `1984-03-12` to `2008-12-25` | `1258` | `clear_coverage`, `platform`, `path_row`, `cloud_cover`, timestamp |
+| South Landsat `_3_4` | Landsat C2 L2 | `3066 x 1429` at 30 m | `EPSG:32617` | canonical AOI-aligned grid | `1984-03-27` to `1988-12-24` | `126` | `clear_coverage`, `platform`, `path_row`, `cloud_cover`, timestamp |
+
+The Landsat cache currently present on disk is incomplete relative to the intended Landsat-era analytical range.
 
 ## Shared Spatial Characteristics
 
-### Canonical grid approach
-
 All main cache segments use a canonical projected grid per AOI rather than scene-native geometry.
 
+- projected CRS: `EPSG:32617`
 - north extent bounds: `619300.15, 4203684.60, 683810.82, 4301812.35`
 - south extent bounds: `225602.86, 3923116.62, 317589.63, 3966007.23`
-- projected CRS: `EPSG:32617`
 
-This means the project works from stable AOI-aligned rasters rather than reprojecting on the fly during analysis.
+This design makes later summaries stable and repeatable because scenes are already aligned before table generation.
 
-### Bounding box versus AOI footprint
+## Sentinel-2 Historical `_3_4` Behavior
 
-The historical Sentinel `_3_4` source script constructs a bounding-box grid from the AOI extent and does not rasterize or apply an AOI polygon mask.
-
-Historical `_3_4` Sentinel behavior:
-
-- raster dimensions are derived from AOI bounding-box extents
-- no AOI polygon mask is applied during cache generation
-- validity comes from vegetation and numeric masks only
-- any vegetation-class pixels within the bounding box can survive, even if they fall outside the exact AOI footprint
-
-Current rebuild code differs:
-
-- the modern builder rasterizes the AOI polygon and masks outside-footprint pixels to nodata
-- that behavior should not be projected backward onto the trusted `_3_4` Sentinel cache
-
-## Sentinel-2 `_3_4` Cache Characteristics
-
-### What is verified on disk
-
-Observed from current `_3_4` manifests:
-
-- stored indices: `NDVI`, `NDMI`, `EVI`
-- all three indices have matching scene counts within each AOI
-- rasters are `float32`
-- nodata is `NaN`
-- manifests store:
-  - `filename`
-  - `date`
-  - `cloud_cover`
-  - `veg_coverage`
-  - a processing timestamp field, seen as either `rebuilt` or `processed`
-
-Observed range of stored `veg_coverage` values for `NDVI`:
-
-- north: min `0.0000`, median `0.5877`, max `0.9646`
-- south: min `0.0013`, median `0.2029`, max `0.8962`
-
-### Historical Sentinel `_3_4` source-script behavior
-
-Confirmed from [cache_build_script.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/ScriptSnapshots/cache_build_script.py):
+The historical trusted Sentinel cache was built from Sentinel-2 L2A scenes using:
 
 - collection: `sentinel-2-l2a`
 - date filter: `2017-01-01` to `2026-03-01`
 - scene-level cloud filter: `eo:cloud_cover < 40`
-- output indices: `NDVI`, `NDMI`, `EVI`
-- required bands fetched per scene: requested spectral bands plus `SCL`
-- reprojection target: `EPSG:32617`
-- target resolution: `10 m`
+- target CRS: `EPSG:32617`
+- target resolution: 10 m
 - spatial frame: canonical AOI bounding-box grid
 - AOI polygon mask: none
 - pixel inclusion: `SCL == 4` and required bands in `(0, 10000)`
-- reflectance scaling: divide raw bands by `10000.0`
-- saved outputs: one float32 GeoTIFF per scene per index
+- reflectance scaling: divide raw bands by `10000`
+- output indices: NDVI, NDMI, EVI
+- output type: one float32 GeoTIFF per scene per index
 - nodata: `NaN`
-- manifest fields: `filename`, `date`, `cloud_cover`, `veg_coverage`, `processed`
 
-What the historical `_3_4` Sentinel script does not do:
+The historical script did not:
 
-- it does not save raw `SCL` sidecars
-- it does not compute snow fraction
-- it does not apply PB04.00 harmonization
-- it does not polygon-clip to the AOI footprint
+- save raw SCL sidecars
+- compute snow fraction
+- apply PB04.00 harmonization
+- polygon-clip to the exact AOI footprint
 
-### What `veg_coverage` means in the source script
+## Sentinel `veg_coverage`
 
-The historical script explicitly defines:
+The historical Sentinel script defines:
 
-- `veg_mask = (fetched["SCL"] == 4)`
-- `valid_mask` requires each needed raw band to satisfy `(arr > 0) & (arr < 10000)`
-- `combined_mask = veg_mask & valid_mask`
+```text
+veg_mask = SCL == 4
+valid_mask = required raw bands in (0, 10000)
+combined_mask = veg_mask & valid_mask
+veg_coverage = combined_mask.sum() / combined_mask.size
+```
 
-It then records:
+Therefore, `veg_coverage` is the fraction of the full AOI bounding-box grid that survives the vegetation and numeric filters. It is not an AOI-polygon coverage metric.
 
-- `veg_coverage = combined_mask.sum() / combined_mask.size`
+## Current Sentinel Builder
 
-So `veg_coverage` is not an AOI-footprint coverage metric.
-It is the fraction of the entire bounding-box grid that survives the vegetation and numeric validity filters.
+The current Sentinel builder is documented for rebuild comparison only. It differs from the historical trusted cache.
 
-### Pixel inclusion rule for trusted `_3_4`
+Current design:
 
-Included:
+- searches Planetary Computer Sentinel-2 L2A scenes using AOI polygon geometry
+- reprojects bands to `EPSG:32617`
+- uses a 10 m canonical grid
+- rasterizes the AOI polygon and masks outside-footprint pixels
+- excludes SCL `8`, `9`, `10`, and `11`
+- retains SCL `3`, `4`, `5`, `6`, and `7`
+- applies numeric screening of raw bands in `(0, 10000)`
+- stores additional metadata such as snow fraction, processing baseline, and harmonization fields
 
-- pixels classified as vegetation by Sentinel SCL
-- only where every required raw band is greater than `0` and less than `10000`
+This current behavior should not be projected backward onto the historical trusted Sentinel `_3_4` cache.
 
-Excluded:
+## Landsat Cache Characteristics
 
-- cloud shadow
-- cloud medium
-- cloud high
-- thin cirrus
-- snow / ice
-- water
-- bare or not vegetated surfaces
-- unclassified or non-vegetation classes
-- saturated or invalid reflectance values outside the numeric screen
-- pixels with invalid numeric values
+The Landsat cache stores NDVI, NDMI, and EVI rasters with scene metadata:
 
-Not excluded by any AOI polygon footprint rule in the `_3_4` Sentinel source script:
+- file name
+- scene date
+- scene-level cloud cover
+- clear/valid coverage statistic
+- platform
+- path/row
+- processing timestamp
 
-- pixels simply because they fall outside the exact AOI polygon but inside the AOI bounding box
+The current Landsat builder uses:
 
-### Scientific implication
-
-This is a conservative ecological mask, but not a strict polygon-clipped AOI product.
-
-Advantages:
-
-- focuses analyses on vegetated signal only
-- reduces contamination from clouds, snow, water, and non-vegetated terrain
-
-Costs:
-
-- transitional canopy states may be underrepresented
-- early drought signal could be muted if stressed vegetation is pushed out of `SCL = 4`
-- bounding-box leakage is possible outside the exact AOI footprint if those pixels are classified as vegetation
-- comparisons are strongest as relative ecozone comparisons, less so as exact polygon-total summaries
-
-## Current Sentinel Builder Design
-
-Current code: [build_sentinel_cache.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Cache/build_sentinel_cache.py)
-
-This section is included for comparison only. It is not the source of truth for the trusted `_3_4` Sentinel cache.
-
-### Scene discovery
-
-- collection: `sentinel-2-l2a`
-- search geometry: AOI polygon in WGS84
-- date filtering: CLI date range
-- cloud filter: `eo:cloud_cover < cloud_max`
-- default `cloud_max`: `40`
-- deduplication: one scene per `date + tile`
-
-### Spatial handling
-
-- reproject all bands to `EPSG:32617`
-- target resolution `10 m`
-- use a canonical AOI bounding-box grid
-- rasterize AOI polygon separately
-- set pixels outside the AOI polygon to nodata
-
-### Current pixel exclusion rule
-
-Current code excludes only these SCL classes from index rasters:
-
-- `8` cloud medium probability
-- `9` cloud high probability
-- `10` thin cirrus
-- `11` snow / ice
-
-Current code keeps:
-
-- `3` cloud shadow
-- `4` vegetation
-- `5` non-vegetated / bare
-- `6` water
-- `7` unclassified
-
-Additional numeric screening:
-
-- raw reflectance bands must satisfy `0 < DN < 10000`
-- result pixels outside the combined valid mask become `NaN`
-
-### Current harmonization and metadata
-
-The modern builder applies PB04.00 harmonization and stores more metadata than the historical `_3_4` script, including:
-
-- `clear_frac`
-- `snow_frac`
-- `processing_baseline`
-- `harmonized`
-
-Those fields do not describe how the trusted `_3_4` Sentinel cache itself was built.
-
-## Landsat `_3_4` Cache Characteristics
-
-### What is verified on disk
-
-Observed from current `_3_4` manifests:
-
-- stored indices: `NDVI`, `NDMI`, `EVI`
-- all three indices have matching scene counts within each AOI
-- rasters are `float32`
-- nodata is `NaN`
-- manifests store:
-  - `filename`
-  - `date`
-  - `cloud_cover`
-  - `clear_coverage`
-  - `platform`
-  - `path_row`
-  - `processed`
-
-Observed range of stored `clear_coverage` values for `NDVI`:
-
-- north: min `0.0000`, median `0.3425`, max `0.9155`
-- south: min `0.0000`, median `0.2250`, max `0.9943`
-
-### Temporal coverage caveat
-
-The current Landsat `_3_4` branch is incomplete relative to the code’s nominal 1984-present scope.
-
-On disk today:
-
-- north Landsat runs only through `2008-12-25`
-- south Landsat runs only through `1988-12-24`
-
-That is an important limitation for any long-term trend claim.
-
-### Current Landsat builder design
-
-Current code: [build_landsat_cache.py](/mnt/c/Users/rowan/LifeMgmt/Mind/School/UwGisProgram/Project_Appalachia/Python/Cache/build_landsat_cache.py)
-
-Verified characteristics of the modern Landsat workflow:
-
-- source: Landsat Collection 2 Level 2 from Planetary Computer
-- platforms: Landsat 5, 7, 8, 9
-- default scene-level cloud threshold: `eo:cloud_cover < 40`
-- output resolution: `30 m`
-- output CRS: `EPSG:32617`
-- AOI polygon mask applied after reprojection
+- Landsat Collection 2 Level 2
+- Landsat 5, 7, 8, and 9
+- scene-level cloud filter: `eo:cloud_cover < 40`
+- target CRS: `EPSG:32617`
+- target resolution: 30 m
+- AOI polygon mask after reprojection
 - reflectance scaling: `raw * 0.0000275 - 0.2`
-- excluded QA flags: dilated cloud, cirrus, cloud, snow
-- retained QA conditions include cloud shadow and water
+- QA exclusion of dilated cloud, cirrus, cloud, and snow
+- retention of cloud shadow and water
+- QA_PIXEL sidecar storage for additional filtering if needed
 
-Per modern Landsat index manifest entry:
+The current dashboard table metadata uses a fixed Landsat mask identifier. If a future methods section needs bit-level precision, use the current builder behavior above rather than relying only on the metadata label.
 
-- `filename`
-- `date`
-- `cloud_cover`
-- `valid_frac`
-- `snow_frac`
-- `platform`
-- `path_row`
-- `processed`
+## Trait Rasters
 
-This section is based on current code because no historical Landsat `_3_4` builder snapshot has been provided yet.
+Trait rasters provide the categorical and terrain strata used by the dashboard table factory.
 
-## Trait Rasters And Alignment
-
-The project’s terrain and ecological trait rasters are aligned to the Sentinel AOI grid and used to stratify the index caches.
-
-Trait branches in active use:
+Active trait branches include:
 
 - `s2/traits/terrain`
 - `s2/traits/ecozone`
 - `s2/traits/forest`
 
-Verified terrain alignment:
+Current interpretation:
 
-- north terrain rasters match north Sentinel grid exactly
-- south terrain rasters match south Sentinel grid exactly
+- thermal ecozone is the broad cool/intermediate/hot tier
+- forest-community group is the TNC group tier within the forest-community source data
+- forest community is the canonical fine ecological class
+- terrain/elevation/slope/aspect layers support auxiliary analyses
 
-This means ecozone, aspect, elevation, and forest overlays are all being analyzed on a common AOI-aligned raster framework.
+The dashboard table factory uses AOI-aligned categorical rasters for thermal ecozone, forest-community group, and forest community summaries. Streamlit does not read those rasters at runtime.
 
-## What Rules Out Pixels
+## Pixel Inclusion Summary
 
-### Historical Sentinel `_3_4`
+Historical Sentinel `_3_4`:
 
-Excluded:
+- includes only `SCL == 4` vegetation pixels with valid raw bands
+- does not exclude pixels solely because they fall outside the AOI polygon if they remain inside the AOI bounding-box grid
 
-- every pixel not labeled `SCL == 4`
-- any required raw band values not in `(0, 10000)`
+Current Sentinel builder:
 
-Not excluded:
+- excludes cloud/snow SCL classes `8`, `9`, `10`, `11`
+- applies an AOI polygon mask
+- retains several non-cloud SCL classes that the historical trusted cache did not retain
 
-- pixels outside the AOI polygon if they still fall inside the AOI bounding-box grid and meet the vegetation and numeric criteria
+Current Landsat builder:
 
-### Current Sentinel code
+- excludes dilated cloud, cirrus, cloud, and snow
+- applies an AOI polygon mask
+- retains cloud shadow and water
+- stores QA_PIXEL for later inspection/filtering
 
-Excluded:
+## Scientific Implications
 
-- SCL `8`, `9`, `10`, `11`
-- raw DN outside `(0, 10000)`
-- pixels outside AOI polygon
+The historical Sentinel cache is conservative for vegetated canopy signal, but it is not a strict AOI-footprint product.
 
-### Current Landsat code
+Advantages:
 
-Excluded:
+- strong focus on vegetation-class pixels
+- reduced contamination from clouds, snow, water, and non-vegetated terrain
+- stable AOI-aligned grids for repeated summaries
 
-- QA cloud bits `1`, `2`, `3`
-- snow bit `5`
-- scaled reflectance outside `[0, 1]`
-- non-finite required bands
-- pixels outside AOI polygon
+Limitations:
 
-## What Metadata Is Preserved Today
+- transitional canopy states may be underrepresented if stressed vegetation is not classified as `SCL == 4`
+- bounding-box leakage is possible where vegetation-class pixels occur outside the AOI polygon but inside the bounding-box grid
+- Landsat local coverage is incomplete relative to the intended 1984-2026 range
+- current rebuild code and historical trusted cache behavior are not interchangeable
 
-### Preserved in trusted Sentinel `_3_4`
+## Recommended Language
 
-- scene identifier
-- date
-- file name
-- cloud cover
-- vegetation-coverage statistic over the full bounding-box grid
-- processing timestamp
+> The project uses AOI-aligned Sentinel-2 and Landsat vegetation-index caches in UTM Zone 17N for two Appalachian study areas. The trusted Sentinel `_3_4` cache was built on canonical AOI bounding-box grids at 10 m resolution using a strict `SCL == 4` vegetation mask plus numeric validity screening, without AOI polygon masking. Landsat caches are AOI-aligned at 30 m and store the same derived indices, but current local Landsat coverage is incomplete relative to the intended full Landsat period. Dashboard summary tables are derived from these caches and should be interpreted with these mask and coverage boundaries in mind.
 
-### Not preserved in trusted Sentinel `_3_4`
+## Reproducibility Note
 
-- raw `SCL` sidecars
-- explicit AOI polygon coverage
-- snow fraction
-- processing baseline
-- harmonization flag
-
-### Preserved in trusted Landsat `_3_4`
-
-- scene identifier
-- date
-- file name
-- cloud cover
-- clear-coverage statistic
-- platform
-- path/row
-- processing timestamp
-
-## Main Scientific Caveats
-
-- The trusted Sentinel baseline definitely uses a vegetation-only rule in the historical source script.
-- The trusted Sentinel baseline definitely uses bounding-box extents without AOI polygon masking in the historical source script.
-- Landsat coverage on disk is incomplete relative to the intended 1984-present scope.
-- Current rebuild code should not be assumed to describe the historical trusted `_3_4` Sentinel workflow.
-- `veg_coverage` in Sentinel manifests is a bounding-box-grid metric, not an AOI-polygon metric.
-
-## Recommended Language For Explaining The Data
-
-> The project uses AOI-aligned raster caches in UTM Zone 17N for north and south Appalachian landscapes. The trusted Sentinel `_3_4` cache was built on canonical AOI bounding-box grids at 10 m resolution using a strict `SCL == 4` vegetation mask plus numeric validity screening, without AOI polygon masking. It stores scene-level NDVI, NDMI, and EVI rasters and records scene date, cloud cover, and vegetation coverage in the manifest. Landsat `_3_4` caches are also AOI-aligned and store the same derived indices with scene-level cloud and clear-coverage metadata, but their current on-disk temporal coverage is incomplete. Modern rebuild code uses different masking logic and should not be treated as the source of truth for the historical Sentinel `_3_4` baseline.
-
-## Best Next Validation Steps
-
-- Decide whether the historical bounding-box extent is acceptable for current ecological comparisons or should be treated as a core limitation requiring a rebuild.
-- If you can recover the historical Landsat `_3_4` builder too, use it to replace the current-code-derived Landsat method section in this document.
-- Build a cache-audit table that records per-branch scene counts, date ranges, manifest fields, and trust notes in one place.
-- Preserve modern raw-quality sidecars and manifests if future rebuilds are kept.
+Dashboard-only users need precomputed `SummaryTables/dashboard_data/` products and do not need the raw satellite caches. Rebuilding dashboard tables from existing caches requires the AOI caches, trait rasters, PRISM products, and table-factory scripts. Full raw-to-dashboard reproducibility requires substantially more storage and should be treated as a separate reproducibility tier.
