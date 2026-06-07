@@ -143,7 +143,7 @@ The `ecozone_group_*` names are retained in the schema for compatibility with ex
 
 ## Common Commands
 
-Run commands from the `Python/` repository root.
+Run commands from the repository root.
 
 Build base scene and temporal products:
 

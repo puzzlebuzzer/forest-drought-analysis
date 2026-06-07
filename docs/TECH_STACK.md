@@ -26,7 +26,7 @@ Dashboard-only use requires:
 - openpyxl
 - Kaleido for Plotly PNG export
 
-The dashboard is run from the `Python/` repository root:
+The dashboard is run from the repository root:
 
 ```bash
 streamlit run dashboard_app.py
@@ -107,10 +107,9 @@ The dashboard does not currently use DuckDB or QGIS as runtime dependencies.
 - Forest-community group: TNC group tier within forest-community data
 - Forest community: fine ecological category used as the canonical detailed vegetation class
 - PRISM wet/neutral/dry years: external precipitation context
-- Index-based wet/neutral/dry years: internal canopy-response classification
 - Spatial percentile: percentile across valid pixels within an AOI or selected trait class
 - Temporal percentile: percentile across scenes within a temporal bin
 
 ## Short Reusable Summary
 
-The project uses a Python/Streamlit/Plotly dashboard backed by precomputed pandas/PyArrow Parquet summary tables. Raster rebuild workflows use Microsoft Planetary Computer STAC data, rasterio/geopandas/numpy/pandas, AOI-aligned GeoTIFF caches, PRISM precipitation rasters, TNC forest-community traits, and Copernicus DEM-derived terrain data. Dashboard-only handoff requires the app code, configuration, Python dependencies, and generated `SummaryTables/dashboard_data/` products, not the raw satellite cache.
+The project uses a Python, Streamlit, and Plotly dashboard backed by precomputed pandas/PyArrow Parquet summary tables. Raster rebuild workflows use Microsoft Planetary Computer STAC data, rasterio/geopandas/numpy/pandas, AOI-aligned GeoTIFF caches, PRISM precipitation rasters, TNC forest-community traits, and Copernicus DEM-derived terrain data. Dashboard-only handoff requires the app code, configuration, Python dependencies, and generated `SummaryTables/dashboard_data/` products, not the raw satellite cache.

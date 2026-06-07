@@ -1,6 +1,6 @@
 # Codebase Directory Guide
 
-This guide maps the public `Python/` repository and separates active dashboard/data-pipeline code from generated outputs, exploratory work, and archive material.
+This guide maps the public repository and separates active dashboard/data-pipeline code from generated outputs, exploratory work, and archive material.
 
 ## Active Project Structure
 
@@ -116,4 +116,4 @@ These directories contain useful analysis history but are not currently part of 
 
 ## Release Hygiene
 
-Before a formal release, review `git status` from the `Python/` directory and keep active source/docs separate from generated outputs. Generated dashboard tables, figures, rasters, deliverable packages, local Streamlit settings, local legacy trait archives, and chart image outputs are intentionally ignored by git.
+Before a formal release, review `git status` from the repository root and keep active source/docs separate from generated outputs. Generated dashboard tables, figures, rasters, deliverable packages, local Streamlit settings, local legacy trait archives, and chart image outputs are intentionally ignored by git.

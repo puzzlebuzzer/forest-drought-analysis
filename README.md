@@ -53,7 +53,7 @@ The dashboard entry point is:
 streamlit run dashboard_app.py
 ```
 
-Recommended setup from the `Python/` directory:
+Recommended setup from the repository root:
 
 ```bash
 python3 -m venv .venv
@@ -114,21 +114,20 @@ Deliverables/AppDash.zip
 ## Repository Structure
 
 ```text
-Python/
-  dashboard_app.py              Streamlit dashboard
-  src/                          Shared dashboard and pipeline modules
-  Analysis/
-    DashboardPipeline/          Scripts that build dashboard-ready tables/context
-    SupportingAnalyses/         Non-dashboard analyses, figures, diagnostics, exports
-  Preprocessing/
-    Traits/                     Shared trait/raster preparation inputs
-  Cache/                        Sentinel-2 and Landsat cache builders/auditors
-  config/                       Path config and classification tables
-  docs/                         Methods, provenance, ontology, and codebase guides
-  tests/                        Dashboard loader tests
-  SummaryTables/                Generated dashboard summary tables; ignored by git
-  Results/                      Final/generated analysis outputs; large and mostly not git-tracked
-  Deliverables/                 Local handoff packages; ignored by git
+dashboard_app.py              Streamlit dashboard
+src/                          Shared dashboard and pipeline modules
+Analysis/
+  DashboardPipeline/          Scripts that build dashboard-ready tables/context
+  SupportingAnalyses/         Non-dashboard analyses, figures, diagnostics, exports
+Preprocessing/
+  Traits/                     Shared trait/raster preparation inputs
+Cache/                        Sentinel-2 and Landsat cache builders/auditors
+config/                       Path config and classification tables
+docs/                         Methods, provenance, ontology, and codebase guides
+tests/                        Dashboard loader tests
+SummaryTables/                Generated dashboard summary tables; ignored by git
+Results/                      Final/generated analysis outputs; large and mostly not git-tracked
+Deliverables/                 Local handoff packages; ignored by git
 ```
 
 ## Main Processing Flow
@@ -181,7 +180,7 @@ Generated outputs, rasters, cache directories, deliverable zips, local paths, an
 
 ## Tests
 
-From the `Python/` directory:
+From the repository root:
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 ./.venv/bin/python -m unittest tests.test_dashboard_loader
