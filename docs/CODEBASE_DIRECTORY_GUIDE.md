@@ -10,7 +10,7 @@ This guide maps the public `Python/` repository and separates active dashboard/d
 | `src/` | Shared application and pipeline modules | Active core code. |
 | `Cache/` | Sentinel-2 and Landsat cache builders/auditors | Active for full data rebuilds; not needed for dashboard-only users. |
 | `Analysis/DashboardPipeline/TableFactory/` | Dashboard summary table builders and parquet optimization | Active preprocessing pipeline. |
-| `Analysis/DashboardPipeline/Climate/` | PRISM and satellite-index year classification workflows | Active supplemental climate/context workflows. |
+| `Analysis/DashboardPipeline/Climate/` | PRISM annual precipitation classification workflow | Active supplemental climate/context workflow. |
 | `Preprocessing/Traits/ForestCommunity/` | Forest community raster preparation | Active shared preprocessing. |
 | `Preprocessing/Traits/Terrain/` | DEM, slope/aspect, and terrain trait preparation | Active shared preprocessing. |
 | `config/` | Path and classification config files | Active configuration; local paths may need editing on other machines. |
@@ -47,7 +47,6 @@ This guide maps the public `Python/` repository and separates active dashboard/d
    - `Preprocessing/Traits/Terrain/build_elevation_cache.py`
 3. Download or ingest PRISM monthly precipitation and build AOI-level precipitation classifications:
    - `Analysis/DashboardPipeline/Climate/build_prism_growing_season_precip.py`
-   - `Analysis/DashboardPipeline/Climate/classify_index_based_moisture_years.py`
 4. Build dashboard base summaries:
    - `Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py`
 5. Build thermal-ecozone summaries:

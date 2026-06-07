@@ -133,7 +133,7 @@ The PRISM layer is an external precipitation context. It is not derived from can
 - Landsat local cache coverage is incomplete relative to the intended full Landsat-era period.
 - Current rebuild code does not exactly match the historical trusted Sentinel cache behavior.
 - Forest-community terminology is canonical for detailed vegetation classes; thermal ecozone refers to the broader cool/intermediate/hot tier.
-- PRISM wet/dry context and satellite-index canopy response classifications answer different questions and should be compared rather than treated as interchangeable.
+- A satellite-index-only canopy response classification was used as a sanity check, not as dashboard infrastructure or an independent moisture dataset.
 
 ## Reusable Methods Summary
 

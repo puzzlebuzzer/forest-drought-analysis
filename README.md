@@ -154,7 +154,6 @@ Key scripts:
 - `Analysis/DashboardPipeline/TableFactory/build_dashboard_forest_community_tables.py`
 - `Analysis/DashboardPipeline/TableFactory/optimize_dashboard_ecozone_parquet.py`
 - `Analysis/DashboardPipeline/Climate/build_prism_growing_season_precip.py`
-- `Analysis/DashboardPipeline/Climate/classify_index_based_moisture_years.py`
 
 ## Documentation
 
@@ -165,7 +164,6 @@ Useful project documentation:
 - `docs/DATA_PROVENANCE_AND_CACHE_CHARACTERISTICS.md`
 - `docs/DASHBOARD_TABLE_FACTORY.md`
 - `docs/PRISM_GROWING_SEASON_CLASSIFICATION.md`
-- `docs/INDEX_BASED_MOISTURE_YEAR_CLASSIFICATION.md`
 - `docs/TECH_STACK.md`
 
 ## Reproducibility Notes
