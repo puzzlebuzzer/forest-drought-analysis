@@ -24,6 +24,8 @@ Most dashboard time-series points are built through this chain:
 
 The dashboard's z-score exclusion filters can remove displayed points, but they do not recalculate the stored summary values.
 
+Current dashboard selection model: each layer has base settings such as AOI, sensor, index, cloud threshold, spatial percentile, temporal aggregation, and temporal percentile. Spatial subsets are selected below the layer in the layer-list checklist. The checklist can show the layer's `Overall Combined` series, thermal ecozones, forest-community groups, group-level combined lines, and individual forest communities. The older separate Scope dropdown has been collapsed into those layer checklist selections. Internally, the summary tables still store an `analysis_scope` field such as `overall`, `ecozone`, `forest_ecozone_group`, or `forest_community`.
+
 ## Example 1: Landsat NDVI, Cove Forest Group
 
 Dashboard hover value:
@@ -36,8 +38,8 @@ Dashboard hover value:
 | Sensor | `ls` |
 | AOI | `north` |
 | Index | `ndvi` |
-| Scope | forest-community group |
-| Selected item | Cove forest, combined |
+| Layer checklist selection | Cove forest group, combined |
+| Underlying table scope | forest-community group |
 | Temporal aggregation | `half_month` |
 | Spatial percentile | `p99` |
 | Temporal percentile | `p99` |
@@ -106,7 +108,8 @@ Dashboard hover value:
 | Sensor | `s2` |
 | AOI | `south` |
 | Index | `ndmi` |
-| Scope | overall |
+| Layer checklist selection | Overall Combined |
+| Underlying table scope | overall |
 | Temporal aggregation | `month` |
 | Spatial percentile | `p75` |
 | Temporal percentile | `p95` |
@@ -139,7 +142,7 @@ reflectance = raw / 10000
 
 The accepted Sentinel cache used a vegetation-only `SCL == 4` mask plus numeric validity screening, on a canonical `EPSG:32617` grid at 10 m resolution. It was not harmonized for the early-2022 Sentinel-2 processing-baseline shift; this example is from 2019, so that specific shift is not relevant to this point.
 
-Because this point uses `Scope = overall`, no thermal-ecozone, forest-community-group, or forest-community subset is applied. Each qualifying June 2019 Sentinel scene contributes one scene-level value: the spatial p75 NDMI across valid south-AOI pixels.
+Because this point uses the layer checklist's `Overall Combined` selection, no thermal-ecozone, forest-community-group, or forest-community subset is applied. Each qualifying June 2019 Sentinel scene contributes one scene-level value: the spatial p75 NDMI across valid south-AOI pixels.
 
 The dashboard date `2019-06-01` is the month bucket start, covering June 1 through June 30, 2019.
 
