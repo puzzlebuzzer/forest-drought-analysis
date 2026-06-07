@@ -57,6 +57,12 @@ The accepted Sentinel-2 cache used for dashboard summaries has these key charact
 - numeric screen requiring needed raw bands in `(0, 10000)`
 - reflectance scaling by dividing raw values by `10000`
 
+The source script snapshot for this accepted Sentinel-2 cache behavior is:
+
+```text
+ScriptSnapshots/cache_build_script.py
+```
+
 The current Sentinel rebuild code is broader than the accepted cache:
 
 - it applies an AOI polygon mask
@@ -85,10 +91,10 @@ Current local cache coverage:
 | --- | --- |
 | north Sentinel-2 | `2017-04-09` to `2026-02-21` |
 | south Sentinel-2 | `2017-01-25` to `2026-03-01` |
-| north Landsat | `1984-03-12` to `2008-12-25` |
-| south Landsat | `1984-03-27` to `1988-12-24` |
+| north Landsat | `1984-03-12` to `2026-02-27` |
+| south Landsat | `1984-03-27` to `2026-02-17` |
 
-Landsat coverage on disk is incomplete relative to the intended 1984-2026 analytical period unless the cache is rebuilt.
+Landsat coverage extends from 1984 through the beginning of 2026 in the current cache. The 2026 year is partial in the on-disk cache ranges above.
 
 ## Dashboard Summary Tables
 
