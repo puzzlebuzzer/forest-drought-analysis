@@ -61,6 +61,7 @@ venv/
 dist/
 build/
 config/paths.yaml
+CODEX.md
 
 # ── Jupyter ───────────────────────────────────────────────────
 .ipynb_checkpoints/
