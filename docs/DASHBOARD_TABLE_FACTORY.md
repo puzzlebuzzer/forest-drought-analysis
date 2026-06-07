@@ -1,105 +1,181 @@
 # Dashboard Table Factory
 
-This project now separates heavy raster preprocessing from dashboard use.
+The table factory builds the precomputed summary tables used by the Streamlit dashboard. It separates expensive raster processing from interactive dashboard use: the dashboard reads summary tables, manifests, and Parquet datasets rather than raw Sentinel-2 or Landsat rasters.
 
 ## Purpose
 
-The table factory regenerates clean dashboard-ready tables from:
+The dashboard table pipeline converts aligned satellite index caches and trait rasters into dashboard-ready products for:
 
-- aligned Sentinel-2 index rasters
-- aligned Landsat index rasters
-- cache manifests
+- whole-AOI summaries
+- thermal ecozone summaries
+- forest-community-group summaries
+- forest community summaries
 
-It does not rely on legacy Excel outputs as source data.
+The dashboard can then filter by AOI, sensor, vegetation index, year, cloud threshold, spatial percentile, temporal aggregation, thermal ecozone, forest-community group, and forest community without reading rasters at runtime.
 
-## Architectural stance
+## Inputs
 
-- Existing caches and manifests are treated as source material.
-- Dashboard products are regenerated into a new canonical schema.
-- The dashboard reads only precomputed tables.
-- The dashboard can view either whole-AOI summaries or ecozone-stratified summaries when the optional ecozone tables are present.
-- Scene masking is fixed by sensor-specific baseline definitions.
+Primary inputs:
 
-## Canonical masks
+- Sentinel-2 and Landsat index rasters stored in AOI-aligned caches
+- cache manifests for scene date, cloud metadata, platform, path/row, and file provenance
+- AOI-aligned thermal ecozone rasters
+- AOI-aligned forest-community rasters and inventories
+- project path configuration in `config/project_paths.yaml`
+
+The table factory treats existing rasters and manifests as source material. It does not use legacy Excel outputs as source data.
+
+## Output Location
+
+Default output directory:
+
+```text
+SummaryTables/dashboard_data/
+```
+
+This directory is generated data and is ignored by git. It is required for dashboard runtime unless a dashboard package provides an equivalent data directory.
+
+## Main Products
+
+Base products:
+
+- `scene_catalog.csv` / `scene_catalog.parquet`
+- `scene_summary.csv` / `scene_summary.parquet`
+- `temporal_summary.csv` / `temporal_summary.parquet`
+- `data_dictionary.md`
+
+Thermal ecozone products:
+
+- `scene_summary_ecozone.csv` / `.parquet`
+- `temporal_summary_ecozone.csv` / `.parquet`
+- `scene_summary_ecozone_manifest.csv` / `.parquet`
+- `temporal_summary_ecozone_manifest.csv` / `.parquet`
+- `data_dictionary_ecozone.md`
+
+Forest-community products:
+
+- `scene_summary_forest_community.parquet`
+- `temporal_summary_forest_community` partitioned Parquet dataset
+- `scene_summary_forest_community_manifest.csv` / `.parquet`
+- `temporal_summary_forest_community_manifest.csv` / `.parquet`
+- `data_dictionary_forest_community.md`
+
+Forest-community-group products:
+
+- `scene_summary_forest_ecozone_group` partitioned Parquet dataset
+- `temporal_summary_forest_ecozone_group` partitioned Parquet dataset
+- `scene_summary_forest_ecozone_group_manifest.csv` / `.parquet`
+- `temporal_summary_forest_ecozone_group_manifest.csv` / `.parquet`
+
+Optimized runtime products:
+
+- `optimized_parquet/`
+- `partitioned_parquet/`
+
+The dashboard prefers partitioned Parquet when present, then optimized Parquet, then root-level Parquet/CSV fallbacks.
+
+## Processing Flow
+
+1. Build a canonical scene catalog from Sentinel-2 and Landsat manifests.
+2. Read aligned index rasters scene-by-scene.
+3. Compute scene-level spatial percentiles for whole AOIs and trait classes.
+4. Re-bin scene summaries into `scene`, `half_month`, and `month` temporal products.
+5. Apply cloud-threshold filtering during summary/table construction rather than recomputing rasters.
+6. Add `growing_season_day` so the dashboard can render normalized May 15-Sep 15 growing-season overlays.
+7. Build manifests describing available layer combinations and year ranges.
+8. Optimize large tables into sorted and partitioned Parquet datasets for dashboard filtering.
+
+## Canonical Masks
 
 Sentinel-2:
 
 - `s2_scl4_veg_v1`
-- `SCL = 4` vegetation pixels only
+- historical trusted baseline uses `SCL = 4` vegetation pixels only
 
 Landsat:
 
 - `ls_clear_terrestrial_v1`
-- QA-based clear terrestrial mask excluding fill, dilated cloud, cirrus, cloud, cloud shadow, snow, and water
+- QA-based mask semantics are documented in `DATA_METHODS_SHORT.md` and `DATA_PROVENANCE_AND_CACHE_CHARACTERISTICS.md`
 
-These are preserved as metadata fields, not exposed as user-facing toggles.
+Mask identifiers are stored as metadata fields. They are fixed dataset definitions, not dashboard user controls.
 
-## Products
+## Key Columns
 
-Default output directory:
+Common dashboard columns include:
 
-- `SummaryTables/dashboard_data/`
+- `analysis_scope`
+- `sensor`
+- `aoi`
+- `index`
+- `date`, `year`, `doy`, `growing_season_day`
+- `season_filter`
+- `temporal_agg`
+- `temporal_percentile`
+- `spatial_percentile`
+- `cloud_threshold`
+- `pixel_mask_id`
+- `n_pixels`
+- `valid_pixel_fraction`
+- `n_scenes`
+- `value`
 
-Products:
+Thermal ecozone rows add:
 
-- `scene_catalog.csv`
-- `scene_summary.csv`
-- `temporal_summary.csv`
-- optional parallel ecozone tables:
-  - `scene_summary_ecozone.csv`
-  - `temporal_summary_ecozone.csv`
-  - `data_dictionary_ecozone.md`
-- parquet versions when a parquet engine is installed
-- `data_dictionary.md`
+- `ecozone_code`
+- `ecozone_label`
 
-## Processing flow
+Forest community rows add:
 
-1. Read cache manifests and build a canonical scene catalog.
-2. Read aligned rasters scene-by-scene and compute spatial percentiles.
-3. Store scene-level summaries in long form.
-4. Re-bin scene summaries into `scene`, `half_month`, and `month` products.
-5. Apply cloud-threshold filtering at summary time, not by recomputing rasters.
-6. Use `growing_season_day` in `scene_summary` so the dashboard can render a normalized growing-season overlay without a separate table.
+- `forest_community_code`
+- `forest_community_display_code`
+- `forest_community_label`
+- `forest_community_source_dataset`
+- `forest_community_source_value`
+- `forest_community_source_key`
 
-Ecozone dashboard viewing:
+Forest-community-group rows use:
 
-- Use the dashboard's **Ecozone** control to switch between `All` whole-AOI summaries and individual ecozone summaries.
-- Ecozone rows add `analysis_scope`, `ecozone_code`, and `ecozone_label` to the canonical dashboard schema.
-- Until Parquet or per-series stores are generated for `temporal_summary_ecozone`, selected ecozone temporal layers are read from CSV in chunks.
+- `ecozone_group_code`
+- `ecozone_group_label`
+- `ecozone_group_raw`
 
-## Run
+The `ecozone_group_*` names are retained in the schema for compatibility with existing code, but these fields represent TNC forest-community groups rather than the dashboard's broad thermal ecozone tier.
 
-From the `Python/` directory:
+## Common Commands
+
+Run commands from the `Python/` repository root.
+
+Build base scene and temporal products:
 
 ```bash
 python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py
 ```
 
-Ecozone table prep:
+Build thermal ecozone products:
 
 ```bash
-python Analysis/DashboardPipeline/TableFactory/build_dashboard_ecozone_tables.py scene-summary
-python Analysis/DashboardPipeline/TableFactory/build_dashboard_ecozone_tables.py temporal-summary
-python Analysis/DashboardPipeline/TableFactory/build_dashboard_ecozone_tables.py data-dictionary
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_ecozone_tables.py all
 ```
 
-Streaming CSV-to-Parquet conversion:
+Build forest community and forest-community-group products:
 
 ```bash
-python Analysis/DashboardPipeline/TableFactory/convert_dashboard_csv_to_parquet.py --ecozone-only
+python Analysis/DashboardPipeline/TableFactory/build_dashboard_forest_community_tables.py all
 ```
 
-This keeps the CSV files in place and writes `.parquet` siblings. The dashboard uses filtered Parquet reads for selected ecozone layers when those Parquet files exist.
-
-Ecozone Parquet optimization bundle:
+Optimize large segment tables for dashboard runtime:
 
 ```bash
 python Analysis/DashboardPipeline/TableFactory/optimize_dashboard_ecozone_parquet.py
 ```
 
-This reads existing ecozone Parquet siblings, writes slim typed/sorted Parquet files under `optimized_parquet/`, writes moderately partitioned dashboard datasets under `partitioned_parquet/`, and writes `scene_summary_ecozone_manifest.*` / `temporal_summary_ecozone_manifest.*`. The dashboard prefers the partitioned datasets when present.
+Optimize selected stems only:
 
-Optional dev limiter:
+```bash
+python Analysis/DashboardPipeline/TableFactory/optimize_dashboard_ecozone_parquet.py --stem scene_summary_forest_community --stem temporal_summary_forest_community
+```
+
+Optional development limiter:
 
 ```bash
 python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py --limit-scenes-per-group 2
@@ -111,34 +187,24 @@ Optional year window:
 python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 scene-summary
 ```
 
-## Staged subcommands
+## Validation
 
-You can build and test each artifact boundary independently:
-
-```bash
-python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py scene-catalog
-python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py scene-summary --limit-scenes-per-group 5
-python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py temporal-summary
-python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py data-dictionary
-```
-
-Decade-at-a-time example:
+Useful checks:
 
 ```bash
-python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 scene-catalog
-python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 scene-summary
-python Analysis/DashboardPipeline/TableFactory/build_dashboard_tables.py --start-year 1990 --end-year 1999 temporal-summary
+python Analysis/DashboardPipeline/TableFactory/check_dashboard_readiness.py
+PYTHONDONTWRITEBYTECODE=1 ./.venv/bin/python -m unittest tests.test_dashboard_loader
 ```
 
-Notes:
+The readiness check validates expected table availability. The unit test exercises dashboard loading/filtering behavior against sample data.
 
-- `scene-summary` reuses `scene_catalog` if it already exists, or builds it automatically.
-- `temporal-summary` reuses `scene_summary` if it already exists, or builds it automatically.
-- Running the CLI with no subcommand is equivalent to `all`.
+## Runtime Boundary
 
-## Stretch goals
+The Streamlit dashboard uses the generated tables and PRISM classification file at runtime. It does not:
 
-- Add a reproducible growing-season animation export workflow that renders one highlighted year at a time and writes a StoryMap-friendly GIF or MP4.
-- Update the Sentinel baseline used for dashboard-ready tables to a refreshed trusted version.
-- Add an RNG view from the scene catalog to the dashboard that matches the selected layer.
-- Final dashboard test/polish pass.
+- download Sentinel-2 or Landsat scenes
+- read raw GeoTIFF rasters
+- rebuild trait rasters
+- recompute spatial or temporal percentiles
+
+That boundary is what makes the dashboard package small enough for non-programmer handoff compared with the full rebuild workspace.
