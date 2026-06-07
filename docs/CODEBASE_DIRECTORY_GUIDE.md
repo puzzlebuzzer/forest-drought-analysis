@@ -108,7 +108,8 @@ These directories contain useful analysis history but are not currently part of 
 
 ## Large Data And Reproducibility Notes
 
-- Satellite caches, generated rasters, and `Results/` outputs dominate storage for rebuild workflows.
+- `SummaryTables/dashboard_data/` is the main dashboard-runtime data store.
+- Satellite caches, `Results/rasters/`, `Results/0-CacheBaseData/`, and other `Results/` analysis outputs can dominate storage for rebuild/report workflows.
 - Dashboard-only use is about 2-10 GB and 8-16 GB RAM.
 - Dashboard table rebuild from existing caches is about 500-700+ GB and 16-32 GB RAM.
 - Full raw-to-dashboard rebuild is about 600 GB-1 TB+ and 32 GB RAM.
