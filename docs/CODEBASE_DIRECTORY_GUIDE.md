@@ -115,7 +115,3 @@ These directories contain useful analysis history but are not currently part of 
 - Full raw-to-dashboard rebuild is about 600 GB-1 TB+ and 32 GB RAM.
 - Dashboard-only runtime can be packaged much smaller by including only code, manifests, and partitioned parquet summary tables.
 - Optional ArcGIS Pro export scripts, if used, live under `Analysis/SupportingAnalyses/ArcGISExports/` and are separate from the Streamlit dashboard runtime.
-
-## Release Hygiene
-
-Before a formal release, review `git status` from the repository root and keep active source/docs separate from generated outputs. Generated dashboard tables, figures, rasters, deliverable packages, Streamlit settings, archived notes, and chart image outputs are intentionally ignored by git.
